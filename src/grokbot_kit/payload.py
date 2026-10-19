@@ -4,6 +4,7 @@ Os campos de task vêm do `meta.json` do task dir, para que o `run` (evento term
 montem o mesmo payload.
 """
 
+import os
 import shlex
 import subprocess
 from datetime import UTC, datetime
@@ -131,3 +132,32 @@ def needs_input_event(
         needs_input={"kind": kind, "tool_name": tool_name, "detail": detail},
         transcript_path=transcript_path,
     )
+
+
+def route_test_event(target: str) -> dict[str, Any]:
+    """`event: "test"` do `route test` (AC 75): os campos de task da door 2 ficam `null`."""
+    return {
+        "schema": SCHEMA,
+        "event": "test",
+        "status": "test",
+        "task_id": None,
+        "task_label": None,
+        "target": target,
+        "tool": None,
+        "model": None,
+        "model_source": None,
+        "tier": None,
+        "session_id": None,
+        "cwd": os.getcwd(),
+        "repo": None,
+        "exit_code": None,
+        "exit_reason": None,
+        "summary": "",
+        "needs_input": None,
+        "resume_hint": None,
+        "output_file": None,
+        "transcript_path": None,
+        "log_file": None,
+        "started_at": None,
+        "timestamp": rfc3339(datetime.now(UTC)),
+    }
