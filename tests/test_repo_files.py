@@ -334,19 +334,36 @@ S0_REPORT_OUTPUTS = {
         '"linear":true',
     ],
     "AC 30": ["vulnerability-alerts: exit 0 (HTTP 204)", "automated-security-fixes .enabled: true"],
-    "AC 31": ['{"name":"pypi","rules":["required_reviewers","branch_policy"]}'],
+    "AC 31": [
+        '{"name":"pypi","rules":["required_reviewers","branch_policy"]}',
+        '[{"name":"v*","type":"tag"}]',
+    ],
     "AC 33": [
         '"visibility":"PUBLIC"',
         '"hasIssuesEnabled":true',
         '"hasWikiEnabled":false',
+        '"hasProjectsEnabled":false',
+        '"hasDiscussionsEnabled":false',
         '"squashMergeAllowed":true',
+        '"mergeCommitAllowed":false',
+        '"rebaseMergeAllowed":false',
         '"deleteBranchOnMerge":true',
+        '"licenseInfo":{"key":"mit"',
+        '"defaultBranchRef":{"name":"main"}',
+        *[
+            f'{{"name":"{topic}"}}'
+            for topic in ["grokbot", "ai-agents", "coding-agents", "cli", "python", "webhooks"]
+            + ["opencode", "claude-code", "codex", "automation"]
+        ],
         '"allow_auto_merge":true',
         '"allow_update_branch":true',
         '"push_protection":"enabled"',
         '"secret_scanning":"enabled"',
-        *["area:cli", "area:hooks", "area:skill", "area:webhook"],
-        *["cli:opencode", "cli:claude", "cli:codex", "security", "needs-triage"],
+        *[
+            f"\n{label}\n"
+            for label in ["area:cli", "area:hooks", "area:skill", "area:webhook"]
+            + ["cli:opencode", "cli:claude", "cli:codex", "security", "needs-triage"]
+        ],
     ],
 }
 
