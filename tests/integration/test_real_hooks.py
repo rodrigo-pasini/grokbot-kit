@@ -75,9 +75,9 @@ def test_opencode_plugin_fires_no_question_in_run(tmp_path: Path) -> None:
     assert not [e for e in events if e["event"] == "needs_input" and e["status"] == "question"], events
 
 
-# C69 - AC 57 (pergunta 2)
-def test_codex_hook_fires(tmp_path: Path) -> None:
+# C69 - AC 57, AD-027: o `codex exec` força `approval_policy = never` e não chama o hook `PermissionRequest`
+def test_codex_hook_silent_in_exec(tmp_path: Path) -> None:
     home, work, prompt = prepare_home(tmp_path, "codex", "denied")
     events = run_task(tmp_path, home, work, "codex", "-s", "read-only", prompt)
-    asked = asked_before_terminal(events, "permission")
-    assert asked[0]["needs_input"]["tool_name"]
+    assert not [e for e in events if e["event"] == "needs_input"], events
+    assert [(e["event"], e["status"]) for e in events] == [("completed", "ok")], events

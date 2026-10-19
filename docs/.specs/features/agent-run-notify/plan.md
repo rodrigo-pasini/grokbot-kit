@@ -255,7 +255,7 @@ O bot fica sabendo na hora, não só no fim.
 54. WHEN o Claude dispara o hook `PermissionRequest` dentro de uma task THEN o `grokbot-kit` SHALL enviar `event: "needs_input"` com `status: "permission"` e `needs_input.tool_name` igual ao `tool_name` do hook
 55. WHEN o opencode publica `permission.asked` numa sessão sem `parentID` dentro de uma task THEN o `grokbot-kit` SHALL enviar `event: "needs_input"` com `status: "permission"`
 56. WHEN o opencode publica `question.asked` dentro de uma task THEN o `grokbot-kit` SHALL enviar `event: "needs_input"` com `status: "question"`
-57. WHEN o Codex dispara o hook `PermissionRequest` dentro de uma task THEN o `grokbot-kit` SHALL enviar `event: "needs_input"` com `status: "permission"` e `needs_input.tool_name` igual ao `tool_name` do hook
+57. WHEN uma task Codex roda em `codex exec` (que força `approval_policy = never` e não chama o hook `PermissionRequest`, AD-027) THEN o `grokbot-kit` SHALL não enviar `needs_input` e SHALL enviar só o evento terminal, com `summary` e `resume_hint`; WHEN o hook `PermissionRequest` do Codex dispara dentro de uma task THEN o `grokbot-kit` SHALL enviar `event: "needs_input"` com `status: "permission"` e `needs_input.tool_name` igual ao `tool_name` do hook
 58. WHEN o mesmo pedido de permissão (mesmo `tool_use_id` ou id da permissão) chega mais de uma vez THEN o `grokbot-kit` SHALL entregar um único `needs_input`, e pedidos distintos SHALL gerar um `needs_input` cada
 59. IF `GROKBOT_KIT_TASK_ID` não está no ambiente THEN o `grokbot-kit emit` SHALL sair com `0` sem gravar nem enviar nada
 60. WHEN o `grokbot-kit emit` termina, em qualquer caso inclusive falha de entrega, THEN ele SHALL sair com `0` e escrever em stdout no máximo `{}` (Codex exige JSON em alguns eventos)
@@ -263,7 +263,7 @@ O bot fica sabendo na hora, não só no fim.
 62. WHILE `GROKBOT_KIT_TASK_ID` não está no ambiente, o `grokbot-kit emit` SHALL sair sem abrir o config, o task dir nem nenhum arquivo de segredo (a meta de mediana ≤ 50 ms em 20 execuções no box fica em Observability, no `## Swept`)
 63. The caminho do `grokbot-kit emit` SHALL importar só módulos da stdlib, e SHALL carregar `urllib.request` e o leitor do config só depois do gate de `GROKBOT_KIT_TASK_ID`, conferido com `python -X importtime`
 
-**Independent test:** em cada CLI, configurar uma permissão que precise de aprovação (`"permission": {"bash": "ask"}` no opencode; sem `--allowedTools` no Claude; `-s read-only` no Codex), rodar um prompt que escreve um arquivo e conferir um `needs_input` antes do `completed`/`denied`; medir o gate com `hyperfine` ou um laço de 20 execuções.
+**Independent test:** em cada CLI, configurar uma permissão que precise de aprovação (`"permission": {"bash": "ask"}` no opencode; sem `--allowedTools` no Claude; `-s read-only` no Codex), rodar um prompt que escreve um arquivo e conferir um `needs_input` antes do `completed`/`denied` (no Codex, nenhum `needs_input` e `completed`/`ok`, AD-027); medir o gate com `hyperfine` ou um laço de 20 execuções.
 
 ### S4: rota por bot, autenticação e reentrega (P1)
 
@@ -408,10 +408,10 @@ Um Grok Bot que recebe a skill faz o setup na conversa e depois delega tarefas s
 | # | Kind | Question | Until answered |
 | --- | --- | --- | --- |
 | 1 | open | Limites do webhook da routine ainda desconhecidos: tamanho máximo do corpo, rate limit, e se corpos não JSON são aceitos | `summary` limitado a 2000 caracteres mantém o corpo em poucos KB; `429` já entra no retry; o kit só envia JSON. Medir no build com um corpo grande e uma rajada curta |
-| 2 | blocks | O hook `PermissionRequest` do Codex dispara em `codex exec`, que força `approval_policy = Never`? Não foi possível testar sem login; um spike com login decide | AC 57 não é satisfazível se não disparar; alternativa a avaliar no spike: detectar negação do sandbox em `item.completed` de `command_execution` |
+| 2 | answered | O hook `PermissionRequest` do Codex dispara em `codex exec`, que força `approval_policy = Never`? Spike de 19/10/2026 (`codex-cli` 0.163.0): não dispara; `-c approval_policy="on-request"` é ignorado e `untrusted` não existe mais | AC 57 reescrito e AD-003 revista pela AD-027: sem `needs_input` ao vivo no Codex na v1 |
 | 3 | open | Instaladores oficiais exatos de cada CLI (URL do script/pacote) a confirmar na documentação no build | AC 91 escrito sem o comando literal |
 
-**Open questions:** 3 registradas acima (1 bloqueia um criterion, 2 abertas). A pergunta 2 também condiciona a AD-003 (`needs_input` ao vivo no Codex): se o hook não disparar, a AD-003 precisa ser revista antes do go-live.
+**Open questions:** 3 registradas acima (2 abertas, 1 respondida). A pergunta 2 foi respondida pelo spike de 19/10/2026: o hook não dispara em `codex exec`, e a AD-027 revê a AD-003.
 
 ## Observable
 

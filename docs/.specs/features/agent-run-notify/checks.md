@@ -182,7 +182,7 @@ Proof: `uv run pytest tests/test_run_guards.py -k exit_2_creates_no_task_dir`
 **C54** - Quando a CLI falsa sai sozinha com `0`, `1` ou `3`, o `run` sai com o mesmo código (AC 48)
 Proof: `uv run pytest tests/test_terminal.py -k run_exit_mirrors_agent`
 
-**C55** - No box, uma tarefa curta em cada uma das 3 CLIs reais gera uma linha `completed`/`ok` no sink `file`, e um `touch` sem permissão gera `completed`/`denied` (AC 40, 41, 42, 43, 44)
+**C55** - No box, uma tarefa curta em cada uma das 3 CLIs reais gera uma linha `completed`/`ok` no sink `file`, e um `touch` sem permissão gera `completed`/`denied` no `claude` e no `opencode` e `completed`/`ok` sem `needs_input` no `codex`, que não pede permissão em `codex exec` (AC 40, 41, 42, 43, 44, 57; AD-027)
 Proof: `uv run pytest -m integration tests/integration/test_real_cli.py -k completed_ok_and_denied_per_tool`
 
 ### S2 - payload que deixa a routine agir sem perguntar · ~4 arquivos · ~30 KB · ~8k
@@ -219,7 +219,7 @@ Proof: `uv run pytest tests/test_emit.py -k opencode_permission_asked_root_sessi
 **C65** - `question.asked` do opencode gera `needs_input`, `status: "question"` (AC 56)
 Proof: `uv run pytest tests/test_emit.py -k opencode_question_asked`
 
-**C66** - O JSON de hook `PermissionRequest` do Codex gera `needs_input`, `status: "permission"` e `needs_input.tool_name` igual ao `tool_name` do hook (AC 57)
+**C66** - O JSON de hook `PermissionRequest` do Codex gera `needs_input`, `status: "permission"` e `needs_input.tool_name` igual ao `tool_name` do hook (AC 57, segunda cláusula)
 Proof: `uv run pytest tests/test_emit.py -k codex_permission_request`
 
 **C67** - No box, `claude -p` real lançado por `run` sem `--allowedTools` e com um prompt que escreve arquivo gera um `needs_input` antes do terminal (AC 54)
@@ -228,8 +228,8 @@ Proof: `uv run pytest -m integration tests/integration/test_real_hooks.py -k cla
 **C68** - No box, `opencode run` real com `"permission": {"bash": "ask"}` gera `needs_input`/`permission`, e um prompt que pede uma pergunta termina com evento terminal diferente de `timeout` e sem nenhum `needs_input`/`question`, porque o `opencode run` 1.18.32 não interativo nega a ferramenta `question` (AC 55; AC 56 fica provada só pelo C65, AD-026)
 Proof: `uv run pytest -m integration tests/integration/test_real_hooks.py -k opencode_plugin_fires`
 
-**C69** - No box, `codex exec` real com `-s read-only` e um prompt que escreve arquivo gera `needs_input` pelo hook `PermissionRequest` (AC 57; bloqueado pela pergunta 2)
-Proof: `uv run pytest -m integration tests/integration/test_real_hooks.py -k codex_hook_fires`
+**C69** - No box, `codex exec` real com `-s read-only` e um prompt que escreve arquivo não gera nenhum `needs_input` e termina com um único evento terminal `completed`/`ok`, porque o `codex exec` 0.163.0 força `approval_policy = never` e não chama o hook `PermissionRequest` (AC 57, primeira cláusula; AD-027)
+Proof: `uv run pytest -m integration tests/integration/test_real_hooks.py -k codex_hook_silent_in_exec`
 
 **C70** - O mesmo `tool_use_id` enviado 3 vezes gera 1 entrega; 2 ids distintos geram 2 (AC 58)
 Proof: `uv run pytest tests/test_emit.py -k dedupe_same_id_once_distinct_twice`
@@ -496,7 +496,7 @@ Proof: `uv run pytest tests/test_skill_doc.py -k no_literal_model_ids`
 | tools: fonte do `summary` (3) | C51, table-driven over all 3 | - |
 | tools: `resume_hint` (3) | C59, table-driven over all 3 | - |
 | `summary`: borda de 2000 (3 edges) | 1999 C51 · 2000 C51 · 2001 C51 | - |
-| fontes de `needs_input` (4) | Claude `PermissionRequest` C63, C67 · opencode `permission.asked` C64, C68 · opencode `question.asked` C65 (no box o `opencode run` não publica o evento: C68, AD-026) · Codex `PermissionRequest` C66, C69 | - |
+| fontes de `needs_input` (4) | Claude `PermissionRequest` C63, C67 · opencode `permission.asked` C64, C68 · opencode `question.asked` C65 (no box o `opencode run` não publica o evento: C68, AD-026) · Codex `PermissionRequest` C66 (no box o `codex exec` não chama o hook: C69, AD-027) | - |
 | tipos de sink (4) | `grokbot-routine` C78 · `file` C90 · `ntfy` C91 · `slack` C92 | - |
 | tiers: timeout (3) | `trivial` C103 · `standard` C103 · `complex` C103 | - |
 | descoberta de modelos por CLI (3) | `opencode` C104 · `claude` C105 · `codex` C106 | - |
@@ -558,4 +558,4 @@ Os arquivos ainda não existem, então o tamanho é projetado: KB estimados por 
 - S0 = 11k; S1 entra no núcleo do kit e chega a 26k; S2 a 34k; S3 a 47k; S4 a 72k; S5 a 82k; S6 a 88k; S7 a 106k; S8 a 114k; com a leitura fixa (27k), 141k, abaixo do budget de 150k → um builder
 - Mechanism: um builder (estimativa cabe no budget; margem de 9k)
 - As etapas do S0 que mexem no GitHub (C24-C36, C40: `gh repo create`, `gh repo edit`, `git push`, proteção, environment, labels) são outward-facing e esperam o "pode" explícito do Rodrigo para essa ação, mesmo com a spec aprovada
-- C66 e C69 dependem da pergunta 2: se o spike mostrar que o hook não dispara em `codex exec`, volta ao plano (AC 57, AD-003), sem mudar o check
+- C66 e C69 dependiam da pergunta 2: o spike de 19/10/2026 mostrou que o hook não dispara em `codex exec`; voltou ao plano, e a AC 57, o C55 e o C69 foram reescritos pela AD-027 com o ok do Rodrigo

@@ -121,7 +121,7 @@ def prepare_home(tmp_path: Path, tool: str, case: str) -> tuple[Path, Path, str]
     return home, work, PROMPTS[case].format(work=work)
 
 
-# C55 - AC 40-44
+# C55 - AC 40-44, 57
 @pytest.mark.parametrize("case", ["ok", "denied"])
 @pytest.mark.parametrize("tool", ["claude", "opencode", "codex"])
 def test_completed_ok_and_denied_per_tool(tmp_path: Path, tool: str, case: str) -> None:
@@ -144,5 +144,6 @@ def test_completed_ok_and_denied_per_tool(tmp_path: Path, tool: str, case: str) 
     terminal = [e for e in map(json.loads, lines) if e["event"] in TERMINAL_EVENTS]
     assert len(terminal) == 1, result.stderr
     event = terminal[0]
-    expected = ("completed", "ok") if case == "ok" else ("completed", "denied")
+    # o `codex exec` não pede permissão (AD-027): o `touch` negado termina `completed`/`ok`, sem `needs_input`
+    expected = ("completed", "ok") if case == "ok" or tool == "codex" else ("completed", "denied")
     assert (event["event"], event["status"]) == expected, (event, result.stderr)

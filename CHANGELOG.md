@@ -21,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   event (`status` `permission` or `question`) per distinct request, recorded in the task dir so the terminal event
   becomes `completed`/`denied`; always exits `0`, prints at most `{}`, and does nothing outside a task.
 - The opencode plugin forwards `permission.asked` (root sessions only) and `question.asked` to `grokbot-kit emit`.
+  Known limits: `opencode run` denies the question tool, so `question` events do not occur in tasks; `codex exec` never
+  asks for approval, so Codex tasks send no `needs_input` and a denied command ends `completed`/`ok`.
 
 ## [0.1.0] - 2026-10-19
 
