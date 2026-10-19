@@ -31,9 +31,9 @@
 ## Handoff
 
 **Feature**: agent-run-notify
-**Where**: PLAN v6 aprovado em 19/10/2026 - S0 adaptado ao repositório local (AD-023, `.claude/` e `.agents/` versionados com mitigações), correções da validação, todas as suposições confirmadas e AD-006/007/008/011/022 ativas; profile `standard` no `AGENTS.md`; 119 ACs, S0 = AC 1-38
+**Where**: CHECKS escritos em 19/10/2026 - `checks.md` com 145 checks (profile `standard`), `validate_checks.py` 0 erros; plano com 124 ACs (ACs 120-124: sinks `file`, `ntfy`, `slack`)
 **In progress**: nada
-**Next step**: escrever `checks.md` (tlc-spec-lean, profile `standard`); com aprovação explícita, o agente local executa o S0; Rodrigo cria o pending publisher no PyPI antes da primeira tag; spike com login do Codex (pergunta 2); medir limites do webhook no build (pergunta 1)
+**Next step**: build do S0 numa worktree (`delegar-em-worktree`), com um builder; etapas do S0 que mexem no GitHub (C24-C36, C40) esperam o "pode" explícito do Rodrigo; Rodrigo cria o pending publisher no PyPI antes da primeira tag; spike com login do Codex (pergunta 2); medir limites do webhook no build (pergunta 1)
 **Blockers**: pergunta 2 bloqueia o AC 57 e condiciona a AD-003; a primeira tag `v*` espera o pending publisher do PyPI (passo humano, AC 37)
 **Uncommitted**: repositório local `grokbot-kit` em `main` com `79f430f` e `0c3e4a2`, sem remote; `rodrigo-pasini/grokbot-kit` não existe; nada foi criado no GitHub nem no PyPI
 **Branch**: `main` (só docs/specs; código do S0 vai numa worktree)

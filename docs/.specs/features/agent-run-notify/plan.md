@@ -282,6 +282,11 @@ Cada bot tem a sua routine, o segredo não vaza e um aviso que falhou pode ser r
 75. WHEN `grokbot-kit route test <target>` roda THEN o `grokbot-kit` SHALL enviar a todos os sinks da rota um evento `event: "test"`, `status: "test"`, `target: "<target>"`, com os campos de task da door 2 em `null`, imprimir o `runUuid` de cada routine que aceitou e sair com `0` só se todas as entregas tiveram sucesso (no sink `grokbot-routine`, pelo critério do AC 68)
 76. WHEN `grokbot-kit secret set <name>` lê o segredo de um TTY THEN o `grokbot-kit` SHALL desligar o eco e gravar o arquivo com modo `0600` em `~/.secrets/grokbot-kit/` (diretório `0700`)
 77. IF o conteúdo de `key_secret` de um sink `grokbot-routine` não começa com `crsr_` (inclusive quando começa com `Bearer `) ou o de `url_secret` não começa com `https://` THEN o `grokbot-kit route add` SHALL sair com `2` sem imprimir nenhum dos dois valores
+120. WHEN o sink `file` entrega THEN o `grokbot-kit` SHALL acrescentar a `path` uma linha com o mesmo corpo JSON do AC 67 seguido de `\n`, abrindo o arquivo com `O_APPEND` e criando-o com modo `0600` quando não existe
+121. WHEN o sink `ntfy` entrega THEN o `grokbot-kit` SHALL enviar `POST` a `topic_url` com o `summary` como corpo de texto (ou `<event> <status>` quando o `summary` está vazio), o header `Title: grokbot-kit <event> <status> <task_label>` (`test` no lugar de um `task_label` nulo) e, quando `token_secret` está definido, `Authorization: Bearer <conteúdo de token_secret>`, e SHALL tratar `200`-`299` como entregue
+122. WHEN o sink `slack` entrega THEN o `grokbot-kit` SHALL enviar `POST` à URL lida de `webhook_secret` com `Content-Type: application/json` e corpo `{"text": "[grokbot-kit] <event>/<status> <task_label> (<target>)\n<summary>"}`, e SHALL tratar como entregue só `200` com corpo `ok`
+123. IF o sink `ntfy` ou `slack` recebe `429`, `500`-`599` ou falha de conexão THEN o `grokbot-kit` SHALL aplicar o retry do AC 71, e IF recebe outro `4xx` ou esgota as tentativas THEN SHALL gravar em `undelivered.jsonl` como no AC 72
+124. IF a escrita do sink `file` falha THEN o `grokbot-kit` SHALL gravar o evento em `undelivered.jsonl` com o erro do sistema, sem retry e sem mudar o exit code do `run`
 
 **Independent test:** dois targets com receptores locais diferentes; uma task para cada; conferir que cada receptor recebeu só a sua e que nenhum log contém a key; derrubar um receptor, conferir `undelivered.jsonl`, religar e rodar `redeliver`.
 
@@ -424,6 +429,7 @@ Um Grok Bot que recebe a skill faz o setup na conversa e depois delega tarefas s
 | webhook `POST` routine (chamamos) | versionamento | AC 49 - `schema: "grokbot-kit.event/v1"`; só aditivo a partir do `1.0.0`, em `0.x` pode quebrar com aviso no `CHANGELOG.md` (door 2) |
 | webhook `POST` routine (chamamos) | recibo da entrega | AC 68 |
 | webhook `POST` routine (chamamos) | rate limit | AC 71 - `429` entra no retry |
+| sinks `file`, `ntfy`, `slack` | forma da entrega, sucesso e erro | AC 120, 121, 122, 123, 124 |
 | coleção `routes` no config | agrupamento, nome, duplicatas | door 3 - uma rota por `target`; TOML não aceita tabela duplicada |
 | coleção `routes` no config | exceção que não se encaixa | AC 64 - target desconhecido recusa antes de lançar |
 | coleção `tiers` no config | ordem e duplicatas | AC 80 - o primeiro id do tier vence; AC 81 - id fora da descoberta recusa |
@@ -447,5 +453,6 @@ Um Grok Bot que recebe a skill faz o setup na conversa e depois delega tarefas s
 - Probe do webhook de routine (18/10/2026 18:38 BRT, `webhook-probe/probe-20261018T183849.json`, sem a key): `401` sem `Authorization`; `200` com `runUuid`; envelope `{headers, body, body_digest, timestamp_ms}`; `body` cru, `body_digest = sha256:` do corpo; só `content-type`, `user-agent` e `x-request-id` repassados
 - `gh` 2.102.0 (manual em cli.github.com/manual: `gh repo create`, `gh repo edit`, `gh repo view`, `gh label create`, `gh auth status`; campos JSON de `gh auth status` em `pkg/cmd/auth/status/status.go` - `token` só com `--show-token`); REST docs.github.com: `PUT /repos/{owner}/{repo}/branches/{branch}/protection`, `PUT .../vulnerability-alerts`, `PUT .../automated-security-fixes`, `PUT .../environments/{name}`, `POST .../deployment-branch-policies`; `api.github.com/apps/github-actions` → id `15368` (consultado em 18/10/2026)
 - PyPI pending publisher: docs.pypi.org/trusted-publishers/creating-a-project-through-oidc (projeto, owner, repositório, arquivo do workflow, environment; não reserva o nome até a primeira publicação)
+- ntfy: docs.ntfy.sh/publish (POST no topic com o texto no corpo, header `Title`, `Authorization: Bearer tk_…`); Slack: docs.slack.dev/messaging/sending-messages-using-incoming-webhooks (POST JSON `{"text"}`, sucesso `200` com corpo `ok`, erros `400`/`403`/`404` com `invalid_payload`, `no_service` etc.) - consultados em 19/10/2026; ACs 120-124 decididos pelo Rodrigo em 19/10/2026
 - Decisões do Rodrigo de 18/10/2026: `DECISOES.md`
 - Prior art: [hellolib/agent-notify](https://github.com/hellolib/agent-notify) (MIT, Go), [anotifier](https://anotifier.io/docs/) (AGPL-3.0) - referência, não base do projeto
