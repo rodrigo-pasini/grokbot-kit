@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `grokbot-kit run`: launches `claude`, `opencode` or `codex` headless with stdin on `/dev/null`, keeps the task in
   `~/.grokbot-kit/tasks/<task_id>/` and sends exactly one terminal event (`completed`/`ok`, `completed`/`denied` or
   `error`/`failed`) to the target's route; exits with the agent's exit code. Only the `file` sink delivers so far.
+- Terminal events carry `repo` (`root`, `branch`, `head` when `cwd` is inside a git repository with a commit),
+  `session_id` and `resume_hint` (the command that resumes the agent session), and the `transcript_path` reported by
+  the agent hook.
 - Config keys `[cli.<tool>] models` (discovered model ids) and arguments after `--` passed verbatim to the agent CLI.
 
 ## [0.1.0] - 2026-10-19
