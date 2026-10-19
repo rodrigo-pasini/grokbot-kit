@@ -5,8 +5,9 @@ import além de `os` e `sys`, então `argparse` e o resto só carregam nos outro
 """
 
 import sys
-from typing import TYPE_CHECKING
 
+# `typing` também fica fora do caminho do `emit`; o mypy reconhece o nome `TYPE_CHECKING` mesmo sem ele.
+TYPE_CHECKING = False
 if TYPE_CHECKING:
     import argparse
 

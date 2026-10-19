@@ -325,6 +325,19 @@ def test_transcript_path_from_hook_cli(kit: Kit) -> None:
     assert event["transcript_path"] == transcript
 
 
+def test_transcript_path_from_hook_cli_through_emit(kit: Kit) -> None:
+    # de ponta a ponta: o hook entrega o `transcript_path` ao `grokbot-kit emit`, que o grava no `needs_input`
+    transcript = "/home/u/.claude/projects/p/6ae1774a.jsonl"
+    hook = {"hook_event_name": "PermissionRequest", "tool_name": "Bash", "tool_input": {"command": "touch x"}}
+    result = kit.run(
+        "--tool", "claude", "--target", "bot-a", "--label", "p", "--", "faça",
+        FAKE_STDOUT=CLAUDE_OK, FAKE_EMIT=json.dumps([{**hook, "session_id": "s1", "transcript_path": transcript}]),
+    )  # fmt: skip
+    terminal_events = [e for e in kit.sink_events() if e["event"] != "needs_input"]
+    assert len(terminal_events) == 1, result.stderr
+    assert terminal_events[0]["transcript_path"] == transcript
+
+
 def test_transcript_path_from_hook_cli_without_hook(kit: Kit) -> None:
     event = run_task(kit, "claude", FAKE_STDOUT=CLAUDE_OK)
     assert event["transcript_path"] is None
