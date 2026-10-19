@@ -1,5 +1,60 @@
 # Contribuindo com o grokbot-kit
 
+## Setup
+
+Requer [`uv`](https://docs.astral.sh/uv/). O `uv` instala o Python fixado em `.python-version` (`3.11`).
+
+```sh
+uv sync
+uv run pre-commit install
+```
+
+`uv sync` cria `.venv/` com as dependências de desenvolvimento do `uv.lock`; `pre-commit install` liga os hooks
+de `.pre-commit-config.yaml` (ruff, checagens de TOML/YAML, espaços e `mypy`) a cada commit.
+
+## Lint, tipos e testes
+
+```sh
+uv run ruff check
+uv run ruff format --check
+uv run mypy
+uv run pytest
+```
+
+São os mesmos comandos dos jobs `lint`, `typecheck` e `test (3.11)`, `test (3.12)`, `test (3.13)` do CI. Testes
+marcados com `integration` usam as CLIs reais ou o GitHub e só rodam no box: `uv run pytest -m integration`.
+
+## Fluxo de PR
+
+- Tudo sai de `main` e volta por pull request; `main` é protegida e só aceita squash merge.
+- Branch no padrão `<tipo>/<id>/<slug>`, commits em [Conventional Commits](https://www.conventionalcommits.org/)
+  sem `Co-Authored-By`.
+- O pull request só entra com os 5 checks do CI verdes; o título vira a mensagem do squash.
+- Mudança de comportamento ganha entrada em `## [Unreleased]` no `CHANGELOG.md`.
+- Nunca cole tokens, keys ou URLs secretas em commit, issue ou pull request.
+
+## Gate de worktree do Claude Code
+
+Quem trabalha com o Claude Code neste repositório faz cada tarefa de código numa worktree dedicada em
+`../worktrees/`. O hook `.claude/hooks/gate-worktree.sh` (PreToolUse em Edit/Write) nega edição de código no
+clone principal, onde só `docs/`, `.specs/`, `.claude/`, `.agents/`, `CLAUDE.md` e `AGENTS.md` são editáveis.
+Para trabalhar de propósito no clone principal, rode a sessão com `GROKBOT_KIT_ALLOW_MAIN_EDIT=1`. Detalhes em
+`CLAUDE.md`.
+
+## Release e PyPI
+
+O workflow `release.yml` publica no PyPI por trusted publishing quando uma tag `v<semver>` igual à versão do
+`pyproject.toml` é enviada; nenhum token fica guardado no repositório. Antes da primeira tag, um passo humano: em
+<https://pypi.org/manage/account/publishing/>, adicionar um pending publisher do GitHub com
+
+- PyPI Project Name: `grokbot-kit`
+- Owner: `rodrigo-pasini`
+- Repository name: `grokbot-kit`
+- Workflow name: `release.yml`
+- Environment name: `pypi`
+
+O pending publisher não reserva o nome até a primeira publicação. Nenhuma tag `v*` é criada antes de ele existir.
+
 ## Test policy
 
 > Copiada de `docs/.specs/features/agent-run-notify/checks.md` e aprovada como diretriz do repositório.
