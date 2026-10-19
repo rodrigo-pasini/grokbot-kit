@@ -225,7 +225,7 @@ Proof: `uv run pytest tests/test_emit.py -k codex_permission_request`
 **C67** - No box, `claude -p` real lançado por `run` sem `--allowedTools` e com um prompt que escreve arquivo gera um `needs_input` antes do terminal (AC 54)
 Proof: `uv run pytest -m integration tests/integration/test_real_hooks.py -k claude_hook_fires`
 
-**C68** - No box, `opencode run` real com `"permission": {"bash": "ask"}` gera `needs_input`/`permission`, e um prompt que pergunta gera `needs_input`/`question` (AC 55, AC 56)
+**C68** - No box, `opencode run` real com `"permission": {"bash": "ask"}` gera `needs_input`/`permission`, e um prompt que pede uma pergunta termina com evento terminal diferente de `timeout` e sem nenhum `needs_input`/`question`, porque o `opencode run` 1.18.32 não interativo nega a ferramenta `question` (AC 55; AC 56 fica provada só pelo C65, AD-026)
 Proof: `uv run pytest -m integration tests/integration/test_real_hooks.py -k opencode_plugin_fires`
 
 **C69** - No box, `codex exec` real com `-s read-only` e um prompt que escreve arquivo gera `needs_input` pelo hook `PermissionRequest` (AC 57; bloqueado pela pergunta 2)
@@ -496,7 +496,7 @@ Proof: `uv run pytest tests/test_skill_doc.py -k no_literal_model_ids`
 | tools: fonte do `summary` (3) | C51, table-driven over all 3 | - |
 | tools: `resume_hint` (3) | C59, table-driven over all 3 | - |
 | `summary`: borda de 2000 (3 edges) | 1999 C51 · 2000 C51 · 2001 C51 | - |
-| fontes de `needs_input` (4) | Claude `PermissionRequest` C63, C67 · opencode `permission.asked` C64, C68 · opencode `question.asked` C65, C68 · Codex `PermissionRequest` C66, C69 | - |
+| fontes de `needs_input` (4) | Claude `PermissionRequest` C63, C67 · opencode `permission.asked` C64, C68 · opencode `question.asked` C65 (no box o `opencode run` não publica o evento: C68, AD-026) · Codex `PermissionRequest` C66, C69 | - |
 | tipos de sink (4) | `grokbot-routine` C78 · `file` C90 · `ntfy` C91 · `slack` C92 | - |
 | tiers: timeout (3) | `trivial` C103 · `standard` C103 · `complex` C103 | - |
 | descoberta de modelos por CLI (3) | `opencode` C104 · `claude` C105 · `codex` C106 | - |

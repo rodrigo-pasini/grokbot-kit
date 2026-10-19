@@ -67,11 +67,12 @@ def test_opencode_plugin_fires_permission(tmp_path: Path) -> None:
     asked_before_terminal(events, "permission")
 
 
-# C68 - AC 56
-def test_opencode_plugin_fires_question(tmp_path: Path) -> None:
+# C68 - AD-026: o `opencode run` não interativo nega a ferramenta `question`, então o pedido não vira pergunta nem trava
+def test_opencode_plugin_fires_no_question_in_run(tmp_path: Path) -> None:
     home, work, _ = prepare_home(tmp_path, "opencode", "ok")
     events = run_task(tmp_path, home, work, "opencode", QUESTION_PROMPT)
-    asked_before_terminal(events, "question")
+    assert events[-1]["event"] != "timeout", events
+    assert not [e for e in events if e["event"] == "needs_input" and e["status"] == "question"], events
 
 
 # C69 - AC 57 (pergunta 2)
