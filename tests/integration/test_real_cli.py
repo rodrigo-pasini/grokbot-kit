@@ -21,6 +21,8 @@ pytestmark = pytest.mark.integration
 
 REAL_HOME = Path.home()
 REAL_CODEX_HOME = REAL_HOME / ".grokbot-kit" / "codex-home"
+PLUGIN = Path(__file__).resolve().parents[2] / "src" / "grokbot_kit" / "assets" / "opencode" / "grokbot-kit.ts"
+TERMINAL_EVENTS = ("completed", "error", "timeout")
 
 PROMPTS = {
     "ok": "Reply with exactly the word pong. Do not use any tool.",
@@ -60,6 +62,15 @@ def link(src: Path, dest: Path) -> None:
         dest.symlink_to(src)
 
 
+def install_plugin(home: Path) -> None:
+    """O plugin do opencode no `HOME` temporário, com o caminho do `grokbot-kit` do teste, como o `install opencode`."""
+    exe = shutil.which("grokbot-kit")
+    assert exe is not None
+    dest = home / ".config" / "opencode" / "plugins" / "grokbot-kit.ts"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(PLUGIN.read_text(encoding="utf-8").replace("__GROKBOT_KIT_EXE__", exe), encoding="utf-8")
+
+
 def prepare_home(tmp_path: Path, tool: str, case: str) -> tuple[Path, Path, str]:
     home = tmp_path / "home"
     work = tmp_path / "work"
@@ -74,6 +85,8 @@ def prepare_home(tmp_path: Path, tool: str, case: str) -> tuple[Path, Path, str]
         opencode_config = home / ".config" / "opencode" / "opencode.json"
         opencode_config.parent.mkdir(parents=True)
         opencode_config.write_text(json.dumps({"permission": {"bash": "ask", "edit": "ask"}}), encoding="utf-8")
+    if tool == "opencode":
+        install_plugin(home)
     if tool == "codex" and not (REAL_CODEX_HOME / "auth.json").exists():
         pytest.fail(f"Codex sem login no CODEX_HOME isolado: rode CODEX_HOME={REAL_CODEX_HOME} codex login")
 
@@ -127,7 +140,9 @@ def test_completed_ok_and_denied_per_tool(tmp_path: Path, tool: str, case: str) 
     )
     sink = tmp_path / "sink.jsonl"
     lines = sink.read_text(encoding="utf-8").splitlines() if sink.exists() else []
-    assert len(lines) == 1, result.stderr
-    event = json.loads(lines[0])
+    # desde o S3 o sink também recebe os `needs_input` do emit; o check fala da linha terminal
+    terminal = [e for e in map(json.loads, lines) if e["event"] in TERMINAL_EVENTS]
+    assert len(terminal) == 1, result.stderr
+    event = terminal[0]
     expected = ("completed", "ok") if case == "ok" else ("completed", "denied")
     assert (event["event"], event["status"]) == expected, (event, result.stderr)
