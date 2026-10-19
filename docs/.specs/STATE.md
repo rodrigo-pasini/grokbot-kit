@@ -34,7 +34,7 @@
 
 **Feature**: agent-run-notify
 **Where**: S0 completo (C1-C41) e pacote `0.1.0` no PyPI. S1 construído em 19/10/2026 na worktree `S1-acordar-bot-ao-terminar`, branch `feat/S1/acordar-bot-ao-terminar` (base `main` em `0fadb4b`): `grokbot-kit run` com C42-C54 verdes; landing rows 12 (`[cli.<tool>] models`) e 13 (argumentos depois de `--`) no `plan.md`
-**In progress**: C55 (integração no box) com 3 de 6 casos verdes: `claude` ok e denied, `opencode` ok. `opencode` denied depende do S3 (plugin + `emit` registrando `needs_input`); `codex` ok e denied esperam o login no `CODEX_HOME` isolado (`CODEX_HOME=~/.grokbot-kit/codex-home codex login`, passo do Rodrigo) e o denied também depende do S3 e da pergunta 2
+**In progress**: C55 (integração no box) com 4 de 6 casos verdes: `claude` ok e denied, `opencode` ok, `codex` ok (`CODEX_HOME=~/.grokbot-kit/codex-home` logado pelo Rodrigo; diretório da task num repositório git, que o `codex exec` exige). `opencode` denied e `codex` denied dependem do S3 (`emit` registrando `needs_input`); o `codex` denied também da pergunta 2: no box (codex 0.156.1, `gpt-5.6-terra`) o `touch` não rodou, a saída não trouxe `command_execution` e o modelo respondeu "Comando executado."
 **Next step**: push e PR do S1 quando o Rodrigo der o "pode"; S2 a S8; o modelo gratuito do opencode no C55 vem de `GROKBOT_KIT_IT_OPENCODE_MODEL` (o primeiro `-free` listado falha com erro de servidor intermitente); spike com login do Codex (pergunta 2); medir limites do webhook (pergunta 1); o Verifier roda depois do último commit da feature, sobre todos os checks
 **Blockers**: pergunta 2 bloqueia o AC 57 e condiciona a AD-003
 **Uncommitted**: nada
