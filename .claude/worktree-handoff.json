@@ -1,0 +1,9 @@
+{
+  "worktree_base": "../worktrees",
+  "base_branches": { "default": "main" },
+  "branch_pattern": "<tipo>/<id>/<slug>",
+  "copy": [".claude", ".env", "CLAUDE.local.md"],
+  "agent": "claude",
+  "handoff_skill": "tlc-implement",
+  "notes": "GitHub Flow: tudo sai de main e volta por PR (main protegida, só squash)."
+}
