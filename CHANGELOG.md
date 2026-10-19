@@ -17,6 +17,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `session_id` and `resume_hint` (the command that resumes the agent session), and the `transcript_path` reported by
   the agent hook.
 - Config keys `[cli.<tool>] models` (discovered model ids) and arguments after `--` passed verbatim to the agent CLI.
+- `grokbot-kit emit --from claude|codex|opencode`: called by the agent hooks inside a task, sends one `needs_input`
+  event (`status` `permission` or `question`) per distinct request, recorded in the task dir so the terminal event
+  becomes `completed`/`denied`; always exits `0`, prints at most `{}`, and does nothing outside a task.
+- The opencode plugin forwards `permission.asked` (root sessions only) and `question.asked` to `grokbot-kit emit`.
 
 ## [0.1.0] - 2026-10-19
 
