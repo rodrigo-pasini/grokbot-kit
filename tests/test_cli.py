@@ -20,3 +20,17 @@ def test_emit_without_task_id_exits_0() -> None:
     )
     assert result.returncode == 0
     assert result.stdout == ""
+
+
+def test_emit_through_cli_skips_heavy_imports_without_task_id() -> None:
+    # door 6: os hooks chamam `grokbot-kit emit`, que passa pelo cli.py antes de chegar ao emit
+    code = "import sys; from grokbot_kit.cli import main; sys.exit(main(['emit', '--from', 'claude']))"
+    result = subprocess.run(
+        [sys.executable, "-X", "importtime", "-c", code], capture_output=True, text=True, env={}, check=False
+    )
+    assert result.returncode == 0
+    assert result.stdout == ""
+    imported = {line.rsplit("|", 1)[-1].strip() for line in result.stderr.splitlines() if "|" in line}
+    assert "grokbot_kit.emit" in imported
+    for heavy in ("argparse", "importlib.metadata", "urllib.request", "tomllib", "grokbot_kit.config"):
+        assert heavy not in imported
