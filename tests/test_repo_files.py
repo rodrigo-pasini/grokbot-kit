@@ -1,6 +1,7 @@
 """Provas do S0 sobre os arquivos do repositório (checks C3-C8, C11, C12, C16-C18, C21-C23, C39)."""
 
 import json
+import re
 import subprocess
 import tomllib
 import zipfile
@@ -314,3 +315,70 @@ def test_contributing_pypi_pending_publisher() -> None:
         ("Environment name", "pypi"),
     ]:
         assert f"{field}: `{value}`" in text, f"pending publisher sem {field}: {value}"
+
+
+# C41 - AC 38
+S0_REPORT = "docs/.specs/features/agent-run-notify/s0-report.md"
+SECRET_PATTERN = (
+    r"crsr_[0-9a-f]{8}|gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}"
+    r"|sk-ant-[A-Za-z0-9_-]{20,}|sk-proj-[A-Za-z0-9_-]{20,}|pypi-AgEI[A-Za-z0-9_-]{20,}"
+)
+S0_REPORT_OUTPUTS = {
+    "AC 29": [
+        '"checks":["lint","typecheck","test (3.11)","test (3.12)","test (3.13)"]',
+        '"strict":true',
+        '"approvals":0',
+        '"admins":true',
+        '"force":false',
+        '"deletions":false',
+        '"linear":true',
+    ],
+    "AC 30": ["vulnerability-alerts: exit 0 (HTTP 204)", "automated-security-fixes .enabled: true"],
+    "AC 31": [
+        '{"name":"pypi","rules":["required_reviewers","branch_policy"]}',
+        '[{"name":"v*","type":"tag"}]',
+    ],
+    "AC 33": [
+        '"visibility":"PUBLIC"',
+        '"hasIssuesEnabled":true',
+        '"hasWikiEnabled":false',
+        '"hasProjectsEnabled":false',
+        '"hasDiscussionsEnabled":false',
+        '"squashMergeAllowed":true',
+        '"mergeCommitAllowed":false',
+        '"rebaseMergeAllowed":false',
+        '"deleteBranchOnMerge":true',
+        '"licenseInfo":{"key":"mit"',
+        '"defaultBranchRef":{"name":"main"}',
+        *[
+            f'{{"name":"{topic}"}}'
+            for topic in ["grokbot", "ai-agents", "coding-agents", "cli", "python", "webhooks"]
+            + ["opencode", "claude-code", "codex", "automation"]
+        ],
+        '"allow_auto_merge":true',
+        '"allow_update_branch":true',
+        '"push_protection":"enabled"',
+        '"secret_scanning":"enabled"',
+        *[
+            f"\n{label}\n"
+            for label in ["area:cli", "area:hooks", "area:skill", "area:webhook"]
+            + ["cli:opencode", "cli:claude", "cli:codex", "security", "needs-triage"]
+        ],
+    ],
+}
+
+
+def report_sections(text: str) -> dict[str, str]:
+    parts = re.split(r"^## ", text, flags=re.MULTILINE)[1:]
+    return {part.split("\n", 1)[0].strip(): part for part in parts}
+
+
+def test_s0_report_has_outputs_and_no_token() -> None:
+    text = read(S0_REPORT)
+    sections = report_sections(text)
+    for ac, needles in S0_REPORT_OUTPUTS.items():
+        assert ac in sections, f"relatório sem a seção {ac}"
+        for needle in needles:
+            assert needle in sections[ac], f"{ac}: saída sem {needle!r}"
+    assert re.search(SECRET_PATTERN, text) is None
+    assert "Bearer " not in text
