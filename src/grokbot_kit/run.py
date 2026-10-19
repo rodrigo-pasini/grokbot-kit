@@ -1,4 +1,4 @@
-"""`grokbot-kit run`: valida, cria o task dir (door 4), lança o agente e envia um único evento terminal (AC 39-48)."""
+"""`grokbot-kit run`: valida, cria o task dir (door 4), lança o agente e envia um único evento terminal (AC 39-53)."""
 
 import argparse
 import json
@@ -12,7 +12,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from grokbot_kit import config, deliver, launch, terminal
+from grokbot_kit import config, deliver, launch, payload, terminal
+from grokbot_kit.payload import rfc3339
 
 SECRET_KEYS = ("url_secret", "key_secret", "token_secret", "webhook_secret")
 LABEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -20,10 +21,6 @@ LABEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 class UsageError(Exception):
     pass
-
-
-def rfc3339(moment: datetime) -> str:
-    return moment.isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def _check_secret(name: str) -> None:
@@ -90,11 +87,13 @@ def _resolve(args: argparse.Namespace, cfg: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _needs_input_recorded(task_dir: Path) -> bool:
+def _recorded_needs_input(task_dir: Path) -> list[dict[str, Any]]:
+    """Os `needs_input` registrados em `events.jsonl` pelo `emit`, na ordem."""
     try:
         lines = (task_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()
     except FileNotFoundError:
-        return False
+        return []
+    found = []
     for line in lines:
         try:
             record = json.loads(line)
@@ -102,8 +101,8 @@ def _needs_input_recorded(task_dir: Path) -> bool:
             continue
         event = record.get("event") if isinstance(record, dict) else None
         if isinstance(event, dict) and event.get("event") == "needs_input":
-            return True
-    return False
+            found.append(event)
+    return found
 
 
 def _log(task_dir: Path, message: str) -> None:
@@ -159,6 +158,8 @@ def run(args: argparse.Namespace) -> int:
         "finished_at": None,
         "exit_code": None,
     }
+    if tool == "codex":
+        meta["codex_home"] = env["CODEX_HOME"]
     _write_meta(task_dir, meta)
     _log(task_dir, f"launch {tool} model={r['model']}")
 
@@ -176,33 +177,20 @@ def run(args: argparse.Namespace) -> int:
     else:
         exit_code = proc.returncode if proc.returncode >= 0 else 128 - proc.returncode
         output = terminal.read_output(tool, task_dir)
-    event_name, status, exit_reason = terminal.classify(exit_code, output, needs_input=_needs_input_recorded(task_dir))
-
-    event = {
-        "schema": "grokbot-kit.event/v1",
-        "event": event_name,
-        "status": status,
-        "task_id": task_id,
-        "task_label": args.label,
-        "target": args.target,
-        "tool": tool,
-        "model": r["model"],
-        "model_source": r["model_source"],
-        "tier": r["tier"],
-        "session_id": None,
-        "cwd": str(r["cwd"]),
-        "repo": None,
-        "exit_code": exit_code,
-        "exit_reason": exit_reason,
-        "summary": output.summary,
-        "needs_input": None,
-        "resume_hint": None,
-        "output_file": str(task_dir / "out.jsonl"),
-        "transcript_path": None,
-        "log_file": str(task_dir / "stderr.log"),
-        "started_at": rfc3339(started),
-        "timestamp": rfc3339(datetime.now(UTC)),
-    }
+    asked = _recorded_needs_input(task_dir)
+    event_name, status, exit_reason = terminal.classify(exit_code, output, needs_input=bool(asked))
+    transcripts = [e["transcript_path"] for e in asked if isinstance(e.get("transcript_path"), str)]
+    event = payload.task_event(
+        meta,
+        task_dir,
+        event=event_name,
+        status=status,
+        exit_reason=exit_reason,
+        exit_code=exit_code,
+        summary=output.summary,
+        session_id=output.session_id,
+        transcript_path=transcripts[-1] if transcripts else None,
+    )
     _log(task_dir, f"exit {exit_code}: {event_name}/{status}/{exit_reason}")
     deliver.deliver(task_dir, cfg, args.target, event, "terminal")
     meta.update(finished_at=event["timestamp"], exit_code=exit_code)
