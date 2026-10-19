@@ -32,9 +32,9 @@
 ## Handoff
 
 **Feature**: agent-run-notify
-**Where**: CHECKS escritos em 19/10/2026 - `checks.md` com 145 checks (profile `standard`), `validate_checks.py` 0 erros; plano com 124 ACs (ACs 120-124: sinks `file`, `ntfy`, `slack`)
+**Where**: S0 construído e constituído em 19/10/2026 - scaffold em `main` por ff-merge, repositório `rodrigo-pasini/grokbot-kit` público criado com `gh`, configurado pela door 11, CI verde (run `39253672619`), `main` protegida, alertas e updates de segurança, environment `pypi` e 9 labels; C1-C41 com prova verde, exceto o que espera o PyPI; relatório em `docs/.specs/features/agent-run-notify/s0-report.md`
 **In progress**: nada
-**Next step**: build do S0 numa worktree (`delegar-em-worktree`), com um builder; etapas do S0 que mexem no GitHub (C24-C36, C40) esperam o "pode" explícito do Rodrigo; Rodrigo cria o pending publisher no PyPI antes da primeira tag; spike com login do Codex (pergunta 2); medir limites do webhook no build (pergunta 1)
+**Next step**: Rodrigo cria o pending publisher no PyPI (campos no `CONTRIBUTING.md`) e registra a confirmação aqui antes da primeira tag `v*` (AC 37); build do S1 numa worktree; spike com login do Codex (pergunta 2); medir limites do webhook no build (pergunta 1); o Verifier roda depois do último commit da feature, sobre todos os checks
 **Blockers**: pergunta 2 bloqueia o AC 57 e condiciona a AD-003; a primeira tag `v*` espera o pending publisher do PyPI (passo humano, AC 37)
-**Uncommitted**: repositório local `grokbot-kit` em `main` com `79f430f` e `0c3e4a2`, sem remote; `rodrigo-pasini/grokbot-kit` não existe; nada foi criado no GitHub nem no PyPI
-**Branch**: `main` (só docs/specs; código do S0 vai numa worktree)
+**Uncommitted**: nada; `main` só muda por PR
+**Branch**: `main` protegida (PR + 5 checks, só squash); trabalho em worktree com branch `<tipo>/<id>/<slug>`
