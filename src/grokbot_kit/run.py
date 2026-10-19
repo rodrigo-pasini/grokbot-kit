@@ -5,7 +5,6 @@ import json
 import os
 import re
 import secrets
-import stat
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -21,16 +20,6 @@ LABEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 class UsageError(Exception):
     pass
-
-
-def _check_secret(name: str) -> None:
-    path = config.secrets_dir() / name
-    try:
-        mode = stat.S_IMODE(path.stat().st_mode)
-    except FileNotFoundError:
-        raise UsageError(f"secret {name!r} not found; run: grokbot-kit secret set {name}") from None
-    if mode != 0o600:
-        raise UsageError(f"secret {name!r} has mode {mode:04o}, expected 0600: {path}")
 
 
 def _resolve(args: argparse.Namespace, cfg: dict[str, Any]) -> dict[str, Any]:
@@ -64,7 +53,7 @@ def _resolve(args: argparse.Namespace, cfg: dict[str, Any]) -> dict[str, Any]:
             raise UsageError(f"route {args.target!r} uses sink {name!r}, which is not in [sinks]")
         for key in SECRET_KEYS:
             if key in sink:
-                _check_secret(sink[key])
+                config.check_secret(sink[key])
     if not LABEL_RE.match(args.label):
         raise UsageError("--label must use only letters, digits, '.', '_' and '-'")
     cwd = Path(args.cwd or os.getcwd()).resolve()
