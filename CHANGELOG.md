@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `grokbot-kit run`: launches `claude`, `opencode` or `codex` headless with stdin on `/dev/null`, keeps the task in
   `~/.grokbot-kit/tasks/<task_id>/` and sends exactly one terminal event (`completed`/`ok`, `completed`/`denied` or
-  `error`/`failed`) to the target's route; exits with the agent's exit code. Only the `file` sink delivers so far.
+  `error`/`failed`) to the target's route; exits with the agent's exit code.
 - Terminal events carry `repo` (`root`, `branch`, `head` when `cwd` is inside a git repository with a commit),
   `session_id` and `resume_hint` (the command that resumes the agent session), and the `transcript_path` reported by
   the agent hook.
@@ -23,6 +23,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The opencode plugin forwards `permission.asked` (root sessions only) and `question.asked` to `grokbot-kit emit`.
   Known limits: `opencode run` denies the question tool, so `question` events do not occur in tasks; `codex exec` never
   asks for approval, so Codex tasks send no `needs_input` and a denied command ends `completed`/`ok`.
+- Sinks `grokbot-routine` (POST to the routine webhook with `Authorization: Bearer <key>`, receipt `runUuid` recorded
+  in the task dir), `file`, `ntfy` and `slack`. Retries after 1 s and 4 s on `429`, `5xx` and connection failures;
+  what is not delivered goes to `undelivered.jsonl` and stderr names `grokbot-kit redeliver <task_id>`.
+- `grokbot-kit run` exits `2` before launching when the target has no route or a route secret is missing or not `0600`.
+- `grokbot-kit redeliver <task_id>`, `grokbot-kit route add|rm|test <target>` and `grokbot-kit secret set <name>`
+  (read from the terminal without echo, or from stdin, and stored in `~/.secrets/grokbot-kit/` with mode `0600`).
 
 ## [0.1.0] - 2026-10-19
 
