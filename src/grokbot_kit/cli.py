@@ -42,6 +42,10 @@ def build_parser() -> "argparse.ArgumentParser":
     redeliver = sub.add_parser("redeliver", help="resend the events of a task that were not delivered")
     redeliver.add_argument("task_id")
 
+    gc = sub.add_parser("gc", help="remove task dirs of tasks that finished long ago")
+    gc.add_argument("--older-than", required=True, metavar="DURATION", help="such as 30d, 12h or 90m")
+    gc.add_argument("--dry-run", action="store_true", help="only list what would be removed")
+
     route = sub.add_parser("route", help="manage the route (sinks) of each target bot")
     route_sub = route.add_subparsers(dest="route_command", required=True)
     route_add = route_sub.add_parser("add", help="route a target to its Grok Bot routine")
@@ -103,6 +107,10 @@ def main(argv: list[str] | None = None) -> int:
         from grokbot_kit.redeliver import redeliver
 
         return redeliver(args.task_id)
+    if args.command == "gc":
+        from grokbot_kit.gc import gc
+
+        return gc(args.older_than, args.dry_run)
     if args.command == "route":
         from grokbot_kit import route
 

@@ -58,6 +58,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `grokbot-kit install opencode` writes `~/.config/opencode/plugins/grokbot-kit.ts` with the absolute path of the
   `grokbot-kit` executable (rerunning replaces it); `grokbot-kit uninstall opencode` removes only that file. Outside a
   task the plugin does nothing.
+- `grokbot-kit gc --older-than <duration> [--dry-run]` removes (or only lists) the task dirs whose task finished more
+  than `<duration>` ago (`30d`, `12h`, ...), never a task still running nor one with a non-empty `undelivered.jsonl`;
+  an invalid duration exits `2`.
 
 ## [0.1.0] - 2026-10-19
 
