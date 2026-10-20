@@ -52,6 +52,16 @@ def build_parser() -> "argparse.ArgumentParser":
     route_sub.add_parser("rm", help="remove the route of a target").add_argument("target")
     route_sub.add_parser("test", help="send a test event to every sink of the route").add_argument("target")
 
+    setup = sub.add_parser("setup", help="set up the agent CLIs")
+    setup_sub = setup.add_subparsers(dest="setup_command", required=True)
+    models = setup_sub.add_parser("models", help="model ids discovered for each CLI")
+    models_sub = models.add_subparsers(dest="models_command", required=True)
+    refresh = models_sub.add_parser("refresh", help="discover the model ids of a CLI (or of every installed one)")
+    refresh.add_argument("tool", nargs="?", choices=TOOLS)
+    refresh.add_argument(
+        "--add", action="append", default=[], metavar="ID", help="claude/codex: also test and record this model id"
+    )
+
     secret = sub.add_parser("secret", help="store secrets in ~/.secrets/grokbot-kit/ (mode 0600)")
     secret_sub = secret.add_subparsers(dest="secret_command", required=True)
     secret_sub.add_parser("set", help="read a secret from the terminal (no echo) or stdin").add_argument("name")
@@ -81,6 +91,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.route_command == "add":
             return route.add(args.target, args.url_secret, args.key_secret, args.header)
         return route.rm(args.target) if args.route_command == "rm" else route.test(args.target)
+    if args.command == "setup":
+        from grokbot_kit.models import refresh
+
+        return refresh(args.tool, args.add)
     if args.command == "secret":
         from grokbot_kit.secret import set_secret
 
