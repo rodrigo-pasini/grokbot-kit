@@ -33,11 +33,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `cli.<tool>.tiers` must be in `cli.<tool>.models`; otherwise commands exit `2` naming the key.
 - `grokbot-kit run --timeout <duration>` (`30s`, `30m`, `2h`, `1d`): without it the timeout is `timeouts.<tier>` from
   the config (defaults `trivial = "30m"`, `standard = "2h"`, `complex = "4h"`), recorded in `meta.json` as
-  `timeout_seconds`; `--tier` defaults to `standard`, also when `--model` is given. The timeout is not enforced yet.
+  `timeout_seconds`; `--tier` defaults to `standard`, also when `--model` is given.
 - `grokbot-kit setup models refresh [<tool>] [--add <id>]...`: records in `[cli.<tool>] models` the ids printed by
   `opencode models`; for Claude the aliases `haiku`, `sonnet` and `opus` plus each added or stored id that a test
   `claude -p --model <id>` accepts; for Codex each added or stored id that a test `codex exec -m <id>` accepts. Exits
   `1` when the CLI list fails or an id is rejected; tiers are never changed.
+- `grokbot-kit run` enforces the timeout: the agent runs in its own process group, which gets `SIGINT`, then `SIGTERM`
+  10 s later and `SIGKILL` 10 s after that; the event is `timeout`/`timeout` and the run exits `124`. `SIGINT` or
+  `SIGTERM` sent to the run is forwarded to that group (followed by the same `SIGTERM`/`SIGKILL` steps if the agent
+  keeps running), the event is `error`/`interrupted` and the run exits `130`. A missing agent binary gives
+  `error`/`failed` with `exit_reason` `agent_error` and exit `127`. In these three events `exit_code` is the run's own
+  exit code.
 
 ## [0.1.0] - 2026-10-19
 

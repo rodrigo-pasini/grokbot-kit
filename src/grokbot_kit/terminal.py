@@ -1,4 +1,4 @@
-"""Status terminal de uma task a partir do exit e da saída do agente (AC 43-46, 51)."""
+"""Status terminal de uma task a partir do exit e da saída do agente (AC 43-46, 51, 87, 88)."""
 
 import json
 from dataclasses import dataclass
@@ -68,8 +68,15 @@ def read_output(tool: str, task_dir: Path) -> AgentOutput:
     )
 
 
-def classify(exit_code: int, output: AgentOutput, *, needs_input: bool) -> tuple[str, str, str]:
-    """`(event, status, exit_reason)`; erro na saída vence exit diferente de 0, e os dois vencem `denied`."""
+def classify(
+    exit_code: int, output: AgentOutput, *, needs_input: bool, stopped: str | None = None
+) -> tuple[str, str, str]:
+    """`(event, status, exit_reason)`; timeout e interrupção (`stopped`) vencem tudo, erro na saída vence exit
+    diferente de 0, e os dois vencem `denied`."""
+    if stopped == "timeout":
+        return "timeout", "timeout", "timeout"
+    if stopped == "interrupted":
+        return "error", "interrupted", "interrupted"
     if output.error:
         return "error", "failed", "agent_error"
     if exit_code != 0:
