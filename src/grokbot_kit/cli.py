@@ -37,6 +37,23 @@ def build_parser() -> "argparse.ArgumentParser":
 
     emit = sub.add_parser("emit", help="called by agent hooks inside a task")
     emit.add_argument("--from", dest="source", choices=TOOLS, required=True)
+
+    redeliver = sub.add_parser("redeliver", help="resend the events of a task that were not delivered")
+    redeliver.add_argument("task_id")
+
+    route = sub.add_parser("route", help="manage the route (sinks) of each target bot")
+    route_sub = route.add_subparsers(dest="route_command", required=True)
+    route_add = route_sub.add_parser("add", help="route a target to its Grok Bot routine")
+    route_add.add_argument("target")
+    route_add.add_argument("--url-secret", required=True, help="secret holding the routine webhook URL")
+    route_add.add_argument("--key-secret", required=True, help="secret holding the routine key (crsr_...)")
+    route_add.add_argument("--header", action="append", default=[], help="extra header, 'Name: value'")
+    route_sub.add_parser("rm", help="remove the route of a target").add_argument("target")
+    route_sub.add_parser("test", help="send a test event to every sink of the route").add_argument("target")
+
+    secret = sub.add_parser("secret", help="store secrets in ~/.secrets/grokbot-kit/ (mode 0600)")
+    secret_sub = secret.add_subparsers(dest="secret_command", required=True)
+    secret_sub.add_parser("set", help="read a secret from the terminal (no echo) or stdin").add_argument("name")
     return parser
 
 
@@ -53,6 +70,20 @@ def main(argv: list[str] | None = None) -> int:
         from grokbot_kit.run import run
 
         return run(args)
+    if args.command == "redeliver":
+        from grokbot_kit.redeliver import redeliver
+
+        return redeliver(args.task_id)
+    if args.command == "route":
+        from grokbot_kit import route
+
+        if args.route_command == "add":
+            return route.add(args.target, args.url_secret, args.key_secret, args.header)
+        return route.rm(args.target) if args.route_command == "rm" else route.test(args.target)
+    if args.command == "secret":
+        from grokbot_kit.secret import set_secret
+
+        return set_secret(args.name)
     parser.print_help()
     return 0
 

@@ -74,3 +74,65 @@ def test_exit_2_creates_no_task_dir_control_valid_secrets_launch(kit: Kit) -> No
     assert result.returncode == 0, result.stderr
     assert kit.record.exists()
     assert len(kit.tasks()) == 1
+
+
+SINK_SECRETS = """
+[routes.bot-s]
+sinks = ["rotina-s", "avisos", "canal"]
+
+[sinks.rotina-s]
+type = "grokbot-routine"
+url_secret = "s-url"
+key_secret = "s-key"
+
+[sinks.avisos]
+type = "ntfy"
+topic_url = "https://ntfy.example/topico"
+token_secret = "s-ntfy"
+
+[sinks.canal]
+type = "slack"
+webhook_secret = "s-slack"
+"""
+
+
+# C76 - AC 64
+def test_unknown_target_exit_2(kit: Kit) -> None:
+    result = kit.run("--target", "bot-inexistente", "--label", "alvo", "--", "oi")
+    assert result.returncode == 2
+    assert "bot-inexistente" in result.stderr
+    assert not kit.record.exists(), "o agente foi lançado"
+    assert kit.tasks() == []
+
+
+def test_unknown_target_exit_2_control_known_target_launches(kit: Kit) -> None:
+    result = kit.run("--target", "bot-a", "--label", "alvo", "--", "oi")
+    assert result.returncode == 0, result.stderr
+    assert kit.record.exists()
+
+
+# C77 - AC 65: cada segredo referenciado pela rota (url, key, token do ntfy, webhook do slack)
+@pytest.mark.parametrize("secret", ["s-url", "s-key", "s-ntfy", "s-slack"])
+@pytest.mark.parametrize("problem", ["ausente", "0644", "0640", "0400"])
+def test_secret_missing_or_wrong_mode_exit_2(kit: Kit, secret: str, problem: str) -> None:
+    kit.write_config(default_config(kit.sink) + SINK_SECRETS)
+    for name in ("s-url", "s-key", "s-ntfy", "s-slack"):
+        if name != secret:
+            write_secret(kit, name, 0o600)
+        elif problem != "ausente":
+            write_secret(kit, name, int(problem, 8))
+    result = kit.run("--target", "bot-s", "--label", "segredo", "--", "oi")
+    assert result.returncode == 2
+    assert secret in result.stderr
+    assert "valor-de-teste" not in result.stderr + result.stdout
+    assert not kit.record.exists(), "o agente foi lançado"
+    assert kit.tasks() == []
+
+
+def test_secret_missing_or_wrong_mode_exit_2_control_0600_launches(kit: Kit) -> None:
+    kit.write_config(default_config(kit.sink) + SINK_SECRETS)
+    for name in ("s-url", "s-key", "s-ntfy", "s-slack"):
+        write_secret(kit, name, 0o600)
+    result = kit.run("--target", "bot-s", "--label", "segredo", "--", "oi")
+    assert kit.record.exists(), result.stderr
+    assert len(kit.tasks()) == 1

@@ -1,9 +1,14 @@
 """Fixtures do `run`: `HOME` isolado em `tmp_path`, CLIs falsas de `tests/fakes/` no `PATH` e um sink `file`."""
 
+import http.server
 import json
 import os
 import shutil
+import socket
 import subprocess
+import threading
+import time
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -52,6 +57,23 @@ class Kit:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
 
+    def config_text(self) -> str:
+        return (self.home / ".config" / "grokbot-kit" / "config.toml").read_text(encoding="utf-8")
+
+    def cli(self, *args: str, input: str = "", timeout: float = 60) -> subprocess.CompletedProcess[str]:
+        exe = shutil.which("grokbot-kit")
+        assert exe is not None, "console script grokbot-kit não instalado"
+        return subprocess.run(
+            [exe, *args],
+            input=input,
+            capture_output=True,
+            text=True,
+            env=self.env,
+            cwd=self.home,
+            check=False,
+            timeout=timeout,
+        )
+
     def run(self, *args: str, **fake: str) -> subprocess.CompletedProcess[str]:
         exe = shutil.which("grokbot-kit")
         assert exe is not None, "console script grokbot-kit não instalado"
@@ -98,3 +120,122 @@ def kit(tmp_path: Path) -> Kit:
     k = Kit(home=home, sink=tmp_path / "sink.jsonl", record=tmp_path / "launched.json", env=env)
     k.write_config(default_config(k.sink))
     return k
+
+
+KEY = "crsr_test-key-not-real"
+
+
+def write_secret(home: Path, name: str, value: str, mode: int = 0o600) -> Path:
+    secrets = home / ".secrets" / "grokbot-kit"
+    secrets.mkdir(parents=True, exist_ok=True, mode=0o700)
+    path = secrets / name
+    path.write_text(value, encoding="utf-8")
+    os.chmod(path, mode)
+    return path
+
+
+@dataclass
+class Received:
+    method: str
+    path: str
+    headers: dict[str, str]
+    body: bytes
+    at: float
+
+
+class Receiver:
+    """Receptor HTTP local: responde, em ordem, cada item de `responses` (o último se repete) e grava as requisições."""
+
+    def __init__(self) -> None:
+        self.responses: list[tuple[int, str]] = [(200, json.dumps({"success": True, "runUuid": "u-1"}))]
+        self.delay = 0.0
+        self.requests: list[Received] = []
+        self._lock = threading.Lock()
+        receiver = self
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_POST(self) -> None:
+                length = int(self.headers.get("Content-Length", "0"))
+                body = self.rfile.read(length)
+                with receiver._lock:
+                    receiver.requests.append(
+                        Received(
+                            "POST", self.path, {k.lower(): v for k, v in self.headers.items()}, body, time.monotonic()
+                        )
+                    )
+                    index = min(len(receiver.requests), len(receiver.responses)) - 1
+                    status, text = receiver.responses[index]
+                if receiver.delay:
+                    time.sleep(receiver.delay)
+                data = text.encode("utf-8")
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def log_message(self, format: str, *args: Any) -> None:
+                pass
+
+        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.url = f"http://127.0.0.1:{self.server.server_address[1]}/automations/webhook/0f3c-routine-uuid"
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+
+    def respond(self, *responses: tuple[int, str]) -> None:
+        self.responses = list(responses)
+
+    def bodies(self) -> list[dict[str, Any]]:
+        return [json.loads(r.body) for r in self.requests]
+
+    def close(self) -> None:
+        self.server.shutdown()
+        self.server.server_close()
+
+
+@pytest.fixture
+def receiver() -> Iterator[Receiver]:
+    r = Receiver()
+    yield r
+    r.close()
+
+
+@pytest.fixture
+def receiver_b() -> Iterator[Receiver]:
+    r = Receiver()
+    yield r
+    r.close()
+
+
+def closed_port_url() -> str:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    return f"http://127.0.0.1:{port}/automations/webhook/fechado"
+
+
+def routine_route(
+    target: str, sink: str, url_secret: str, key_secret: str, headers: dict[str, str] | None = None
+) -> str:
+    lines = [
+        "",
+        f"[routes.{target}]",
+        f'sinks = ["{sink}"]',
+        "",
+        f"[sinks.{sink}]",
+        'type = "grokbot-routine"',
+        f'url_secret = "{url_secret}"',
+        f'key_secret = "{key_secret}"',
+    ]
+    if headers:
+        lines += ["", f"[sinks.{sink}.headers]", *(f"{json.dumps(k)} = {json.dumps(v)}" for k, v in headers.items())]
+    return "\n".join(lines) + "\n"
+
+
+def add_routine(kit: Kit, receiver: Receiver, target: str = "bot-r", headers: dict[str, str] | None = None) -> None:
+    """Rota `target` com um sink `grokbot-routine` apontando para `receiver`, segredos `0600` com `\\n` final."""
+    write_secret(kit.home, f"{target}-url", receiver.url + "\n")
+    write_secret(kit.home, f"{target}-key", KEY + "\n")
+    kit.write_config(
+        kit.config_text() + routine_route(target, f"rotina-{target}", f"{target}-url", f"{target}-key", headers)
+    )
