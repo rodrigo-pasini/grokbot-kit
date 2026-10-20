@@ -561,3 +561,5 @@ Os arquivos ainda não existem, então o tamanho é projetado: KB estimados por 
 - C66 e C69 dependiam da pergunta 2: o spike de 19/10/2026 mostrou que o hook não dispara em `codex exec`; voltou ao plano, e a AC 57, o C55 e o C69 foram reescritos pela AD-027 com o ok do Rodrigo
 - Lote C95-C107 (20/10/2026, resto do S4 e o S5): arquivos tocados ≈ 40 KB existentes (`config.py`, `run.py`, `cli.py`, `deliver.py`, `launch.py`, `conftest.py`, `test_run_guards.py`, a CLI falsa e `test_real_cli.py`) mais ≈ 25 KB novos (módulo de descoberta de modelos e 4 arquivos de teste) = 65 KB ≈ 16k, mais a leitura fixa de `plan.md` (69 KB) e deste arquivo (48 KB) ≈ 29k: 45k, abaixo do budget de 150k
 - Mechanism (lote C95-C107): um builder
+- Lote S6 (C108-C111, 20/10/2026): coberto pela estimativa original (S6 a 88k acumulados); arquivos tocados no fim do build ≈ 52 KB (`run.py`, `terminal.py`, a CLI falsa, `test_run_guards.py`, `test_signals.py`, `CHANGELOG.md`) ≈ 13k, mais a leitura fixa de `plan.md` e deste arquivo ≈ 29k: 42k, abaixo do budget de 150k
+- Mechanism (lote S6): um builder
