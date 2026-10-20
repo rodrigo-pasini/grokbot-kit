@@ -42,6 +42,10 @@ def build_parser() -> "argparse.ArgumentParser":
     redeliver = sub.add_parser("redeliver", help="resend the events of a task that were not delivered")
     redeliver.add_argument("task_id")
 
+    gc = sub.add_parser("gc", help="remove task dirs of tasks that finished long ago")
+    gc.add_argument("--older-than", required=True, metavar="DURATION", help="such as 30d, 12h or 90m")
+    gc.add_argument("--dry-run", action="store_true", help="only list what would be removed")
+
     route = sub.add_parser("route", help="manage the route (sinks) of each target bot")
     route_sub = route.add_subparsers(dest="route_command", required=True)
     route_add = route_sub.add_parser("add", help="route a target to its Grok Bot routine")
@@ -54,6 +58,11 @@ def build_parser() -> "argparse.ArgumentParser":
 
     setup = sub.add_parser("setup", help="set up the agent CLIs")
     setup_sub = setup.add_subparsers(dest="setup_command", required=True)
+    setup_cli = setup_sub.add_parser("cli", help="install agent CLIs")
+    setup_cli_sub = setup_cli.add_subparsers(dest="cli_command", required=True)
+    cli_add = setup_cli_sub.add_parser("add", help="install a CLI with its official installer and record it")
+    cli_add.add_argument("tool", choices=TOOLS)
+    setup_sub.add_parser("default", help="set the CLI used when a task names none").add_argument("tool", choices=TOOLS)
     models = setup_sub.add_parser("models", help="model ids discovered for each CLI")
     models_sub = models.add_subparsers(dest="models_command", required=True)
     refresh = models_sub.add_parser("refresh", help="discover the model ids of a CLI (or of every installed one)")
@@ -61,6 +70,19 @@ def build_parser() -> "argparse.ArgumentParser":
     refresh.add_argument(
         "--add", action="append", default=[], metavar="ID", help="claude/codex: also test and record this model id"
     )
+
+    login = sub.add_parser("login", help="log a CLI in with its official command")
+    login.add_argument("tool", choices=TOOLS)
+    login.add_argument("--method", choices=("subscription", "api-key"), default="subscription")
+    login.add_argument("--secret", metavar="NAME", help="secret holding the API key (default: <tool>-api-key)")
+
+    doctor = sub.add_parser("doctor", help="check versions, CLIs, logins, routes and secrets")
+    doctor.add_argument("--json", action="store_true", help="machine-readable output")
+
+    install = sub.add_parser("install", help="install the opencode plugin (inert outside a task)")
+    install.add_argument("target", choices=("opencode",))
+    uninstall = sub.add_parser("uninstall", help="remove the opencode plugin")
+    uninstall.add_argument("target", choices=("opencode",))
 
     secret = sub.add_parser("secret", help="store secrets in ~/.secrets/grokbot-kit/ (mode 0600)")
     secret_sub = secret.add_subparsers(dest="secret_command", required=True)
@@ -85,6 +107,10 @@ def main(argv: list[str] | None = None) -> int:
         from grokbot_kit.redeliver import redeliver
 
         return redeliver(args.task_id)
+    if args.command == "gc":
+        from grokbot_kit.gc import gc
+
+        return gc(args.older_than, args.dry_run)
     if args.command == "route":
         from grokbot_kit import route
 
@@ -92,9 +118,27 @@ def main(argv: list[str] | None = None) -> int:
             return route.add(args.target, args.url_secret, args.key_secret, args.header)
         return route.rm(args.target) if args.route_command == "rm" else route.test(args.target)
     if args.command == "setup":
+        from grokbot_kit import setup
+
+        if args.setup_command == "cli":
+            return setup.cli_add(args.tool)
+        if args.setup_command == "default":
+            return setup.set_default(args.tool)
         from grokbot_kit.models import refresh
 
         return refresh(args.tool, args.add)
+    if args.command == "login":
+        from grokbot_kit.login import login
+
+        return login(args.tool, args.method, args.secret)
+    if args.command == "doctor":
+        from grokbot_kit.doctor import doctor
+
+        return doctor(args.json)
+    if args.command in ("install", "uninstall"):
+        from grokbot_kit import opencode_plugin
+
+        return opencode_plugin.install() if args.command == "install" else opencode_plugin.uninstall()
     if args.command == "secret":
         from grokbot_kit.secret import set_secret
 

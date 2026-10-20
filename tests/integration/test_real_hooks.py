@@ -1,4 +1,4 @@
-"""Provas dos hooks com as CLIs reais no box (checks C67-C69; AC 54-57). Rodam só com `-m integration`.
+"""Provas dos hooks com as CLIs reais no box (checks C67-C69, C118; AC 54-57, 97). Rodam só com `-m integration`.
 
 Mesmo `HOME` temporário de `test_real_cli.py`, que no opencode já instala o plugin `grokbot-kit.ts` com o caminho
 absoluto do `grokbot-kit` do ambiente de teste, como `grokbot-kit install opencode` o deixaria.
@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from test_real_cli import prepare_home
+from test_real_cli import REAL_HOME, link, model_for, prepare_home, real_bin
 
 pytestmark = pytest.mark.integration
 
@@ -81,3 +81,43 @@ def test_codex_hook_silent_in_exec(tmp_path: Path) -> None:
     events = run_task(tmp_path, home, work, "codex", "-s", "read-only", prompt)
     assert not [e for e in events if e["event"] == "needs_input"], events
     assert [(e["event"], e["status"]) for e in events] == [("completed", "ok")], events
+
+
+# C118 - AC 97
+def test_opencode_plugin_inert_without_task(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    work = tmp_path / "work"
+    work.mkdir()
+    link(
+        REAL_HOME / ".local" / "share" / "opencode" / "auth.json", home / ".local" / "share" / "opencode" / "auth.json"
+    )
+    calls = tmp_path / "shim-calls.log"
+    shim = tmp_path / "shim" / "grokbot-kit"
+    shim.parent.mkdir()
+    # cópia do console script que registra cada chamada: o `install` grava o caminho do shim no plugin
+    shebang, *body = Path(kit_exe()).read_text(encoding="utf-8").splitlines()
+    record = f"import sys; open({str(calls)!r}, 'a').write(' '.join(sys.argv[1:]) + '\\n')"
+    shim.write_text("\n".join([shebang, record, *body]) + "\n", encoding="utf-8")
+    shim.chmod(0o755)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GROKBOT_KIT_")}
+    env["HOME"] = str(home)
+
+    installed = subprocess.run([str(shim), "install", "opencode"], capture_output=True, text=True, env=env, check=False)
+    assert installed.returncode == 0, installed.stderr
+    plugin = home / ".config" / "opencode" / "plugins" / "grokbot-kit.ts"
+    assert f"const GROKBOT_KIT = {json.dumps(str(shim))}" in plugin.read_text(encoding="utf-8")
+    calls.unlink()
+
+    def opencode_run() -> int:
+        argv = [real_bin("opencode"), "run", "--format", "json", "-m", model_for("opencode")]
+        argv.append("Reply with exactly the word pong. Do not use any tool.")
+        proc = subprocess.run(
+            argv, cwd=work, env=env, stdin=subprocess.DEVNULL, capture_output=True, check=False, timeout=600
+        )
+        return proc.returncode
+
+    with_plugin = opencode_run()
+    assert not calls.exists(), calls.read_text(encoding="utf-8")
+    plugin.unlink()
+    without_plugin = opencode_run()
+    assert with_plugin == without_plugin == 0

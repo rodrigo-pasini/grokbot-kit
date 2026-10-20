@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 from grokbot_kit import config, terminal
-from grokbot_kit.launch import DEFAULT_CODEX_HOME
 from grokbot_kit.payload import rfc3339
 
 CLAUDE_ALIASES = ("haiku", "sonnet", "opus")
@@ -50,12 +49,14 @@ def _opencode(cli: dict[str, Any]) -> Discovery:
 
 def _probe(tool: str, cli: dict[str, Any], model: str) -> str | None:
     """`None` quando a CLI aceita `model` numa chamada de teste; senão o motivo, sem a saída da CLI."""
-    env = dict(os.environ)
+    try:
+        env = {**os.environ, **config.cli_env(tool, cli)}
+    except config.ConfigError as e:
+        return str(e)
     if tool == "claude":
         argv = [_bin(tool, cli), "-p", "--output-format", "json", "--model", model, PROBE_PROMPT]
     else:
         argv = [_bin(tool, cli), "exec", "--json", "--skip-git-repo-check", "-m", model, PROBE_PROMPT]
-        env["CODEX_HOME"] = os.path.expanduser(cli.get("codex_home", DEFAULT_CODEX_HOME))
     with tempfile.TemporaryDirectory(prefix="grokbot-kit-models-") as tmp:
         try:
             proc = subprocess.run(

@@ -8,6 +8,8 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
+from grokbot_kit.launch import DEFAULT_CODEX_HOME
+
 
 class ConfigError(Exception):
     pass
@@ -121,3 +123,13 @@ def save(cfg: dict[str, Any]) -> None:
     tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     tmp.write_text(dump(cfg), encoding="utf-8")
     os.replace(tmp, path)
+
+
+def cli_env(tool: str, cli: dict[str, Any]) -> dict[str, str]:
+    """O env que só os processos da CLI `tool` recebem: `CODEX_HOME` do kit (door 7) e, no Claude com login por API
+    key, `ANTHROPIC_API_KEY` lido do segredo de `api_key_secret` (door 20)."""
+    if tool == "codex":
+        return {"CODEX_HOME": os.path.expanduser(str(cli.get("codex_home", DEFAULT_CODEX_HOME)))}
+    if tool == "claude" and "api_key_secret" in cli:
+        return {"ANTHROPIC_API_KEY": read_secret(str(cli["api_key_secret"]))}
+    return {}

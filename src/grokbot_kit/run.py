@@ -37,6 +37,9 @@ def _resolve(args: argparse.Namespace, cfg: dict[str, Any]) -> dict[str, Any]:
         raise UsageError(str(e)) from None
     if agent.tool == "claude" and "--bare" in args.extras:
         raise UsageError("--bare disables the hooks grokbot-kit relies on; remove it")
+    cli = cfg.get("cli", {}).get(agent.tool, {})
+    if agent.tool == "claude" and "api_key_secret" in cli:
+        config.check_secret(cli["api_key_secret"])
     route = cfg.get("routes", {}).get(args.target)
     if route is None:
         raise UsageError(f"target {args.target!r} has no route; run: grokbot-kit route add {args.target}")
@@ -60,7 +63,7 @@ def _resolve(args: argparse.Namespace, cfg: dict[str, Any]) -> dict[str, Any]:
             raise UsageError(f"cannot read --prompt-file: {e}") from None
     return {
         **agent._asdict(),
-        "cli": cfg.get("cli", {}).get(agent.tool, {}),
+        "cli": cli,
         "cwd": cwd,
         "extras": extras,
     }
@@ -189,9 +192,8 @@ def run(args: argparse.Namespace) -> int:
         "GROKBOT_KIT_TARGET": args.target,
         "GROKBOT_KIT_LABEL": args.label,
         "GROKBOT_KIT_TASK_DIR": str(task_dir),
+        **config.cli_env(tool, r["cli"]),
     }
-    if tool == "codex":
-        env["CODEX_HOME"] = os.path.expanduser(r["cli"].get("codex_home", launch.DEFAULT_CODEX_HOME))
 
     meta: dict[str, Any] = {
         "task_id": task_id,

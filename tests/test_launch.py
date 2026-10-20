@@ -131,3 +131,38 @@ def test_codex_argv_env_and_inline_hooks_layer(tmp_path: Path) -> None:
         'hooks.PermissionRequest=[{hooks=[{type="command",command="/opt/gk/grokbot-kit emit --from codex"}]}]',
         "oi",
     ]
+
+
+SURFACE_COMMANDS = {
+    "run",
+    "emit",
+    "redeliver",
+    "gc",
+    "setup",
+    "login",
+    "secret",
+    "route",
+    "doctor",
+    "install",
+    "uninstall",
+}
+
+
+# C125 - door 1
+def test_env_contract_and_commands(kit: Kit) -> None:
+    result = kit.run("--tool", "opencode", "--target", "bot-a", "--label", "contrato", "--", "oi")
+    assert result.returncode == 0, result.stderr
+    task_dir = kit.task_dir()
+    env = kit.launched()["env"]
+    assert {k: v for k, v in env.items() if k.startswith("GROKBOT_KIT_")} == {
+        "GROKBOT_KIT_TASK_ID": task_dir.name,
+        "GROKBOT_KIT_TARGET": "bot-a",
+        "GROKBOT_KIT_LABEL": "contrato",
+        "GROKBOT_KIT_TASK_DIR": str(task_dir),
+    }
+
+    help_text = kit.cli("--help")
+    assert help_text.returncode == 0
+    listed = help_text.stdout.split("{", 1)[1].split("}", 1)[0].split(",")
+    assert set(listed) == SURFACE_COMMANDS
+    assert len(listed) == 11
