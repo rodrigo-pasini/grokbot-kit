@@ -559,3 +559,5 @@ Os arquivos ainda não existem, então o tamanho é projetado: KB estimados por 
 - Mechanism: um builder (estimativa cabe no budget; margem de 9k)
 - As etapas do S0 que mexem no GitHub (C24-C36, C40: `gh repo create`, `gh repo edit`, `git push`, proteção, environment, labels) são outward-facing e esperam o "pode" explícito do Rodrigo para essa ação, mesmo com a spec aprovada
 - C66 e C69 dependiam da pergunta 2: o spike de 19/10/2026 mostrou que o hook não dispara em `codex exec`; voltou ao plano, e a AC 57, o C55 e o C69 foram reescritos pela AD-027 com o ok do Rodrigo
+- Lote C95-C107 (20/10/2026, resto do S4 e o S5): arquivos tocados ≈ 40 KB existentes (`config.py`, `run.py`, `cli.py`, `deliver.py`, `launch.py`, `conftest.py`, `test_run_guards.py`, a CLI falsa e `test_real_cli.py`) mais ≈ 25 KB novos (módulo de descoberta de modelos e 4 arquivos de teste) = 65 KB ≈ 16k, mais a leitura fixa de `plan.md` (69 KB) e deste arquivo (48 KB) ≈ 29k: 45k, abaixo do budget de 150k
+- Mechanism (lote C95-C107): um builder

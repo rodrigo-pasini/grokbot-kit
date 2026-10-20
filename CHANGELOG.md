@@ -29,6 +29,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `grokbot-kit run` exits `2` before launching when the target has no route or a route secret is missing or not `0600`.
 - `grokbot-kit redeliver <task_id>`, `grokbot-kit route add|rm|test <target>` and `grokbot-kit secret set <name>`
   (read from the terminal without echo, or from stdin, and stored in `~/.secrets/grokbot-kit/` with mode `0600`).
+- The config is checked when loaded: `setup.default_cli` must be in `setup.installed`, and every id in
+  `cli.<tool>.tiers` must be in `cli.<tool>.models`; otherwise commands exit `2` naming the key.
+- `grokbot-kit run --timeout <duration>` (`30s`, `30m`, `2h`, `1d`): without it the timeout is `timeouts.<tier>` from
+  the config (defaults `trivial = "30m"`, `standard = "2h"`, `complex = "4h"`), recorded in `meta.json` as
+  `timeout_seconds`; `--tier` defaults to `standard`, also when `--model` is given. The timeout is not enforced yet.
+- `grokbot-kit setup models refresh [<tool>] [--add <id>]...`: records in `[cli.<tool>] models` the ids printed by
+  `opencode models`; for Claude the aliases `haiku`, `sonnet` and `opus` plus each added or stored id that a test
+  `claude -p --model <id>` accepts; for Codex each added or stored id that a test `codex exec -m <id>` accepts. Exits
+  `1` when the CLI list fails or an id is rejected; tiers are never changed.
 
 ## [0.1.0] - 2026-10-19
 

@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from grokbot_kit import config, deliver, launch, payload, terminal
+from grokbot_kit import config, deliver, launch, payload, resolve, terminal
 from grokbot_kit.payload import rfc3339
 
 SECRET_KEYS = ("url_secret", "key_secret", "token_secret", "webhook_secret")
@@ -24,26 +24,12 @@ class UsageError(Exception):
 
 def _resolve(args: argparse.Namespace, cfg: dict[str, Any]) -> dict[str, Any]:
     """Tudo o que o AC 47 manda recusar com `2` antes de existir task dir."""
-    setup = cfg.get("setup", {})
-    tool = args.tool or setup.get("default_cli")
-    if tool not in launch.TOOLS:
-        raise UsageError(f"no tool given and setup.default_cli is not one of {', '.join(launch.TOOLS)}")
-    if tool not in setup.get("installed", []):
-        raise UsageError(f"{tool} is not in setup.installed; run: grokbot-kit setup cli add {tool}")
-    if tool == "claude" and "--bare" in args.extras:
+    try:
+        agent = resolve.resolve(cfg, tool=args.tool, model=args.model, tier=args.tier, timeout=args.timeout)
+    except resolve.ResolveError as e:
+        raise UsageError(str(e)) from None
+    if agent.tool == "claude" and "--bare" in args.extras:
         raise UsageError("--bare disables the hooks grokbot-kit relies on; remove it")
-    cli = cfg.get("cli", {}).get(tool, {})
-    tier = args.tier
-    if args.model:
-        model, model_source = args.model, "user"
-    else:
-        tier = tier or "standard"
-        candidates = cli.get("tiers", {}).get(tier, [])
-        if not candidates:
-            raise UsageError(f"no model in cli.{tool}.tiers.{tier}; run: grokbot-kit setup models refresh {tool}")
-        model, model_source = candidates[0], "tier"
-    if model not in cli.get("models", []):
-        raise UsageError(f"model {model!r} was not discovered for {tool}; run: grokbot-kit setup models refresh {tool}")
     route = cfg.get("routes", {}).get(args.target)
     if route is None:
         raise UsageError(f"target {args.target!r} has no route; run: grokbot-kit route add {args.target}")
@@ -66,11 +52,8 @@ def _resolve(args: argparse.Namespace, cfg: dict[str, Any]) -> dict[str, Any]:
         except OSError as e:
             raise UsageError(f"cannot read --prompt-file: {e}") from None
     return {
-        "tool": tool,
-        "cli": cli,
-        "model": model,
-        "model_source": model_source,
-        "tier": tier,
+        **agent._asdict(),
+        "cli": cfg.get("cli", {}).get(agent.tool, {}),
         "cwd": cwd,
         "extras": extras,
     }
@@ -142,6 +125,7 @@ def run(args: argparse.Namespace) -> int:
         "model": r["model"],
         "model_source": r["model_source"],
         "tier": r["tier"],
+        "timeout_seconds": r["timeout_seconds"],
         "cwd": str(r["cwd"]),
         "started_at": rfc3339(started),
         "finished_at": None,
@@ -150,7 +134,7 @@ def run(args: argparse.Namespace) -> int:
     if tool == "codex":
         meta["codex_home"] = env["CODEX_HOME"]
     _write_meta(task_dir, meta)
-    _log(task_dir, f"launch {tool} model={r['model']}")
+    _log(task_dir, f"launch {tool} model={r['model']} timeout={r['timeout_seconds']}s")
 
     with (task_dir / "out.jsonl").open("wb") as out, (task_dir / "stderr.log").open("wb") as err:
         try:

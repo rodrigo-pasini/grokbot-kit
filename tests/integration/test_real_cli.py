@@ -13,6 +13,7 @@ import json
 import os
 import shutil
 import subprocess
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -147,3 +148,63 @@ def test_completed_ok_and_denied_per_tool(tmp_path: Path, tool: str, case: str) 
     # o `codex exec` não pede permissão (AD-027): o `touch` negado termina `completed`/`ok`, sem `needs_input`
     expected = ("completed", "ok") if case == "ok" or tool == "codex" else ("completed", "denied")
     assert (event["event"], event["status"]) == expected, (event, result.stderr)
+
+
+def refresh_home(tmp_path: Path, tool: str) -> tuple[Path, Path, dict[str, str]]:
+    """`HOME` temporário com o login da CLI e um config só com `setup` e `[cli.<tool>]`, sem modelos."""
+    home, work, _ = prepare_home(tmp_path, tool, "ok")
+    sink = tmp_path / "sink.jsonl"
+    cli = {"bin": real_bin(tool)}
+    if tool == "codex":
+        cli["codex_home"] = str(REAL_CODEX_HOME)
+    lines = ["[setup]", "version = 1", f'installed = ["{tool}"]', f'default_cli = "{tool}"', "", f"[cli.{tool}]"]
+    lines += [f"{k} = {json.dumps(v)}" for k, v in cli.items()]
+    lines += ["", "[routes.it]", 'sinks = ["arquivo"]', "", "[sinks.arquivo]", 'type = "file"']
+    lines += [f"path = {json.dumps(str(sink))}", ""]
+    (home / ".config" / "grokbot-kit" / "config.toml").write_text("\n".join(lines), encoding="utf-8")
+    return home, work, {**os.environ, "HOME": str(home)}
+
+
+# C107 - AC 84, 85, 86
+@pytest.mark.parametrize("tool", ["claude", "opencode", "codex"])
+def test_models_refresh_real(tmp_path: Path, tool: str) -> None:
+    home, work, env = refresh_home(tmp_path, tool)
+    exe = shutil.which("grokbot-kit")
+    assert exe is not None
+    add = ["--add", model_for("codex")] if tool == "codex" else []
+    refreshed = subprocess.run(
+        [exe, "setup", "models", "refresh", tool, *add],
+        capture_output=True,
+        text=True,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        check=False,
+        timeout=900,
+    )
+    config_path = home / ".config" / "grokbot-kit" / "config.toml"
+    cfg = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    ids = cfg["cli"][tool].get("models", [])
+    assert ids, (refreshed.returncode, refreshed.stderr)
+
+    first = ids[0]
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8") + f"\n[cli.{tool}.tiers]\ntrivial = [{json.dumps(first)}]\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [exe, "run", "--tier", "trivial", "--target", "it", "--label", "it-modelo", "--cwd", str(work), "--"]
+        + [PROMPTS["ok"]],
+        capture_output=True,
+        text=True,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        check=False,
+        timeout=600,
+    )
+    sink = tmp_path / "sink.jsonl"
+    lines = sink.read_text(encoding="utf-8").splitlines() if sink.exists() else []
+    terminal = [e for e in map(json.loads, lines) if e["event"] in TERMINAL_EVENTS]
+    assert len(terminal) == 1, result.stderr
+    event = terminal[0]
+    assert (event["model"], event["model_source"], event["tier"]) == (first, "tier", "trivial")
+    assert (event["event"], event["status"]) == ("completed", "ok"), (event, result.stderr)
