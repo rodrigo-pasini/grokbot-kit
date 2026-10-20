@@ -1,4 +1,4 @@
-"""`grokbot-kit setup cli add <tool>` e `setup default <tool>` (AC 91, doors 3, 7 e 19)."""
+"""`grokbot-kit setup cli add <tool>`, `setup default <tool>` e `setup tiers` (AC 91, doors 3, 7, 19 e 22)."""
 
 import os
 import subprocess
@@ -114,4 +114,26 @@ def set_default(tool: str) -> int:
     setup["default_cli"] = tool
     config.save(cfg)
     print(f"default CLI: {tool}")
+    return 0
+
+
+def set_tiers(tool: str, tier: str, ids: list[str]) -> int:
+    """Troca `[cli.<tool>.tiers] <tier>` pela lista dada, só com ids descobertos (door 22)."""
+    try:
+        cfg = _load()
+    except config.ConfigError as e:
+        _err(str(e))
+        return 2
+    if tool not in cfg.get("setup", {}).get("installed", []):
+        _err(f"{tool} is not in setup.installed; run: grokbot-kit setup cli add {tool}")
+        return 2
+    cli = cfg.setdefault("cli", {}).setdefault(tool, {})
+    discovered = cli.get("models", [])
+    unknown = [model for model in ids if model not in discovered]
+    if unknown:
+        _err(f"not discovered for {tool}: {', '.join(unknown)}; run: grokbot-kit setup models refresh {tool}")
+        return 2
+    cli.setdefault("tiers", {})[tier] = list(ids)
+    config.save(cfg)
+    print(f"{tool} {tier}: {', '.join(ids)}")
     return 0

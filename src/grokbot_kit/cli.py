@@ -63,6 +63,10 @@ def build_parser() -> "argparse.ArgumentParser":
     cli_add = setup_cli_sub.add_parser("add", help="install a CLI with its official installer and record it")
     cli_add.add_argument("tool", choices=TOOLS)
     setup_sub.add_parser("default", help="set the CLI used when a task names none").add_argument("tool", choices=TOOLS)
+    tiers = setup_sub.add_parser("tiers", help="set the ordered model ids of a tier (discovered ids only)")
+    tiers.add_argument("tool", choices=TOOLS)
+    tiers.add_argument("tier", choices=("trivial", "standard", "complex"))
+    tiers.add_argument("ids", nargs="+", metavar="ID")
     models = setup_sub.add_parser("models", help="model ids discovered for each CLI")
     models_sub = models.add_subparsers(dest="models_command", required=True)
     refresh = models_sub.add_parser("refresh", help="discover the model ids of a CLI (or of every installed one)")
@@ -124,6 +128,8 @@ def main(argv: list[str] | None = None) -> int:
             return setup.cli_add(args.tool)
         if args.setup_command == "default":
             return setup.set_default(args.tool)
+        if args.setup_command == "tiers":
+            return setup.set_tiers(args.tool, args.tier, args.ids)
         from grokbot_kit.models import refresh
 
         return refresh(args.tool, args.add)
