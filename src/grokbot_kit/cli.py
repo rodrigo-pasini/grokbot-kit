@@ -31,6 +31,7 @@ def build_parser() -> "argparse.ArgumentParser":
     run.add_argument("--tier", choices=("trivial", "standard", "complex"))
     run.add_argument("--target", required=True)
     run.add_argument("--label", required=True)
+    run.add_argument("--timeout", help="duration such as 30m, 2h or 1d; defaults to timeouts.<tier> in the config")
     run.add_argument("--cwd")
     run.add_argument("--prompt-file")
     run.add_argument("extras", nargs="*", metavar="-- ARGS", help="passed verbatim to the agent CLI")

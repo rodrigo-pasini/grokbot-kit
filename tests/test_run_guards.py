@@ -1,9 +1,14 @@
 """Provas das recusas do `run` antes de lançar o agente (check C53; AC 47 sobre os AC 64, 65, 81, 82 e 90)."""
 
 import os
+import tomllib
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from conftest import Kit, default_config
+
+from grokbot_kit import config, resolve
 
 ROUTINE_ROUTE = """
 [routes.bot-r]
@@ -136,3 +141,74 @@ def test_secret_missing_or_wrong_mode_exit_2_control_0600_launches(kit: Kit) -> 
     result = kit.run("--target", "bot-s", "--label", "segredo", "--", "oi")
     assert kit.record.exists(), result.stderr
     assert len(kit.tasks()) == 1
+
+
+def config_with(kit: Kit, mutate: Callable[[dict[str, Any]], None]) -> None:
+    cfg = tomllib.loads(default_config(kit.sink))
+    mutate(cfg)
+    kit.write_config(config.dump(cfg))
+
+
+# C101 - AC 81: o modelo resolvido, venha de `--model` ou do tier, precisa estar na lista descoberta
+@pytest.mark.parametrize("origin", ["--model", "tier"])
+@pytest.mark.parametrize("tool", ["opencode", "claude", "codex"])
+def test_undiscovered_model_exit_2(kit: Kit, tool: str, origin: str) -> None:
+    if origin == "tier":
+        config_with(kit, lambda c: c["cli"][tool]["tiers"].update(standard=["inventado-123"]))
+        args = ["--tool", tool]
+    else:
+        args = ["--tool", tool, "--model", "inventado-123"]
+    result = kit.run(*args, "--target", "bot-a", "--label", "modelo", "--", "oi")
+    assert result.returncode == 2
+    assert f"grokbot-kit setup models refresh {tool}" in result.stderr
+    assert not kit.record.exists(), "o agente foi lançado"
+    assert kit.tasks() == []
+
+
+def test_undiscovered_model_exit_2_resolve_layer(kit: Kit) -> None:
+    cfg = tomllib.loads(default_config(kit.sink))
+    with pytest.raises(resolve.ResolveError) as raised:
+        resolve.resolve(cfg, tool="codex", model="inventado-123", tier=None, timeout=None)
+    assert "grokbot-kit setup models refresh codex" in str(raised.value)
+    cfg["cli"]["claude"]["tiers"]["standard"] = ["inventado-123"]
+    with pytest.raises(resolve.ResolveError) as raised:
+        resolve.resolve(cfg, tool="claude", model=None, tier=None, timeout=None)
+    assert "grokbot-kit setup models refresh claude" in str(raised.value)
+
+
+def test_undiscovered_model_exit_2_control_discovered_launches(kit: Kit) -> None:
+    result = kit.run("--tool", "codex", "--model", "gpt-test", "--target", "bot-a", "--label", "modelo", "--", "oi")
+    assert result.returncode == 0, result.stderr
+    assert kit.record.exists()
+
+
+# C102 - AC 82: pela `--tool` ou pela `default_cli`
+@pytest.mark.parametrize("via", ["--tool", "default_cli"])
+def test_tool_not_installed_exit_2(kit: Kit, via: str) -> None:
+    def mutate(c: dict[str, Any]) -> None:
+        c["setup"]["installed"] = ["opencode"]
+        if via == "default_cli":
+            c["setup"]["default_cli"] = "codex"
+
+    config_with(kit, mutate)
+    args = ["--tool", "codex"] if via == "--tool" else []
+    result = kit.run(*args, "--target", "bot-a", "--label", "instalada", "--", "oi")
+    assert result.returncode == 2
+    assert "codex" in result.stderr
+    assert not kit.record.exists(), "o agente foi lançado"
+    assert kit.tasks() == []
+
+
+def test_tool_not_installed_exit_2_resolve_layer(kit: Kit) -> None:
+    cfg = tomllib.loads(default_config(kit.sink, installed=("opencode",)))
+    with pytest.raises(resolve.ResolveError) as raised:
+        resolve.resolve(cfg, tool="claude", model=None, tier=None, timeout=None)
+    assert "setup.installed" in str(raised.value)
+    assert resolve.resolve(cfg, tool="opencode", model=None, tier=None, timeout=None).tool == "opencode"
+
+
+def test_tool_not_installed_exit_2_control_installed_launches(kit: Kit) -> None:
+    config_with(kit, lambda c: c["setup"].update(installed=["opencode", "codex"]))
+    result = kit.run("--tool", "codex", "--target", "bot-a", "--label", "instalada", "--", "oi")
+    assert result.returncode == 0, result.stderr
+    assert kit.launched()["tool"] == "codex"

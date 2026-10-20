@@ -31,6 +31,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   (read from the terminal without echo, or from stdin, and stored in `~/.secrets/grokbot-kit/` with mode `0600`).
 - The config is checked when loaded: `setup.default_cli` must be in `setup.installed`, and every id in
   `cli.<tool>.tiers` must be in `cli.<tool>.models`; otherwise commands exit `2` naming the key.
+- `grokbot-kit run --timeout <duration>` (`30s`, `30m`, `2h`, `1d`): without it the timeout is `timeouts.<tier>` from
+  the config (defaults `trivial = "30m"`, `standard = "2h"`, `complex = "4h"`), recorded in `meta.json` as
+  `timeout_seconds`; `--tier` defaults to `standard`, also when `--model` is given. The timeout is not enforced yet.
 
 ## [0.1.0] - 2026-10-19
 
