@@ -29,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `grokbot-kit run` exits `2` before launching when the target has no route or a route secret is missing or not `0600`.
 - `grokbot-kit redeliver <task_id>`, `grokbot-kit route add|rm|test <target>` and `grokbot-kit secret set <name>`
   (read from the terminal without echo, or from stdin, and stored in `~/.secrets/grokbot-kit/` with mode `0600`).
+- The config is checked when loaded: `setup.default_cli` must be in `setup.installed`, and every id in
+  `cli.<tool>.tiers` must be in `cli.<tool>.models`; otherwise commands exit `2` naming the key.
 
 ## [0.1.0] - 2026-10-19
 

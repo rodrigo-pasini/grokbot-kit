@@ -46,15 +46,36 @@ def tasks_dir() -> Path:
     return Path.home() / ".grokbot-kit" / "tasks"
 
 
-def load() -> dict[str, Any]:
+def check_constraints(cfg: dict[str, Any]) -> None:
+    """As constraints one-way de Relations: `default_cli` instalada e ids de tier descobertos (door 3)."""
+    setup = cfg.get("setup", {})
+    if "default_cli" in setup and setup["default_cli"] not in setup.get("installed", []):
+        raise ConfigError(
+            f"setup.default_cli is {setup['default_cli']!r}, which is not in setup.installed {setup.get('installed', [])}"
+        )
+    for tool, cli in cfg.get("cli", {}).items():
+        discovered = cli.get("models", [])
+        for tier, ids in cli.get("tiers", {}).items():
+            for model in ids:
+                if model not in discovered:
+                    raise ConfigError(
+                        f"cli.{tool}.tiers.{tier} has {model!r}, which is not in cli.{tool}.models (the ids discovered "
+                        f"for {tool}); run: grokbot-kit setup models refresh {tool}"
+                    )
+
+
+def load(*, validate: bool = True) -> dict[str, Any]:
     path = config_path()
     try:
         with path.open("rb") as f:
-            return tomllib.load(f)
+            cfg = tomllib.load(f)
     except FileNotFoundError:
         raise ConfigError(f"config not found: {path}") from None
     except tomllib.TOMLDecodeError as e:
         raise ConfigError(f"invalid config {path}: {e}") from None
+    if validate:
+        check_constraints(cfg)
+    return cfg
 
 
 _BARE_KEY = re.compile(r"^[A-Za-z0-9_-]+$")
