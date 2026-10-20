@@ -75,6 +75,11 @@ def build_parser() -> "argparse.ArgumentParser":
     doctor = sub.add_parser("doctor", help="check versions, CLIs, logins, routes and secrets")
     doctor.add_argument("--json", action="store_true", help="machine-readable output")
 
+    install = sub.add_parser("install", help="install the opencode plugin (inert outside a task)")
+    install.add_argument("target", choices=("opencode",))
+    uninstall = sub.add_parser("uninstall", help="remove the opencode plugin")
+    uninstall.add_argument("target", choices=("opencode",))
+
     secret = sub.add_parser("secret", help="store secrets in ~/.secrets/grokbot-kit/ (mode 0600)")
     secret_sub = secret.add_subparsers(dest="secret_command", required=True)
     secret_sub.add_parser("set", help="read a secret from the terminal (no echo) or stdin").add_argument("name")
@@ -122,6 +127,10 @@ def main(argv: list[str] | None = None) -> int:
         from grokbot_kit.doctor import doctor
 
         return doctor(args.json)
+    if args.command in ("install", "uninstall"):
+        from grokbot_kit import opencode_plugin
+
+        return opencode_plugin.install() if args.command == "install" else opencode_plugin.uninstall()
     if args.command == "secret":
         from grokbot_kit.secret import set_secret
 

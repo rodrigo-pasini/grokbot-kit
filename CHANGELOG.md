@@ -55,6 +55,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `grokbot-kit doctor [--json]`: kit and Python versions and, per installed CLI, version, login state, whether it is
   the default and how many models each tier has, plus routes and secret modes; exits `1` and lists what to fix (with
   the command) when something needs attention. opencode without credentials (free models) is not a problem.
+- `grokbot-kit install opencode` writes `~/.config/opencode/plugins/grokbot-kit.ts` with the absolute path of the
+  `grokbot-kit` executable (rerunning replaces it); `grokbot-kit uninstall opencode` removes only that file. Outside a
+  task the plugin does nothing.
 
 ## [0.1.0] - 2026-10-19
 
