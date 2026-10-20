@@ -78,6 +78,8 @@ def cli_add(tool: str) -> int:
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
+            # o Codex cria arquivos no `CODEX_HOME` ao iniciar, então nem o `--version` roda com `~/.codex` (AC 98)
+            env={**os.environ, **inst.env},
             timeout=VERSION_TIMEOUT,
             check=False,
         )

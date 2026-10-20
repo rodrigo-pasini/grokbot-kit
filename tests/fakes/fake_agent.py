@@ -15,7 +15,8 @@ Setup e login: `--version` imprime `9.9.9 (<tool> fake)` e sai com `FAKE_VERSION
 `opencode auth login` e `codex login --device-auth|--with-api-key` saem com `FAKE_LOGIN_EXIT` (o `codex login`
 grava `auth.json` em `CODEX_HOME`, ou em `~/.codex` sem ele, como a CLI real); `claude auth status` e
 `codex login status` saem com `1` quando a tool está em `FAKE_LOGGED_OUT` (lista separada por vírgula) e `0` senão;
-`opencode auth list` imprime `<FAKE_OPENCODE_CREDENTIALS> credentials` (padrão `0`) e sai com `0`. A linha de
+`opencode auth list` imprime `<FAKE_OPENCODE_CREDENTIALS> credentials` (padrão `0`) e sai com `0`. Toda chamada do
+`codex` cria `tmp/` em `CODEX_HOME`, quando ele existe, ou em `~/.codex`, como a CLI real faz ao iniciar. A linha de
 `FAKE_CALLS` do `codex login --with-api-key` traz o stdin lido, e a de todo `claude` traz `ANTHROPIC_API_KEY`.
 
 Sinais: com `FAKE_TRAP` (arquivo), o agente grava uma linha JSON `ready` (pid e pgid) e uma por `SIGINT`/`SIGTERM`
@@ -79,6 +80,12 @@ if calls:
         if tool == "claude":
             call["anthropic_api_key"] = os.environ.get("ANTHROPIC_API_KEY")
         f.write(json.dumps(call) + "\n")
+
+if tool == "codex":
+    # como o codex real, que cria os aliases de PATH no seu home a cada chamada, mesmo no `--version`
+    codex_dir = os.environ.get("CODEX_HOME") or os.path.join(os.path.expanduser("~"), ".codex")
+    if "CODEX_HOME" not in os.environ or os.path.isdir(codex_dir):
+        os.makedirs(os.path.join(codex_dir, "tmp"), exist_ok=True)
 
 logged_out = os.environ.get("FAKE_LOGGED_OUT", "").split(",")
 if args == ["--version"]:
