@@ -10,12 +10,47 @@ Descoberta de modelos: `opencode models` imprime `FAKE_OPENCODE_MODELS` e sai co
 `FAKE_ACCEPT_MODELS` (lista JSON) no env, `claude`/`codex` fazem o papel da chamada de teste de um modelo: aceitam os
 ids da lista e recusam os outros com erro de modelo e exit `1`; os ids de `FAKE_ERROR_EXIT0` saem com `0` e erro na
 saída JSON. `FAKE_CALLS` acumula uma linha JSON por chamada (argv, stdin, cwd e `CODEX_HOME`).
+
+Sinais: com `FAKE_TRAP` (arquivo), o agente grava uma linha JSON `ready` (pid e pgid) e uma por `SIGINT`/`SIGTERM`
+recebido (pid, sinal, `time.monotonic()`); um sinal fora de `FAKE_IGNORE` (ex. `SIGINT,SIGTERM`) o encerra com
+`128 + n`. `FAKE_CHILD=1` lança um filho no mesmo grupo com a mesma armadilha, e `FAKE_SLEEP` (segundos) segura o
+agente antes de escrever a saída.
 """
 
 import json
 import os
+import signal
 import subprocess
 import sys
+import time
+
+
+def trap_signals(path: str) -> None:
+    ignore = set(os.environ.get("FAKE_IGNORE", "").split(","))
+
+    def on_signal(signum: int, frame: object) -> None:
+        name = signal.Signals(signum).name
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"pid": os.getpid(), "signal": name, "at": time.monotonic()}) + "\n")
+        if name not in ignore:
+            sys.exit(128 + signum)
+
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(signum, on_signal)
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps({"pid": os.getpid(), "pgid": os.getpgid(0), "ready": True}) + "\n")
+
+
+def hold(seconds: float) -> None:
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        time.sleep(0.05)
+
+
+if os.environ.get("FAKE_ROLE") == "child":
+    trap_signals(os.environ["FAKE_TRAP"])
+    hold(float(os.environ.get("FAKE_SLEEP", "0")))
+    sys.exit(0)
 
 tool = os.path.basename(sys.argv[0])
 args = sys.argv[1:]
@@ -80,6 +115,13 @@ for payload in json.loads(os.environ.get("FAKE_EMIT", "[]")):
     subprocess.run(
         ["grokbot-kit", "emit", "--from", tool], input=json.dumps(payload), text=True, capture_output=True, check=False
     )
+
+trap = os.environ.get("FAKE_TRAP")
+if trap:
+    trap_signals(trap)
+    if os.environ.get("FAKE_CHILD") == "1":
+        subprocess.Popen([sys.executable, os.path.realpath(__file__)], env={**os.environ, "FAKE_ROLE": "child"})
+hold(float(os.environ.get("FAKE_SLEEP", "0")))
 
 sys.stdout.write(os.environ.get("FAKE_STDOUT", ""))
 sys.exit(int(os.environ.get("FAKE_EXIT", "0")))

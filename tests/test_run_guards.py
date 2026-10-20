@@ -212,3 +212,20 @@ def test_tool_not_installed_exit_2_control_installed_launches(kit: Kit) -> None:
     result = kit.run("--tool", "codex", "--target", "bot-a", "--label", "instalada", "--", "oi")
     assert result.returncode == 0, result.stderr
     assert kit.launched()["tool"] == "codex"
+
+
+# C111 - AC 90
+@pytest.mark.parametrize("extras", [["--bare", "oi"], ["--allowedTools", "Bash", "--bare", "oi"]])
+def test_bare_rejected_for_claude(kit: Kit, extras: list[str]) -> None:
+    result = kit.run("--tool", "claude", "--target", "bot-a", "--label", "bare", "--", *extras)
+    assert result.returncode == 2
+    assert "--bare" in result.stderr
+    assert not kit.record.exists(), "o agente foi lançado"
+    assert kit.tasks() == []
+
+
+@pytest.mark.parametrize("tool", ["opencode", "codex"])
+def test_bare_rejected_for_claude_control_other_tools_launch(kit: Kit, tool: str) -> None:
+    result = kit.run("--tool", tool, "--target", "bot-a", "--label", "bare", "--", "--bare", "oi")
+    assert result.returncode == 0, result.stderr
+    assert kit.launched()["argv"][-2:] == ["--bare", "oi"]

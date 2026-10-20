@@ -1,12 +1,14 @@
-"""`grokbot-kit run`: valida, cria o task dir (door 4), lança o agente e envia um único evento terminal (AC 39-53)."""
+"""`grokbot-kit run`: valida, cria o task dir (door 4), lança o agente e envia um único evento terminal (AC 39-53, 87-89)."""
 
 import argparse
 import json
 import os
 import re
 import secrets
+import signal
 import subprocess
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -16,6 +18,11 @@ from grokbot_kit.payload import rfc3339
 
 SECRET_KEYS = ("url_secret", "key_secret", "token_secret", "webhook_secret")
 LABEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+EXIT_NOT_FOUND = 127
+EXIT_TIMEOUT = 124
+EXIT_INTERRUPTED = 130
+GRACE_SECONDS = 10.0
+POLL_SECONDS = 0.05
 
 
 class UsageError(Exception):
@@ -75,6 +82,75 @@ def _recorded_needs_input(task_dir: Path) -> list[dict[str, Any]]:
         if isinstance(event, dict) and event.get("event") == "needs_input":
             found.append(event)
     return found
+
+
+def _signal_group(pgid: int, sig: int) -> None:
+    try:
+        os.killpg(pgid, sig)
+    except ProcessLookupError:
+        pass
+
+
+def _group_alive(pgid: int) -> bool:
+    try:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def stop_group(proc: "subprocess.Popen[bytes]", sent_at: float, grace: float = GRACE_SECONDS) -> None:
+    """Escada do AC 87 depois do primeiro sinal, mandado em `sent_at`: `SIGTERM` ao grupo `grace` s depois e
+    `SIGKILL` `grace` s depois disso, a menos que o agente saia e o grupo dele esvazie antes."""
+    for sig, at in ((signal.SIGTERM, sent_at + grace), (signal.SIGKILL, sent_at + 2 * grace)):
+        while time.monotonic() < at:
+            if proc.poll() is not None and not _group_alive(proc.pid):
+                return
+            time.sleep(POLL_SECONDS)
+        _signal_group(proc.pid, sig)
+    proc.wait()
+
+
+def _supervise(argv: list[str], timeout_seconds: int, task_dir: Path, **popen: Any) -> tuple[int | None, str | None]:
+    """Lança o agente num grupo próprio e espera; devolve `(returncode, stopped)`, com `returncode` `None` quando o
+    binário não existe e `stopped` `"timeout"` ou `"interrupted"` quando o kit encerrou o agente (AC 87, 88)."""
+    received: list[tuple[int, float]] = []
+    group: list[int] = []
+
+    def forward(signum: int, frame: object) -> None:
+        received.append((signum, time.monotonic()))
+        if group:
+            _signal_group(group[0], signum)
+
+    previous = {sig: signal.signal(sig, forward) for sig in (signal.SIGINT, signal.SIGTERM)}
+    try:
+        try:
+            proc = subprocess.Popen(argv, process_group=0, **popen)
+        except FileNotFoundError:
+            return None, None
+        group.append(proc.pid)
+        if received:
+            _signal_group(proc.pid, received[0][0])
+        deadline = time.monotonic() + timeout_seconds
+        while proc.poll() is None and not received and time.monotonic() < deadline:
+            time.sleep(POLL_SECONDS)
+        stopped = None
+        if received:
+            stopped = "interrupted"
+            _log(task_dir, f"{signal.Signals(received[0][0]).name} received: forwarded to the agent's process group")
+            stop_group(proc, received[0][1])
+        elif proc.returncode is None:
+            stopped = "timeout"
+            _log(task_dir, f"timeout after {timeout_seconds}s: SIGINT to the agent's process group")
+            sent_at = time.monotonic()
+            _signal_group(proc.pid, signal.SIGINT)
+            stop_group(proc, sent_at)
+        return proc.returncode, stopped
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
 
 
 def _log(task_dir: Path, message: str) -> None:
@@ -137,21 +213,29 @@ def run(args: argparse.Namespace) -> int:
     _log(task_dir, f"launch {tool} model={r['model']} timeout={r['timeout_seconds']}s")
 
     with (task_dir / "out.jsonl").open("wb") as out, (task_dir / "stderr.log").open("wb") as err:
-        try:
-            proc = subprocess.run(
-                argv, check=False, stdin=subprocess.DEVNULL, stdout=out, stderr=err, cwd=r["cwd"], env=env
-            )
-        except FileNotFoundError:
-            proc = None
-    if proc is None:
+        returncode, stopped = _supervise(
+            argv,
+            r["timeout_seconds"],
+            task_dir,
+            stdin=subprocess.DEVNULL,
+            stdout=out,
+            stderr=err,
+            cwd=r["cwd"],
+            env=env,
+        )
+    if returncode is None:
         _log(task_dir, f"binary not found: {bin_path}")
-        exit_code = 127
+        exit_code = EXIT_NOT_FOUND
         output = terminal.AgentOutput(error=True, permission_denied=False, summary=f"binary not found: {bin_path}")
     else:
-        exit_code = proc.returncode if proc.returncode >= 0 else 128 - proc.returncode
+        exit_code = returncode if returncode >= 0 else 128 - returncode
         output = terminal.read_output(tool, task_dir)
+    if stopped == "timeout":
+        exit_code = EXIT_TIMEOUT
+    elif stopped == "interrupted":
+        exit_code = EXIT_INTERRUPTED
     asked = _recorded_needs_input(task_dir)
-    event_name, status, exit_reason = terminal.classify(exit_code, output, needs_input=bool(asked))
+    event_name, status, exit_reason = terminal.classify(exit_code, output, needs_input=bool(asked), stopped=stopped)
     transcripts = [e["transcript_path"] for e in asked if isinstance(e.get("transcript_path"), str)]
     event = payload.task_event(
         meta,
