@@ -11,6 +11,13 @@ Descoberta de modelos: `opencode models` imprime `FAKE_OPENCODE_MODELS` e sai co
 ids da lista e recusam os outros com erro de modelo e exit `1`; os ids de `FAKE_ERROR_EXIT0` saem com `0` e erro na
 saída JSON. `FAKE_CALLS` acumula uma linha JSON por chamada (argv, stdin, cwd e `CODEX_HOME`).
 
+Setup e login: `--version` imprime `9.9.9 (<tool> fake)` e sai com `FAKE_VERSION_EXIT`; `claude auth login`,
+`opencode auth login` e `codex login --device-auth|--with-api-key` saem com `FAKE_LOGIN_EXIT` (o `codex login`
+grava `auth.json` em `CODEX_HOME`, ou em `~/.codex` sem ele, como a CLI real); `claude auth status` e
+`codex login status` saem com `1` quando a tool está em `FAKE_LOGGED_OUT` (lista separada por vírgula) e `0` senão;
+`opencode auth list` imprime `<FAKE_OPENCODE_CREDENTIALS> credentials` (padrão `0`) e sai com `0`. A linha de
+`FAKE_CALLS` do `codex login --with-api-key` traz o stdin lido, e a de todo `claude` traz `ANTHROPIC_API_KEY`.
+
 Sinais: com `FAKE_TRAP` (arquivo), o agente grava uma linha JSON `ready` (pid e pgid) e uma por `SIGINT`/`SIGTERM`
 recebido (pid, sinal, `time.monotonic()`); um sinal fora de `FAKE_IGNORE` (ex. `SIGINT,SIGTERM`) o encerra com
 `128 + n`. `FAKE_CHILD=1` lança um filho no mesmo grupo com a mesma armadilha, e `FAKE_SLEEP` (segundos) segura o
@@ -55,6 +62,8 @@ if os.environ.get("FAKE_ROLE") == "child":
 tool = os.path.basename(sys.argv[0])
 args = sys.argv[1:]
 
+login_stdin = sys.stdin.read() if tool == "codex" and args[:2] == ["login", "--with-api-key"] else None
+
 calls = os.environ.get("FAKE_CALLS")
 if calls:
     with open(calls, "a", encoding="utf-8") as f:
@@ -65,7 +74,31 @@ if calls:
             "cwd": os.getcwd(),
             "codex_home": os.environ.get("CODEX_HOME"),
         }
+        if login_stdin is not None:
+            call["stdin"] = login_stdin
+        if tool == "claude":
+            call["anthropic_api_key"] = os.environ.get("ANTHROPIC_API_KEY")
         f.write(json.dumps(call) + "\n")
+
+logged_out = os.environ.get("FAKE_LOGGED_OUT", "").split(",")
+if args == ["--version"]:
+    print(f"9.9.9 ({tool} fake)")
+    sys.exit(int(os.environ.get("FAKE_VERSION_EXIT", "0")))
+if (tool, args[:2]) in (("claude", ["auth", "login"]), ("opencode", ["auth", "login"])):
+    sys.exit(int(os.environ.get("FAKE_LOGIN_EXIT", "0")))
+if tool == "codex" and args[:2] in (["login", "--device-auth"], ["login", "--with-api-key"]):
+    code = int(os.environ.get("FAKE_LOGIN_EXIT", "0"))
+    if code == 0:
+        home = os.environ.get("CODEX_HOME") or os.path.join(os.path.expanduser("~"), ".codex")
+        with open(os.path.join(home, "auth.json"), "w", encoding="utf-8") as f:
+            json.dump({"fake": True}, f)
+    sys.exit(code)
+if (tool, args[:2]) in (("claude", ["auth", "status"]), ("codex", ["login", "status"])):
+    print("Not logged in" if tool in logged_out else "Logged in")
+    sys.exit(1 if tool in logged_out else 0)
+if tool == "opencode" and args[:2] == ["auth", "list"]:
+    print(f"{os.environ.get('FAKE_OPENCODE_CREDENTIALS', '0')} credentials")
+    sys.exit(0)
 
 if tool == "opencode" and args[:1] == ["models"]:
     sys.stdout.write(os.environ.get("FAKE_OPENCODE_MODELS", ""))
@@ -95,7 +128,11 @@ if record:
                 "argv": args,
                 "stdin_target": os.readlink("/proc/self/fd/0"),
                 "stdin_read": sys.stdin.read(),
-                "env": {k: v for k, v in os.environ.items() if k.startswith("GROKBOT_KIT_") or k == "CODEX_HOME"},
+                "env": {
+                    k: v
+                    for k, v in os.environ.items()
+                    if k.startswith("GROKBOT_KIT_") or k in ("CODEX_HOME", "ANTHROPIC_API_KEY")
+                },
                 "cwd": os.getcwd(),
             },
             f,

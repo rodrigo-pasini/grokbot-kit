@@ -54,6 +54,11 @@ def build_parser() -> "argparse.ArgumentParser":
 
     setup = sub.add_parser("setup", help="set up the agent CLIs")
     setup_sub = setup.add_subparsers(dest="setup_command", required=True)
+    setup_cli = setup_sub.add_parser("cli", help="install agent CLIs")
+    setup_cli_sub = setup_cli.add_subparsers(dest="cli_command", required=True)
+    cli_add = setup_cli_sub.add_parser("add", help="install a CLI with its official installer and record it")
+    cli_add.add_argument("tool", choices=TOOLS)
+    setup_sub.add_parser("default", help="set the CLI used when a task names none").add_argument("tool", choices=TOOLS)
     models = setup_sub.add_parser("models", help="model ids discovered for each CLI")
     models_sub = models.add_subparsers(dest="models_command", required=True)
     refresh = models_sub.add_parser("refresh", help="discover the model ids of a CLI (or of every installed one)")
@@ -61,6 +66,14 @@ def build_parser() -> "argparse.ArgumentParser":
     refresh.add_argument(
         "--add", action="append", default=[], metavar="ID", help="claude/codex: also test and record this model id"
     )
+
+    login = sub.add_parser("login", help="log a CLI in with its official command")
+    login.add_argument("tool", choices=TOOLS)
+    login.add_argument("--method", choices=("subscription", "api-key"), default="subscription")
+    login.add_argument("--secret", metavar="NAME", help="secret holding the API key (default: <tool>-api-key)")
+
+    doctor = sub.add_parser("doctor", help="check versions, CLIs, logins, routes and secrets")
+    doctor.add_argument("--json", action="store_true", help="machine-readable output")
 
     secret = sub.add_parser("secret", help="store secrets in ~/.secrets/grokbot-kit/ (mode 0600)")
     secret_sub = secret.add_subparsers(dest="secret_command", required=True)
@@ -92,9 +105,23 @@ def main(argv: list[str] | None = None) -> int:
             return route.add(args.target, args.url_secret, args.key_secret, args.header)
         return route.rm(args.target) if args.route_command == "rm" else route.test(args.target)
     if args.command == "setup":
+        from grokbot_kit import setup
+
+        if args.setup_command == "cli":
+            return setup.cli_add(args.tool)
+        if args.setup_command == "default":
+            return setup.set_default(args.tool)
         from grokbot_kit.models import refresh
 
         return refresh(args.tool, args.add)
+    if args.command == "login":
+        from grokbot_kit.login import login
+
+        return login(args.tool, args.method, args.secret)
+    if args.command == "doctor":
+        from grokbot_kit.doctor import doctor
+
+        return doctor(args.json)
     if args.command == "secret":
         from grokbot_kit.secret import set_secret
 

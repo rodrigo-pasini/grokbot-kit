@@ -8,6 +8,7 @@ import socket
 import subprocess
 import threading
 import time
+import tomllib
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -107,6 +108,14 @@ class Kit:
         result: dict[str, Any] = json.loads(self.record.read_text(encoding="utf-8"))
         return result
 
+    def calls(self) -> list[dict[str, Any]]:
+        """As linhas de `FAKE_CALLS` gravadas pelas CLIs e instaladores falsos, na ordem."""
+        path = Path(self.env["FAKE_CALLS"])
+        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()] if path.exists() else []
+
+    def config(self) -> dict[str, Any]:
+        return tomllib.loads(self.config_text())
+
 
 @pytest.fixture
 def kit(tmp_path: Path) -> Kit:
@@ -120,6 +129,22 @@ def kit(tmp_path: Path) -> Kit:
     k = Kit(home=home, sink=tmp_path / "sink.jsonl", record=tmp_path / "launched.json", env=env)
     k.write_config(default_config(k.sink))
     return k
+
+
+def clean_path() -> str:
+    """`PATH` sem as CLIs reais do box: o `curl` falso, o `grokbot-kit` do ambiente de teste e o sistema."""
+    exe = shutil.which("grokbot-kit")
+    assert exe is not None, "console script grokbot-kit não instalado"
+    return os.pathsep.join([str(FAKES / "installers"), os.path.dirname(exe), "/usr/bin", "/bin"])
+
+
+@pytest.fixture
+def fresh(tmp_path: Path) -> Kit:
+    """Box limpo: `HOME` isolado sem config, nenhuma CLI no `PATH` e `FAKE_CALLS` gravando as chamadas."""
+    home = tmp_path / "home"
+    home.mkdir()
+    env = {"HOME": str(home), "PATH": clean_path(), "LANG": "C.UTF-8", "FAKE_CALLS": str(tmp_path / "calls.jsonl")}
+    return Kit(home=home, sink=tmp_path / "sink.jsonl", record=tmp_path / "launched.json", env=env)
 
 
 KEY = "crsr_test-key-not-real"

@@ -44,6 +44,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   keeps running), the event is `error`/`interrupted` and the run exits `130`. A missing agent binary gives
   `error`/`failed` with `exit_reason` `agent_error` and exit `127`. In these three events `exit_code` is the run's own
   exit code.
+- `grokbot-kit setup cli add <tool>` installs `claude`, `opencode` or `codex` with the official installer
+  (`claude.ai/install.sh`, `opencode.ai/install` with `--no-modify-path`, `chatgpt.com/codex/install.sh` with
+  `CODEX_HOME` set to the kit's Codex home and the binary in `~/.grokbot-kit/bin`), checks `<cli> --version` and
+  records `cli.<tool>.bin`; `grokbot-kit setup default <tool>` sets `setup.default_cli`.
+- `grokbot-kit login <tool> [--method subscription|api-key] [--secret <name>]`: `codex login --device-auth` or
+  `codex login --with-api-key` (key from the secret on stdin) in the kit's `CODEX_HOME`, `claude auth login` or an API
+  key secret recorded as `[cli.claude] api_key_secret` and passed as `ANTHROPIC_API_KEY` only to the `claude`
+  processes the kit starts, and `opencode auth login`.
+- `grokbot-kit doctor [--json]`: kit and Python versions and, per installed CLI, version, login state, whether it is
+  the default and how many models each tier has, plus routes and secret modes; exits `1` and lists what to fix (with
+  the command) when something needs attention. opencode without credentials (free models) is not a problem.
 
 ## [0.1.0] - 2026-10-19
 
