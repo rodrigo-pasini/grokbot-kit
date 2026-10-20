@@ -565,3 +565,5 @@ Os arquivos ainda não existem, então o tamanho é projetado: KB estimados por 
 - Mechanism (lote S6): um builder
 - Lote S7 (C112-C125, 20/10/2026): arquivos existentes tocados ≈ 62 KB (`cli.py`, `run.py`, `models.py`, `launch.py`, `config.py`, a CLI falsa, `conftest.py`, `test_launch.py`, `test_real_hooks.py`, `test_real_cli.py`, `CHANGELOG.md`) mais ≈ 58 KB novos (módulos de setup, login, plugin, doctor e gc; o instalador falso; 6 arquivos de teste e `tests/integration/test_install.py`) = 120 KB ≈ 30k, mais a leitura fixa de `plan.md` (72 KB) e deste arquivo (49 KB) ≈ 30k: 60k, abaixo do budget de 150k
 - Mechanism (lote S7): um builder
+- Lote S8 (C126-C145, 20/10/2026): arquivos tocados ≈ 49 KB (`SKILL.md`, `tests/test_skill_doc.py`, e pela door 22 `setup.py`, `cli.py`, `tests/test_setup_tiers.py` e `CHANGELOG.md`) ≈ 12k, mais a leitura fixa de `plan.md` (78 KB) e deste arquivo (50 KB) ≈ 32k: 44k, abaixo do budget de 150k
+- Mechanism (lote S8): um builder

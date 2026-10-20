@@ -58,6 +58,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `grokbot-kit install opencode` writes `~/.config/opencode/plugins/grokbot-kit.ts` with the absolute path of the
   `grokbot-kit` executable (rerunning replaces it); `grokbot-kit uninstall opencode` removes only that file. Outside a
   task the plugin does nothing.
+- `grokbot-kit setup tiers <tool> <tier> <id>...` sets the ordered model ids of `cli.<tool>.tiers.<tier>`; exits `2`
+  without changing the config when the tool is not installed or an id is not in `cli.<tool>.models`.
+- The `skills/grokbot-kit/` skill for any Grok Bot: installs the kit, the chosen CLIs and their login, sets the
+  default CLI and the model tiers, guides the routine with a webhook trigger (secrets only through
+  `grokbot-kit secret set` in a terminal) and its route, delegates tasks with `grokbot-kit run` choosing the tier by a
+  rubric, and handles the events, including `redeliver` when one did not arrive.
 - `grokbot-kit gc --older-than <duration> [--dry-run]` removes (or only lists) the task dirs whose task finished more
   than `<duration>` ago (`30d`, `12h`, ...), never a task still running nor one with a non-empty `undelivered.jsonl`;
   an invalid duration exits `2`.
