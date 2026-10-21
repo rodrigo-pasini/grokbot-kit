@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `grokbot-kit doctor` reports the opencode plugin in `cli.opencode.plugin` (`path`, the `exe` it calls, `ok`) and
+  lists as a problem, with `grokbot-kit install opencode`, a missing plugin or one that calls another `grokbot-kit`
+  executable; before, opencode tasks then ended without `needs_input` events and nothing said why.
+
 ## [0.2.1] - 2026-10-21
 
 ### Added
