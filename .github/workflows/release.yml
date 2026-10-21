@@ -42,6 +42,10 @@ jobs:
       id-token: write
       contents: write
     steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: skills/grokbot-kit/SKILL.md
+          sparse-checkout-cone-mode: false
       - uses: actions/download-artifact@v8
         with:
           name: dist
@@ -51,4 +55,4 @@ jobs:
       - name: Attach dist to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/* skills/grokbot-kit/SKILL.md --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes

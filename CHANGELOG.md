@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Each GitHub Release carries `SKILL.md` (the `skills/grokbot-kit/` skill of that tag), so
+  `https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md` always gives the skill of the
+  latest release; the README quick start prompt downloads it from there.
+
 ### Changed
 
 - The `skills/grokbot-kit/` skill stores secrets with `grokbot-kit secret set` reading the value from standard
