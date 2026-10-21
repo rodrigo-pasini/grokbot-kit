@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-21
+
 ### Added
 
 - Each GitHub Release carries `SKILL.md` (the `skills/grokbot-kit/` skill of that tag), so
@@ -91,6 +93,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `pytest`, `pre-commit`, CI and release workflows, Dependabot, issue and pull request templates.
 - `grokbot-kit --version`. The commands described in the README are not implemented yet.
 
-[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/rodrigo-pasini/grokbot-kit/releases/tag/v0.1.0
