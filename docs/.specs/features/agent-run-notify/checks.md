@@ -492,7 +492,7 @@ A AD-032 abre a door 23; este check é aditivo e não muda nenhum aprovado.
 **C149** - O job `publish` do `release.yml` faz checkout de `skills/grokbot-kit/SKILL.md` e o `gh release create` anexa esse arquivo junto com `dist/*`, sem que ele entre no artefato `dist` enviado ao PyPI; os dois READMEs baixam a skill de `https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md` e de nenhuma URL com tag (AC 125, door 23)
 Proof: `uv run pytest tests/test_workflows.py -k release_attaches_skill`
 
-A AD-033 abre a door 24; o C121 continua igual, e o seu cenário "tudo OK" passa a ter o plugin instalado, porque sem ele a door 24 aponta um problema real.
+A AD-033 abre a door 24; o C115 e o C121 continuam iguais, e os seus cenários de `doctor` com exit `0` passam a ter o plugin instalado (`grokbot-kit install opencode`, como no setup da skill), porque sem ele a door 24 aponta um problema real.
 
 **C150** - Com `opencode` em `setup.installed`, `doctor --json` sai com `0` e `cli.opencode.plugin.ok` `true` depois de `grokbot-kit install opencode`; sai com `1`, `exe` `null` e um problema citando `grokbot-kit install opencode` sem o arquivo do plugin; e sai com `1`, `ok` `false`, `exe` igual ao caminho gravado e um problema citando esse caminho e `grokbot-kit install opencode` quando o plugin chama outro executável; sem `opencode` instalado não há `plugin` nem problema de plugin (AC 126, door 24)
 Proof: `uv run pytest tests/test_doctor.py -k opencode_plugin`
