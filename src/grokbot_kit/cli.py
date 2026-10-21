@@ -34,6 +34,8 @@ def build_parser() -> "argparse.ArgumentParser":
     run.add_argument("--timeout", help="duration such as 30m, 2h or 1d; defaults to timeouts.<tier> in the config")
     run.add_argument("--cwd")
     run.add_argument("--prompt-file")
+    run.add_argument("--plugin", help="run a plugin (see: grokbot-kit plugin list); the prompt comes from it")
+    run.add_argument("--input", action="append", default=[], metavar="KEY=VALUE", help="a plugin input; repeatable")
     run.add_argument("extras", nargs="*", metavar="-- ARGS", help="passed verbatim to the agent CLI")
 
     emit = sub.add_parser("emit", help="called by agent hooks inside a task")

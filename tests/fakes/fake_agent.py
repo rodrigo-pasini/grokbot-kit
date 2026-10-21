@@ -4,7 +4,8 @@
 Comportamento por env: `FAKE_RECORD` (grava argv, stdin, env e cwd), `FAKE_STDOUT` (saída), `FAKE_LAST_MESSAGE`
 (conteúdo do `-o` do codex), `FAKE_NEEDS_INPUT=1` (registra um `needs_input` no task dir; um objeto JSON no lugar
 do `1` entra como campos extras desse evento, ex. `transcript_path`), `FAKE_EMIT` (lista JSON de stdins para
-`grokbot-kit emit --from <tool>`) e `FAKE_EXIT` (exit code).
+`grokbot-kit emit --from <tool>`), `FAKE_RESULT` (conteúdo gravado em `GROKBOT_KIT_RESULT_FILE`, antes de qualquer
+espera) e `FAKE_EXIT` (exit code).
 
 Descoberta de modelos: `opencode models` imprime `FAKE_OPENCODE_MODELS` e sai com `FAKE_MODELS_EXIT`. Com
 `FAKE_ACCEPT_MODELS` (lista JSON) no env, `claude`/`codex` fazem o papel da chamada de teste de um modelo: aceitam os
@@ -144,6 +145,10 @@ if record:
             },
             f,
         )
+
+if "FAKE_RESULT" in os.environ:
+    with open(os.environ["GROKBOT_KIT_RESULT_FILE"], "w", encoding="utf-8") as f:
+        f.write(os.environ["FAKE_RESULT"])
 
 if "FAKE_LAST_MESSAGE" in os.environ and "-o" in args:
     with open(args[args.index("-o") + 1], "w", encoding="utf-8") as f:

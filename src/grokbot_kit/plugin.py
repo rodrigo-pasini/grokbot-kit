@@ -153,6 +153,8 @@ def _manifest_rules(path: Path, data: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(required, bool):
             raise PluginError(f"{MANIFEST}: inputs.{key}.required must be true or false")
         inputs[key] = {"kind": spec["kind"], "required": required}
+    if sum(spec["kind"] == "repo" for spec in inputs.values()) > 1:
+        raise PluginError(f"{MANIFEST}: at most one input of kind 'repo' (the task has one workspace)")
 
     if "capabilities" not in data:
         raise PluginError(f"{MANIFEST}: capabilities is missing")
@@ -270,6 +272,50 @@ def _describe(plugin: Plugin) -> list[str]:
     for tool, cells in matrix().items():
         lines.append(f"  {tool}: " + " ".join(f"{k}={v}" for k, v in cells.items()))
     return lines
+
+
+# ---------- tarefa de plugin ----------
+
+
+def unenforceable(plugin: Plugin, tool: str) -> str | None:
+    """`<capacidade>=<valor>` da primeira capacidade que o plugin pede e a matriz marca `unsupported` em `tool`."""
+    cells = matrix()[tool]
+    caps = plugin.manifest["capabilities"]
+    needed = [("write", caps["write"]), ("commands", ",".join(caps["commands"]) or "none")]
+    if caps["network"] == "off":
+        needed.insert(1, ("network", "off"))
+    needed.append(("workspace_config", "ignored"))
+    if (plugin.path / "skills").is_dir():
+        needed.append(("skills", "loaded"))
+    return next((f"{cap}={value}" for cap, value in needed if cells[cap] == "unsupported"), None)
+
+
+def render_prompt(plugin: Plugin, values: dict[str, str]) -> str:
+    """O prompt do plugin com `{<entrada>}` e as variáveis da door 2 substituídas; entrada opcional ausente vira ``."""
+    text = (plugin.path / plugin.manifest["prompt"]).read_text(encoding="utf-8")
+    return PLACEHOLDER_RE.sub(lambda m: values.get(m.group(1), ""), text)
+
+
+def read_result(path: Path, spec: dict[str, Any]) -> tuple[dict[str, Any] | None, str]:
+    """`(objeto, "")` com o resultado válido (door 6), ou `(None, motivo)`."""
+    try:
+        data = path.read_bytes()
+    except FileNotFoundError:
+        return None, f"the agent did not write {path.name}"
+    except OSError as e:
+        return None, f"cannot read {path}: {e.strerror or e}"
+    if len(data) > spec["max_bytes"]:
+        return None, f"{path.name} has {len(data)} bytes, more than result.max_bytes ({spec['max_bytes']})"
+    try:
+        obj = json.loads(data)
+    except ValueError:
+        return None, f"{path.name} is not valid JSON"
+    if not isinstance(obj, dict):
+        return None, f"{path.name} is not a JSON object"
+    missing = [f for f in spec["required"] if f not in obj]
+    if missing:
+        return None, f"{path.name} lacks required field(s): {', '.join(missing)}"
+    return obj, ""
 
 
 # ---------- origens ----------

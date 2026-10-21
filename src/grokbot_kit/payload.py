@@ -20,7 +20,9 @@ EXIT_REASONS = (
     "timeout",
     "interrupted",
     "needs_input",
+    "result_invalid",
 )
+PLUGIN_EVENT_KEYS = ("name", "version", "source", "commit")
 
 
 def rfc3339(moment: datetime) -> str:
@@ -65,6 +67,12 @@ def resume_hint(tool: str, session_id: str | None, codex_home: str | None) -> st
     return None
 
 
+def plugin_fields(meta: dict[str, Any]) -> dict[str, Any] | None:
+    """O campo `plugin` do evento (door 5): nome, versão, origem e commit do `meta.json`; `null` fora de plugin."""
+    recorded = meta.get("plugin")
+    return {k: recorded.get(k) for k in PLUGIN_EVENT_KEYS} if isinstance(recorded, dict) else None
+
+
 def task_event(
     meta: dict[str, Any],
     task_dir: Path,
@@ -77,6 +85,7 @@ def task_event(
     session_id: str | None = None,
     needs_input: dict[str, str | None] | None = None,
     transcript_path: str | None = None,
+    result: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if exit_reason not in EXIT_REASONS:
         raise ValueError(f"exit_reason {exit_reason!r} is not one of {', '.join(EXIT_REASONS)}")
@@ -105,6 +114,8 @@ def task_event(
         "transcript_path": transcript_path,
         "log_file": str(task_dir / "stderr.log"),
         "started_at": meta["started_at"],
+        "plugin": plugin_fields(meta),
+        "result": result,
         "timestamp": rfc3339(datetime.now(UTC)),
     }
 
@@ -159,5 +170,7 @@ def route_test_event(target: str) -> dict[str, Any]:
         "transcript_path": None,
         "log_file": None,
         "started_at": None,
+        "plugin": None,
+        "result": None,
         "timestamp": rfc3339(datetime.now(UTC)),
     }

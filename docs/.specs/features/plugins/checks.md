@@ -103,7 +103,7 @@ Proof: `uv run pytest tests/test_plugin.py -k running_task_predicate`
 **C26** - Com uma tarefa do plugin rodando, `plugin rm` e `plugin add --replace` saem com `2` listando o `task_id` em stderr, sem mudar a cópia (AC 25)
 Proof: `uv run pytest tests/test_plugin.py -k rm_and_replace_refuse_running_task`
 
-### S3 - o run executa um plugin · 6 arquivos · ~85 KB · ~22k
+### S3 - o run executa um plugin · 6 arquivos · ~85 KB · ~22k · parcial: C27-C33, C35, C38, C39 verdes; C34 com prova verde, aberto até a matriz; C36 e C37 esperam o S1
 
 **C27** - `run --plugin <teste> --input pr=https://github.com/o/r/pull/7` com a CLI falsa: o task dir tem `plugin/` igual à origem, `work/` é um clone com o PR 7 em checkout (o `gh` falso registra `pr checkout 7`), a CLI foi lançada com `cwd` = `<task_dir>/work` e o prompt tem `{pr}`, `{workspace}`, `{result_file}` e `{task_dir}` substituídos (AC 26, doors 3 e 7)
 Proof: `uv run pytest tests/test_run_plugin.py -k launches_in_clone_with_prompt`
@@ -145,7 +145,7 @@ Proof: `uv run pytest tests/test_run_plugin.py -k meta_records_plugin`
 Proof: `uv run pytest tests/test_launch_plugin.py -k argv_without_plugin_matches_baseline`
 Proof: `uv run pytest tests/test_run_plugin.py -k run_without_plugin_unchanged`
 
-### S4 - o resultado chega estruturado à routine · 4 arquivos · ~45 KB · ~12k
+### S4 - o resultado chega estruturado à routine · 4 arquivos · ~45 KB · ~12k · done (C40-C46, C59)
 
 **C40** - Com a CLI falsa saindo `0` e `result.json` válido, a routine recebe `completed`/`ok`/`success` com `result` igual ao objeto e `plugin` = `{"name", "version", "source", "commit"}` (AC 41, door 5)
 Proof: `uv run pytest tests/test_run_plugin.py -k valid_result_delivered`
