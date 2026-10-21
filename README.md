@@ -5,8 +5,8 @@ Grok Bot routine when they finish or need input.
 
 > Leia em português: [docs/pt-BR/README.md](docs/pt-BR/README.md)
 
-**Status:** pre-release. The repository scaffold is in place; the commands below are being built and are not usable
-yet.
+**Status:** `0.x`. The commands below work; the event schema `grokbot-kit.event/v1` may still change, always with a
+[CHANGELOG](CHANGELOG.md) entry.
 
 ## What it is
 
@@ -23,15 +23,39 @@ the webhook trigger of the routine of the bot that delegated the task. Other bot
 uv tool install --managed-python grokbot-kit
 ```
 
-`pipx install grokbot-kit` also works. Before the first release, install from the repository:
+`pipx install grokbot-kit` also works. To try what is on `main` before it is released:
 
 ```sh
-uv tool install git+https://github.com/rodrigo-pasini/grokbot-kit
+uv tool install --managed-python git+https://github.com/rodrigo-pasini/grokbot-kit
 ```
 
 Requires Linux and Python 3.11 or newer (`uv` manages the interpreter). The package has no runtime dependencies.
 
 ## Quick start
+
+### With a Grok Bot
+
+Send this message to the bot. It installs the [skill](#grok-bot-skill) and walks you through the setup: the kit, the
+CLIs and their login, the default CLI, the model tiers and the routine that the bot's events wake up. Replace
+`mybot` with a short name for the bot (letters, digits, `.`, `_` and `-`).
+
+```text
+Install the grokbot-kit skill and set up grokbot-kit on this box:
+1. Download https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/v0.2.0/skills/grokbot-kit/SKILL.md
+   to /home/box/agent-data/workflows/grokbot-kit/SKILL.md (create the directory).
+2. Read that skill and follow its "Setup (primeira vez)" section from start to finish, one step at a time,
+   skipping what `grokbot-kit doctor --json` shows as already done. Use "mybot" as the name of this bot.
+3. Never ask me for a secret (API key, routine URL or key) in the chat: tell me the `grokbot-kit secret set`
+   command and I run it in a terminal on the box.
+4. At the end, run `grokbot-kit doctor --json` and summarise the result and any problems.
+```
+
+The skill asks you to create the routine in the Grok Bot panel, with a webhook trigger and the routine prompt it
+gives you. Copy the routine URL and key from the panel only into the box terminal, never into the chat or a
+screenshot. When the setup ends, ask for a small task, such as "rename the variables in x.py": the bot picks the
+`trivial` tier and tells you so, and the result arrives through the routine.
+
+### By hand
 
 ```sh
 grokbot-kit setup cli add opencode
