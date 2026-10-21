@@ -32,6 +32,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C86 tests/test_redeliver.py:133 (locking)
 - last seen: 2026-10-21T00:07:45Z
 
+### L-004 - Quando um valor pode vir de duas fontes (PyPI e o --version do executável novo), o teste deve fazer as duas responderem valores diferentes, senão a fonte errada passa
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `update` · harmful: 0
+- features: kit-update
+- evidence: F3 src/grokbot_kit/update.py:286 (C22) (update)
+- last seen: 2026-10-21T19:37:04Z
+
+### L-005 - Ao contar os caminhos de saída de um ponto de entrada, conte também o except OSError de um subprocesso (executável ausente no PATH) e dê a ele uma prova
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `update` · harmful: 0
+- features: kit-update
+- evidence: src/grokbot_kit/update.py:280-281 (Test policy: ponto de entrada) (update)
+- last seen: 2026-10-21T19:37:08Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
