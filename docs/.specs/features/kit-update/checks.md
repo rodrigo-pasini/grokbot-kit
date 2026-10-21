@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/kit-update/plan.md`
 
-38 checks em 5 slices · 5 one-way doors · 0 open
+39 checks em 5 slices (C39 aditivo pela AD-037) · 5 one-way doors · 0 open
 
 Convenções das provas:
 
@@ -119,6 +119,9 @@ Proof: `uv run pytest tests/test_update.py -k apply_lock`
 **C31** - No box, com o kit instalado por `uv tool install --managed-python <wheel>` num `HOME` limpo, o plugin instalado e `GROKBOT_KIT_PYPI_URL` num receptor em `9.0.0`, `update apply` roda o `uv tool upgrade grokbot-kit` real e sai com `0`, e o plugin continua chamando `~/.local/bin/grokbot-kit` (AC 17, AC 18, door 5)
 Proof: `uv run pytest -m integration tests/integration/test_install.py -k update_apply_uv`
 
+**C39** - Com o `bin/grokbot-kit` trocado pelo instalador falso respondendo `--version` com a versão instalada, o plugin presente, `skipped` = `9.0.0` no estado e 25 linhas em stderr do instalador, `update apply` sai com `1`, stderr tem `left grokbot-kit at <instalada>; it may be pinned to a version` e exatamente as últimas 20 linhas do instalador, `install opencode` não é chamado e o estado continua com `skipped` = `9.0.0` (AC 37)
+Proof: `uv run pytest tests/test_update.py -k apply_installer_left_version`
+
 ### S4 - o bot pergunta e atualiza tudo · 3 arquivos · ~25 KB · ~6k
 
 **C32** - O `SKILL.md` cita `grokbot-kit update check --json` numa seção que vem antes de `## Setup (primeira vez)` e manda rodá-lo antes do Setup e antes de delegar uma Tarefa (AC 27)
@@ -153,8 +156,8 @@ Proof: `uv run pytest tests/test_doctor.py -k doctor_update_text_line`
 | frescor do estado (5) | ausente C1 · ok com mais de 24 h C1 · erro com mais de 1 h C1 · ok com menos de 24 h C2 · erro com menos de 1 h C2 | - |
 | `update check` exit (1) | `0` C4, C7 | - |
 | `update check` texto (3) | disponível C8 · última C8 · falhou C8 | - |
-| `update apply` exit (3) | `0` C22, C23 · `1` C24, C28, C29 · `2` C25, C27, C30 | - |
-| `update apply` caminhos de saída (10) | sucesso C22 · já na última C23 · checagem falhou C24 · instalador desconhecido C25 · tarefa rodando C27 · instalador saiu com erro C28 · instalador passou do timeout C28 · instalador fora do `PATH` C28 · plugin falhou C29 · lock de outro `apply` C30 | - |
+| `update apply` exit (3) | `0` C22, C23 · `1` C24, C28, C29, C39 · `2` C25, C27, C30 | - |
+| `update apply` caminhos de saída (11) | instalador saiu com `0` sem atualizar C39 · sucesso C22 · já na última C23 · checagem falhou C24 · instalador desconhecido C25 · tarefa rodando C27 · instalador saiu com erro C28 · instalador passou do timeout C28 · instalador fora do `PATH` C28 · plugin falhou C29 · lock de outro `apply` C30 | - |
 | `update skip` exit (2) | `0` C13 · `2` C14 | - |
 | `update later` exit (1) | `0` C16 | - |
 | `doctor --json` exit com update (1) | `0` C37 | - |
@@ -183,7 +186,7 @@ Evidência:
 - `update.py`, instalador: 3 linhas -> decide (C9 + C19/C25)
 - `update.py`, tarefa rodando: 5 casos -> decide (C26 + C27); análogo: `gc.removable` (`tests/test_gc.py`), mesma
   forma e já provado na própria camada
-- `update.py`, `apply`: 10 caminhos de saída -> ponto de entrada que decide, provado na fronteira (C22-C30)
+- `update.py`, `apply`: 11 caminhos de saída -> ponto de entrada que decide, provado na fronteira (C22-C30, C39)
 - `doctor.py`: repassa o objeto -> instrumentação, coberta por C37/C38
 
 Custo: 6 provas na própria camada e 28 na fronteira, em 3 arquivos de teste, mais 2 `-m integration` no box.
