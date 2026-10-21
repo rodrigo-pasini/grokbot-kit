@@ -41,7 +41,7 @@ curto para o bot (letras, dígitos, `.`, `_` e `-`).
 
 ```text
 Instale a skill grokbot-kit e faça o setup do grokbot-kit neste box:
-1. Baixe https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/v0.2.0/skills/grokbot-kit/SKILL.md
+1. Baixe https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md (seguindo redirects)
    para /home/box/agent-data/workflows/grokbot-kit/SKILL.md (crie o diretório).
 2. Leia essa skill e siga a seção "Setup (primeira vez)" do começo ao fim, um passo de cada vez,
    pulando o que o `grokbot-kit doctor --json` mostrar como já feito. Use "meubot" como nome deste bot.

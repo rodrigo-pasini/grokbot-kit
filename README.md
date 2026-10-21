@@ -41,7 +41,7 @@ CLIs and their login, the default CLI, the model tiers and the routine that the 
 
 ```text
 Install the grokbot-kit skill and set up grokbot-kit on this box:
-1. Download https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/v0.2.0/skills/grokbot-kit/SKILL.md
+1. Download https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md (follow redirects)
    to /home/box/agent-data/workflows/grokbot-kit/SKILL.md (create the directory).
 2. Read that skill and follow its "Setup (primeira vez)" section from start to finish, one step at a time,
    skipping what `grokbot-kit doctor --json` shows as already done. Use "mybot" as the name of this bot.
