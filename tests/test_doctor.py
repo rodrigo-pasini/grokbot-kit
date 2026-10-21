@@ -27,8 +27,9 @@ def run_doctor(kit: Kit, *args: str, **extra: str) -> subprocess.CompletedProces
 def kit_python_version() -> str:
     exe = shutil.which("grokbot-kit")
     assert exe is not None
-    shebang = Path(exe).read_text(encoding="utf-8").splitlines()[0]
-    python = shebang.removeprefix("#!").strip()
+    # o console script fica no `bin/` do venv ao lado do `python`; ler o shebang falha quando o caminho é longo e o
+    # launcher vira `#!/bin/sh` com o interpretador na segunda linha
+    python = str(Path(exe).parent / "python")
     code = "import platform; print(platform.python_version())"
     return subprocess.run([python, "-c", code], capture_output=True, text=True, check=True).stdout.strip()
 
