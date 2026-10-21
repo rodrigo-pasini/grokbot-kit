@@ -167,6 +167,15 @@ def test_check_failure_exit_zero(pkit: Kit, receiver: Receiver, response: Any) -
     assert saved["error"] == out["error"]
 
 
+# C4 - AC 5: um 2xx que não é `200` também é falha, mesmo com a versão no corpo
+def test_check_failure_exit_zero_non_200(pkit: Kit, receiver: Receiver) -> None:
+    receiver.respond((203, pypi("9.0.0")[1]))
+    out = check(pkit)
+    assert out["latest"] is None
+    assert out["update_available"] is False
+    assert "203" in out["error"]
+
+
 # C5 - AC 5, door 3
 def test_fetch_timeout_value(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, Any] = {}
@@ -617,6 +626,18 @@ def test_apply_lock(kit: Kit, receiver: Receiver) -> None:
     assert lock.exists()
 
     lock.write_text(str(dead_pid()), encoding="utf-8")
+    result = venv.apply()
+    assert result.returncode == 0, result.stderr
+    assert len(venv.upgrader_calls()) == 1
+    assert not lock.exists()
+
+
+# C30 - AC 26: um lock ilegível não tem dono vivo e é tomado
+def test_apply_lock_unreadable(kit: Kit, receiver: Receiver) -> None:
+    venv = venv_for(kit, receiver)
+    lock = kit.home / ".grokbot-kit" / "update.lock"
+    lock.parent.mkdir(parents=True)
+    lock.write_text("not a pid", encoding="utf-8")
     result = venv.apply()
     assert result.returncode == 0, result.stderr
     assert len(venv.upgrader_calls()) == 1
