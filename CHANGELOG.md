@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-21
+
+### Fixed
+
+- `grokbot-kit update apply` no longer reports `<old> -> <old>` with exit `0` when the installer leaves the version
+  unchanged, which `uv tool upgrade` does for a `grokbot-kit` installed with a pinned version (`grokbot-kit==X.Y.Z`)
+  or from a wheel file: it exits `1` saying the install may be pinned, with the tail of the installer's stderr, and
+  keeps the opencode plugin and the `skip`/`later` state as they were.
+
 ## [0.3.0] - 2026-10-21
 
 ### Added
@@ -117,7 +126,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `pytest`, `pre-commit`, CI and release workflows, Dependabot, issue and pull request templates.
 - `grokbot-kit --version`. The commands described in the README are not implemented yet.
 
-[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.0...v0.2.1

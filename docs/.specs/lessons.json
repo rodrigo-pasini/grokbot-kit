@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 9,
+  "next_id": 11,
   "lessons": [
     {
       "id": "L-001",
@@ -148,6 +148,42 @@
       ],
       "created": "2026-10-21T20:03:47Z",
       "last_seen": "2026-10-21T20:03:47Z"
+    },
+    {
+      "id": "L-009",
+      "key": "surviving_mutant::uma guarda de comparacao de versao precisa de prova nos dois lados do limite igual e menor nao so na igualdade",
+      "text": "Uma guarda de comparação de versão precisa de prova nos dois lados do limite (igual e menor), não só na igualdade",
+      "signal": "surviving_mutant",
+      "scope": "update",
+      "status": "candidate",
+      "features": [
+        "kit-update"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F11 src/grokbot_kit/update.py:288 (C39) (update)"
+      ],
+      "created": "2026-10-21T21:03:18Z",
+      "last_seen": "2026-10-21T21:03:18Z"
+    },
+    {
+      "id": "L-010",
+      "key": "surviving_mutant::quando um ac diz que um caminho de erro nao muda o estado afirme cada campo nomeado com uma precondicao nao nula",
+      "text": "Quando um AC diz que um caminho de erro não muda o estado, afirme cada campo nomeado com uma precondição não nula",
+      "signal": "surviving_mutant",
+      "scope": "update",
+      "status": "candidate",
+      "features": [
+        "kit-update"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F14 src/grokbot_kit/update.py:290 (C39, AC 37) (update)"
+      ],
+      "created": "2026-10-21T21:03:18Z",
+      "last_seen": "2026-10-21T21:03:18Z"
     }
   ]
 }

@@ -127,6 +127,7 @@ Comandos sem contrato HTTP (exit codes):
 24. IF o upgrade sai com código diferente de `0` ou passa de 300 s THEN o `apply` SHALL sair com `1`, com o código e as últimas 20 linhas de stderr do instalador em stderr, sem chamar `install opencode`
 25. IF o `install opencode` depois do upgrade sai com código diferente de `0` THEN o `apply` SHALL sair com `1` com `upgraded to <nova>, but the opencode plugin was not rewritten; run: grokbot-kit install opencode` em stderr
 26. IF outro `apply` está em curso (lock `~/.grokbot-kit/update.lock` criado com `O_CREAT | O_EXCL` cujo pid existe) THEN o `apply` SHALL sair com `2`; um lock cujo pid não existe é tomado
+37. IF o upgrade sai com `0` mas `<launch.kit_executable()> --version` não é maior que a versão instalada (instalação fixada numa versão: o `uv tool upgrade` não atualiza e sai com `0`) THEN o `apply` SHALL sair com `1`, com `<instalador> left grokbot-kit at <versão>; it may be pinned to a version: reinstall the latest grokbot-kit with the tool that installed it` e as últimas 20 linhas de stderr do instalador em stderr, sem chamar `install opencode` e sem mudar `skipped` nem `later_until` (AD-037, achado no smoke test da `0.3.0`)
 
 **Independent test:** no box, num `HOME` limpo com a `0.2.2` instalada por `uv tool install --managed-python grokbot-kit==0.2.2` e o plugin instalado, `update apply` leva a `<latest>` e o plugin passa a ser o asset da versão nova.
 
@@ -188,8 +189,8 @@ Comandos sem contrato HTTP (exit codes):
 | comando `update check` | falha no meio | AC 5, AC 6 |
 | comando `update apply` | formato de saída | AC 19, AC 20 |
 | comando `update apply` | flags e padrão | n/a - sem flags; não há `--force` (Assumptions) |
-| comando `update apply` | exit codes | AC 19-26 |
-| comando `update apply` | falha no meio | AC 24 (instalador), AC 25 (plugin depois do upgrade) |
+| comando `update apply` | exit codes | AC 19-26, AC 37 |
+| comando `update apply` | falha no meio | AC 24 (instalador), AC 37 (instalador sai com `0` sem atualizar), AC 25 (plugin depois do upgrade) |
 | comandos `update skip`, `update later` | saída, exit codes | AC 11, AC 12, AC 15 |
 | `doctor --json` | campo novo, exit code | AC 34, AC 35 |
 | `doctor` texto | linha nova | AC 36 |
