@@ -321,3 +321,81 @@ MODEL_ID_PATTERNS = [
 @pytest.mark.parametrize("pattern", MODEL_ID_PATTERNS)
 def test_no_literal_model_ids(pattern: str) -> None:
     assert not re.search(pattern, text(), re.IGNORECASE), re.search(pattern, text(), re.IGNORECASE)
+
+
+# --- kit-update (checks C32-C36; AC 27-33) ------------------------------------------------------------------------
+
+LATEST_URL = "https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md"
+UPDATE_COMMANDS = (
+    "grokbot-kit update check --json",
+    "grokbot-kit update apply",
+    "grokbot-kit update later",
+    "grokbot-kit update skip <latest>",
+)
+
+
+# C32 - AC 27
+def test_update_check_before_setup_and_task() -> None:
+    b = body()
+    s = section("Atualização")
+    assert b.index(s) < b.index("## Setup (primeira vez)") < b.index("## Tarefa")
+    p = norm(paragraph_with("`grokbot-kit update check --json`"))
+    assert p in norm(s)
+    assert "antes do setup" in p.lower()
+    assert "antes de delegar uma tarefa" in p.lower()
+    assert "`PATH`" in p
+
+
+# C33 - AC 28, AC 29
+def test_update_three_options() -> None:
+    s = norm(section("Atualização"))
+    p = norm(paragraph_with("três opções"))
+    assert p in s
+    assert "`ask` `true`" in p
+    assert "uma única pergunta" in p
+    assert "escolha múltipla" in p
+    assert "`latest`" in p
+    options = [
+        ("Atualizar agora", "`grokbot-kit update apply`"),
+        ("Agora não", "`grokbot-kit update later`"),
+        ("Pular a `<latest>`", "`grokbot-kit update skip <latest>`"),
+    ]
+    for label, command in options:
+        item = norm(paragraph_with(label))
+        assert item in s, label
+        assert command in item, (label, command)
+
+
+# C34 - AC 30
+def test_update_refreshes_skill() -> None:
+    s = norm(section("Atualização"))
+    p = norm(paragraph_with(LATEST_URL))
+    assert p in s
+    assert "`grokbot-kit update apply` sair com `0`" in p
+    assert "redirects" in p
+    assert "sobrescreva o `SKILL.md`" in p
+    assert "diretório de workflows" in p
+    assert "releia a skill" in p
+    assert p.index("baixe") < p.index("sobrescreva") < p.index("releia")
+
+
+# C35 - AC 31, AC 32
+def test_update_failure_and_silence() -> None:
+    s = norm(section("Atualização"))
+    failure = norm(paragraph_with("sair com `1` ou `2`"))
+    assert failure in s
+    assert "stderr" in failure
+    assert "siga com o que ele pediu" in failure
+    silence = norm(paragraph_with("sem mencionar atualização"))
+    assert silence in s
+    assert "`ask` `false`" in silence
+    assert "`error`" in silence
+
+
+# C36 - AC 33: os quatro `update` estão entre os comandos citados, e nenhum comando citado é `curl`
+def test_every_cited_command_exists_includes_update() -> None:
+    commands = cited_commands()
+    for command in UPDATE_COMMANDS:
+        assert command in commands, command
+    assert not any(c.split()[0] == "curl" for c in sh_commands())
+    assert not re.search(r"`curl\s", text())

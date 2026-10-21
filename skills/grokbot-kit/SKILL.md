@@ -28,6 +28,28 @@ diretório de workflows do Grok Bot; no box, `/home/box/agent-data/workflows/gro
   valor, e avise que ele vazou e precisa regenerar a key no painel da routine (ou no painel de quem a emitiu) e
   gravar a nova com `grokbot-kit secret set <nome>` pelo campo mascarado de segredos.
 
+## Atualização
+
+Antes do Setup e antes de delegar uma Tarefa, se `grokbot-kit` estiver no `PATH`, rode
+`grokbot-kit update check --json` para saber se há versão nova do kit.
+
+Com `ask` `false`, ou com `error` preenchido, siga sem mencionar atualização.
+
+Com `ask` `true`, faça uma única pergunta de escolha múltipla, com três opções, e rode o comando da opção escolhida,
+trocando `<latest>` pelo campo `latest` da saída:
+
+- Atualizar agora para a `<latest>`: `grokbot-kit update apply`.
+- Agora não (pergunta de novo em 24 h): `grokbot-kit update later`.
+- Pular a `<latest>` (pergunta de novo só quando sair uma versão maior): `grokbot-kit update skip <latest>`.
+
+Se o `grokbot-kit update apply` sair com `0`, baixe com suas próprias ferramentas, seguindo redirects,
+`https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md`, sobrescreva o `SKILL.md` do
+diretório de workflows desta skill (no box, `/home/box/agent-data/workflows/grokbot-kit/SKILL.md`) e releia a skill
+antes de seguir.
+
+Se o `grokbot-kit update apply` sair com `1` ou `2`, conte ao usuário a mensagem de stderr e siga com o que ele pediu
+na versão instalada.
+
 ## Setup (primeira vez)
 
 ### 1. Instalar o kit
