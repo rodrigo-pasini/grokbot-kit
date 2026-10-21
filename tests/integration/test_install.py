@@ -7,6 +7,7 @@ no box; o ambiente da ferramenta e o executável ficam no `HOME` limpo.
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -107,18 +108,70 @@ def test_update_installer_uv(tmp_path: Path) -> None:
     assert json.loads(result.stdout)["installer"] == "uv"
 
 
-# C31 - kit-update AC 17, AC 18, door 5
+def clean_env(home: Path) -> dict[str, str]:
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("UV_", "XDG_", "VIRTUAL_ENV", "PYTHON"))}
+    env.update(
+        HOME=str(home),
+        PATH=os.pathsep.join([str(home / ".local" / "bin"), os.path.dirname(uv()), "/usr/bin", "/bin"]),
+        UV_CACHE_DIR=uv_dir("cache", "dir"),
+        UV_PYTHON_INSTALL_DIR=uv_dir("python", "dir"),
+    )
+    return env
+
+
+def build_wheel_as(tmp_path: Path, version: str, out: Path) -> None:
+    """Uma wheel deste checkout com a versão trocada, para um upgrade real sem passar pelo PyPI."""
+    src = tmp_path / f"src-{version}"
+    shutil.copytree(ROOT / "src", src / "src", ignore=shutil.ignore_patterns("__pycache__"))
+    for name in ("README.md", "LICENSE"):
+        shutil.copy(ROOT / name, src / name)
+    text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    (src / "pyproject.toml").write_text(
+        re.sub(r'(?m)^version = ".*"$', f'version = "{version}"', text), encoding="utf-8"
+    )
+    subprocess.run([uv(), "build", "--wheel", "-o", str(out)], cwd=src, capture_output=True, check=True)
+
+
+# C31 - kit-update AC 17, AC 18, AC 19, door 5 (AD-037)
 def test_update_apply_uv(tmp_path: Path, receiver: "Receiver") -> None:
-    home, env, exe = install_kit(tmp_path)
+    links = tmp_path / "links"
+    build_wheel_as(tmp_path, "50.0.0", links)
+    home = tmp_path / "home"
+    home.mkdir()
+    env = clean_env(home)
+    installed = subprocess.run(
+        [uv(), "tool", "install", "--managed-python", "--find-links", str(links), "grokbot-kit"],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
+    )
+    assert installed.returncode == 0, installed.stderr
+    exe = home / ".local" / "bin" / "grokbot-kit"
     plugin = subprocess.run([str(exe), "install", "opencode"], env=env, capture_output=True, check=False)
     assert plugin.returncode == 0, plugin.stderr
-    receiver.respond((200, json.dumps({"info": {"version": "9.0.0"}})))
+    build_wheel_as(tmp_path, "50.0.1", links)
+    receiver.respond((200, json.dumps({"info": {"version": "99.0.0"}})))
     env["GROKBOT_KIT_PYPI_URL"] = receiver.url
     result = subprocess.run(
         [str(exe), "update", "apply"], capture_output=True, text=True, env=env, timeout=600, check=False
     )
     assert result.returncode == 0, result.stderr
-    assert result.stdout.startswith("grokbot-kit ")
-    assert " -> " in result.stdout
-    plugin = (home / ".config" / "opencode" / "plugins" / "grokbot-kit.ts").read_text(encoding="utf-8")
-    assert f"const GROKBOT_KIT = {json.dumps(str(exe))}" in plugin
+    assert result.stdout == "grokbot-kit 50.0.0 -> 50.0.1\n"
+    plugin_text = (home / ".config" / "opencode" / "plugins" / "grokbot-kit.ts").read_text(encoding="utf-8")
+    assert f"const GROKBOT_KIT = {json.dumps(str(exe))}" in plugin_text
+
+
+# C40 - kit-update AC 37 (AD-037)
+def test_update_apply_pinned_uv(tmp_path: Path, receiver: "Receiver") -> None:
+    _, env, exe = install_kit(tmp_path)
+    version = subprocess.run(
+        [str(exe), "--version"], capture_output=True, text=True, env=env, check=True
+    ).stdout.split()[-1]
+    receiver.respond((200, json.dumps({"info": {"version": "9.0.0"}})))
+    env["GROKBOT_KIT_PYPI_URL"] = receiver.url
+    result = subprocess.run(
+        [str(exe), "update", "apply"], capture_output=True, text=True, env=env, timeout=600, check=False
+    )
+    assert result.returncode == 1
+    assert f"uv left grokbot-kit at {version}; it may be pinned to a version" in result.stderr
