@@ -8,6 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `grokbot-kit update check [--json]` tells whether PyPI has a newer `grokbot-kit` (cached 24 h in
+  `~/.grokbot-kit/update.json`, 1 h after a failed check; a failed check still exits `0`); `update apply` upgrades
+  with the tool that installed the kit (`uv tool upgrade` or `pipx upgrade`, from the receipt in the tool
+  environment) and rewrites the opencode plugin with the new executable, refusing while a task runs;
+  `update skip <version>` and `update later` stop the question for that version or for 24 h.
+- `grokbot-kit doctor` reports the same check in `kit.update` (and an `update:` line in text); `problems`, `ok` and
+  the exit code do not change.
+- The `skills/grokbot-kit/` skill runs `grokbot-kit update check --json` before the Setup and before delegating a
+  task, asks once with three options (update now, not now, skip the version) and, after `update apply`, downloads
+  the skill of the latest release again. A skill from `0.2.x` does not know this: download
+  `https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md` once.
+
 ## [0.2.2] - 2026-10-21
 
 ### Added
