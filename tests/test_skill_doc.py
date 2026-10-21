@@ -120,14 +120,19 @@ def test_cli_add_and_login_per_cli() -> None:
     assert s.index("grokbot-kit setup cli add <tool>") < s.index("grokbot-kit login <tool>")
 
 
-# C130 - AC 106
+# C130 - AC 106, AD-031
 def test_never_ask_secret_in_chat() -> None:
     p = norm(paragraph_with("sender key"))
     assert p.lower().count("nunca") >= 1
     for needle in ("API key", "sender key", "URL secreta", "no chat"):
         assert needle in p, needle
     assert re.search(r"`grokbot-kit secret set <\w+>`", p)
-    assert "terminal do box" in p
+    assert "entrada padrão" in p
+    assert "ferramentas" in p
+    assert "campo mascarado" in p
+    assert re.search(r"[Nn]unca passe o valor como argumento", p)
+    assert "Só sem campo mascarado" in p
+    assert p.index("campo mascarado") < p.index("Só sem campo mascarado") < p.index("terminal do box")
 
 
 # C131 - AC 107
@@ -159,7 +164,7 @@ def test_models_refresh_and_free_first() -> None:
     assert s.index("grokbot-kit setup models refresh") < s.index("grokbot-kit setup tiers")
 
 
-# C134 - AC 110
+# C134 - AC 110, AD-031
 def test_routine_setup_order() -> None:
     s = norm(section("Routine"))
     steps = [
@@ -171,7 +176,11 @@ def test_routine_setup_order() -> None:
     ]
     positions = [s.index(step) for step in steps]
     assert positions == sorted(positions), positions
-    assert "terminal do box" in s[positions[0] : positions[2]]
+    secrets = s[positions[1] : positions[3]]
+    assert "entrada padrão" in secrets
+    preference = [secrets.index(needle) for needle in ("da routine", "campo mascarado", "terminal do box")]
+    assert preference == sorted(preference), preference
+    assert "só sem campo mascarado" in secrets
 
 
 # C135 - AC 111

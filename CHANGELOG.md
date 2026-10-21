@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- The `skills/grokbot-kit/` skill stores secrets with `grokbot-kit secret set` reading the value from standard
+  input: the bot reads the routine URL and key with its own tools or asks for each value in a masked secret field;
+  a terminal on the box is only the fallback when there is no masked field. The README quick start prompt says the
+  same and shows screenshots of a setup and a task.
+
 ## [0.2.0] - 2026-10-21
 
 ### Added
