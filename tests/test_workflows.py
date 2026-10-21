@@ -117,6 +117,32 @@ def test_dependabot_ecosystems() -> None:
         assert update["directory"] == "/"
 
 
+# C149 - AC 120, door 23
+SKILL_PATH = "skills/grokbot-kit/SKILL.md"
+SKILL_LATEST = "https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md"
+
+
+def test_release_attaches_skill() -> None:
+    jobs = load(".github/workflows/release.yml")["jobs"]
+    publish = jobs["publish"]
+    checkouts = [s for s in publish["steps"] if s.get("uses", "").startswith("actions/checkout@")]
+    assert len(checkouts) == 1
+    assert SKILL_PATH in str(checkouts[0].get("with", {}).get("sparse-checkout", ""))
+    attach = next(s for s in publish["steps"] if "gh release create" in s.get("run", ""))
+    assert "dist/*" in attach["run"] and SKILL_PATH in attach["run"]
+    assert "SKILL" not in runs(jobs["build"])
+    pypi_step = next(s for s in publish["steps"] if s.get("uses") == "pypa/gh-action-pypi-publish@release/v1")
+    assert "packages-dir" not in pypi_step.get("with", {})
+
+
+@pytest.mark.parametrize("readme", ["README.md", "docs/pt-BR/README.md"])
+def test_release_attaches_skill_readme_latest(readme: str) -> None:
+    text = (ROOT / readme).read_text(encoding="utf-8")
+    assert SKILL_LATEST in text
+    assert "/v0." not in text
+    assert "SKILL.md" not in text.replace(SKILL_LATEST, "").replace("workflows/grokbot-kit/SKILL.md", "")
+
+
 # C38 - AC 35
 def test_release_reads_no_secret() -> None:
     text = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")

@@ -41,19 +41,44 @@ CLIs and their login, the default CLI, the model tiers and the routine that the 
 
 ```text
 Install the grokbot-kit skill and set up grokbot-kit on this box:
-1. Download https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/v0.2.0/skills/grokbot-kit/SKILL.md
+1. Download https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md (follow redirects)
    to /home/box/agent-data/workflows/grokbot-kit/SKILL.md (create the directory).
 2. Read that skill and follow its "Setup (primeira vez)" section from start to finish, one step at a time,
    skipping what `grokbot-kit doctor --json` shows as already done. Use "mybot" as the name of this bot.
-3. Never ask me for a secret (API key, routine URL or key) in the chat: tell me the `grokbot-kit secret set`
-   command and I run it in a terminal on the box.
+3. Never ask me for a secret (API key, routine URL or key) in the chat: read it yourself from the routine
+   or ask me in a masked secret field, and pass it to `grokbot-kit secret set` on standard input.
 4. At the end, run `grokbot-kit doctor --json` and summarise the result and any problems.
 ```
 
-The skill asks you to create the routine in the Grok Bot panel, with a webhook trigger and the routine prompt it
-gives you. Copy the routine URL and key from the panel only into the box terminal, never into the chat or a
-screenshot. When the setup ends, ask for a small task, such as "rename the variables in x.py": the bot picks the
+The bot creates the routine, with a webhook trigger and the routine prompt from the skill, or asks you to create it
+in the Grok Bot panel. It reads the routine URL and key itself or asks for each one in a masked secret field, never
+in the chat or a screenshot. When the setup ends, ask for a small task, such as "rename the variables in x.py": the bot picks the
 `trivial` tier and tells you so, and the result arrives through the routine.
+
+<details>
+<summary>Screenshots of a setup and a task (Grok Bot, in Portuguese)</summary>
+
+**1. The message and the choice of CLIs**
+
+![1. The message and the choice of CLIs](https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/main/docs/images/quickstart/01-pedido-e-clis.png)
+
+**2. opencode installed, free models without login**
+
+![2. opencode installed, free models without login](https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/main/docs/images/quickstart/02-login.png)
+
+**3. Model tiers and the routine created by the bot**
+
+![3. Model tiers and the routine created by the bot](https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/main/docs/images/quickstart/03-tiers-e-routine.png)
+
+**4. Routine URL and key through the masked secret field**
+
+![4. Routine URL and key through the masked secret field](https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/main/docs/images/quickstart/04-segredos.png)
+
+**5. A task delegated to opencode, with the result back through the routine**
+
+![5. A task delegated to opencode, with the result back through the routine](https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/main/docs/images/quickstart/05-tarefa.png)
+
+</details>
 
 ### By hand
 

@@ -19,11 +19,14 @@ diretório de workflows do Grok Bot; no box, `/home/box/agent-data/workflows/gro
 - Nunca invente um id de modelo, um comando ou uma flag. Use só o que esta skill cita e o que o `--help` do
   `grokbot-kit` mostra; um id de modelo só existe depois que `grokbot-kit setup models refresh` o descobriu.
 - Nunca peça que o usuário cole no chat uma API key, uma sender key ou uma URL secreta (a URL do webhook da routine
-  é secreta). Segredo entra só por `grokbot-kit secret set <nome>`, que o usuário roda num terminal do box e que lê
-  o valor sem eco.
+  é secreta). Segredo entra só por `grokbot-kit secret set <nome>`, com o valor na entrada padrão: lido pelas suas
+  próprias ferramentas (a URL e a key de uma routine deste bot) ou pedido ao usuário num campo mascarado de
+  segredos, que guarda o valor fora do chat. Nunca passe o valor como argumento, nunca o mostre, repita ou registre.
+  Só sem campo mascarado peça que o usuário rode `grokbot-kit secret set <nome>` num terminal do box, que lê o
+  valor sem eco.
 - Se o usuário colar um segredo no chat ou mandar um print em que a key aparece: não grave o valor, não repita o
   valor, e avise que ele vazou e precisa regenerar a key no painel da routine (ou no painel de quem a emitiu) e
-  gravar a nova com `grokbot-kit secret set <nome>` num terminal do box.
+  gravar a nova com `grokbot-kit secret set <nome>` pelo campo mascarado de segredos.
 
 ## Setup (primeira vez)
 
@@ -78,8 +81,8 @@ Depois, para cada CLI, pergunte o método de login: assinatura ou API key.
 
 - Assinatura: peça que o usuário rode `grokbot-kit login <tool> --method subscription` num terminal do box e siga o
   que a CLI pedir.
-- API key: peça que o usuário rode `grokbot-kit secret set <tool>-api-key` num terminal do box e cole a key lá, nunca
-  no chat; depois rode `grokbot-kit login <tool> --method api-key`.
+- API key: peça a key no campo mascarado de segredos (nunca no chat) e grave-a pela entrada padrão de
+  `grokbot-kit secret set <tool>-api-key`; depois rode `grokbot-kit login <tool> --method api-key`.
 
 ```sh
 grokbot-kit login <tool> --method subscription
@@ -129,12 +132,14 @@ com letras, dígitos, `.`, `_` e `-`.
 Antes de tudo, avise: a key da routine (`crsr_…`) não pode aparecer em print, colagem ou mensagem, porque um print
 vai para o chat e a key vaza (já aconteceu).
 
-1. Abra o painel do Grok Bot e crie uma routine para este bot com webhook trigger, usando o prompt de routine
-   abaixo.
-2. Num terminal do box, grave a URL do campo "POST para" do painel, copiada pelo campo e colada só no terminal:
-   `grokbot-kit secret set <bot>-url`.
-3. No mesmo terminal, grave a key `crsr_…` do painel: `grokbot-kit secret set <bot>-key`.
-4. Crie a rota e teste a entrega:
+1. Crie uma routine para este bot com webhook trigger, usando o prompt de routine abaixo. Se suas ferramentas criam
+   routines, crie você mesmo; senão, peça ao usuário: abra o painel do Grok Bot e crie a routine.
+2. Grave a URL de "POST para" da routine com `grokbot-kit secret set <bot>-url` e depois a key `crsr_…` com
+   `grokbot-kit secret set <bot>-key`, cada valor pela entrada padrão do comando, nesta ordem de preferência:
+   - leia os dois valores da routine com suas próprias ferramentas, sem mostrá-los;
+   - senão, peça cada um ao usuário num campo mascarado de segredos (ele copia do painel da routine e cola no campo);
+   - só sem campo mascarado, peça que o usuário rode os dois comandos num terminal do box.
+3. Crie a rota e teste a entrega:
 
 ```sh
 grokbot-kit route add <bot> --url-secret <bot>-url --key-secret <bot>-key

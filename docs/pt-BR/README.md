@@ -41,19 +41,44 @@ curto para o bot (letras, dígitos, `.`, `_` e `-`).
 
 ```text
 Instale a skill grokbot-kit e faça o setup do grokbot-kit neste box:
-1. Baixe https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/v0.2.0/skills/grokbot-kit/SKILL.md
+1. Baixe https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md (seguindo redirects)
    para /home/box/agent-data/workflows/grokbot-kit/SKILL.md (crie o diretório).
 2. Leia essa skill e siga a seção "Setup (primeira vez)" do começo ao fim, um passo de cada vez,
    pulando o que o `grokbot-kit doctor --json` mostrar como já feito. Use "meubot" como nome deste bot.
-3. Nunca me peça um segredo (API key, URL ou key da routine) no chat: me diga o comando
-   `grokbot-kit secret set` e eu rodo num terminal do box.
+3. Nunca me peça um segredo (API key, URL ou key da routine) no chat: leia você mesmo da routine
+   ou me peça num campo mascarado de segredos, e passe pela entrada padrão do `grokbot-kit secret set`.
 4. No fim, rode `grokbot-kit doctor --json` e resuma o resultado e os problemas.
 ```
 
-A skill pede que você crie a routine no painel do Grok Bot, com webhook trigger e o prompt de routine que ela
-fornece. Copie a URL e a key da routine do painel só para o terminal do box, nunca para o chat ou um print. Com o
-setup pronto, peça uma tarefa pequena, como "renomeie as variáveis de x.py": o bot escolhe o tier `trivial`, avisa a
+O bot cria a routine, com webhook trigger e o prompt de routine da skill, ou pede que você a crie no painel do Grok
+Bot. A URL e a key da routine ele lê sozinho ou pede uma a uma num campo mascarado de segredos, nunca no chat ou
+num print. Com o setup pronto, peça uma tarefa pequena, como "renomeie as variáveis de x.py": o bot escolhe o tier `trivial`, avisa a
 escolha, e o resultado chega pela routine.
+
+<details>
+<summary>Prints de um setup e de uma tarefa</summary>
+
+**1. A mensagem e a escolha das CLIs**
+
+![1. A mensagem e a escolha das CLIs](https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/main/docs/images/quickstart/01-pedido-e-clis.png)
+
+**2. opencode instalado, modelos gratuitos sem login**
+
+![2. opencode instalado, modelos gratuitos sem login](https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/main/docs/images/quickstart/02-login.png)
+
+**3. Tiers de modelo e a routine criada pelo bot**
+
+![3. Tiers de modelo e a routine criada pelo bot](https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/main/docs/images/quickstart/03-tiers-e-routine.png)
+
+**4. URL e key da routine pelo campo mascarado de segredos**
+
+![4. URL e key da routine pelo campo mascarado de segredos](https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/main/docs/images/quickstart/04-segredos.png)
+
+**5. Uma tarefa delegada ao opencode, com o resultado de volta pela routine**
+
+![5. Uma tarefa delegada ao opencode, com o resultado de volta pela routine](https://raw.githubusercontent.com/rodrigo-pasini/grokbot-kit/main/docs/images/quickstart/05-tarefa.png)
+
+</details>
 
 ### À mão
 

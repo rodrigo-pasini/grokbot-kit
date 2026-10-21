@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/agent-run-notify/plan.md`
 
-148 checks em 9 slices (C146-C148 acrescentados na verificação) · 11 one-way doors · 3 open, das quais 1 bloqueia (pergunta 2 → C66, C69)
+149 checks em 9 slices (C146-C148 acrescentados na verificação, C149 pela AD-032) · 11 one-way doors · 3 open, das quais 1 bloqueia (pergunta 2 → C66, C69)
 
 Convenções das provas:
 
@@ -424,7 +424,7 @@ Proof: `uv run pytest tests/test_skill_doc.py -k single_multichoice_cli_question
 **C129** - O `SKILL.md` instrui `grokbot-kit setup cli add` e, por CLI, perguntar assinatura ou API key e rodar `grokbot-kit login` (AC 105)
 Proof: `uv run pytest tests/test_skill_doc.py -k cli_add_and_login_per_cli`
 
-**C130** - O `SKILL.md` proíbe pedir key, sender key ou URL secreta no chat e instrui `grokbot-kit secret set <name>` num terminal do box (AC 106)
+**C130** - O `SKILL.md` proíbe pedir key, sender key ou URL secreta no chat e instrui `grokbot-kit secret set <name>` com o valor na entrada padrão, vindo das ferramentas do bot ou de um campo mascarado de segredos, nunca como argumento, e o terminal do box só sem campo mascarado (AC 106; revisada pela AD-031)
 Proof: `uv run pytest tests/test_skill_doc.py -k never_ask_secret_in_chat`
 
 **C131** - O `SKILL.md` instrui, diante de segredo colado ou print com a key, avisar para regenerar no painel e gravar de novo com `grokbot-kit secret set`, sem gravar nem repetir o valor (AC 107)
@@ -436,7 +436,7 @@ Proof: `uv run pytest tests/test_skill_doc.py -k default_cli_step`
 **C133** - O `SKILL.md` instrui `grokbot-kit setup models refresh` e propor tiers só com ids descobertos, com os gratuitos do opencode primeiro em `trivial` e `standard` (AC 109)
 Proof: `uv run pytest tests/test_skill_doc.py -k models_refresh_and_free_first`
 
-**C134** - O `SKILL.md` instrui criar a routine com webhook trigger, `grokbot-kit secret set <bot>-url` e `grokbot-kit secret set <bot>-key` no terminal, `grokbot-kit route add` e `grokbot-kit route test`, nessa ordem (AC 110)
+**C134** - O `SKILL.md` instrui criar a routine com webhook trigger, `grokbot-kit secret set <bot>-url` e `grokbot-kit secret set <bot>-key` pela entrada padrão, preferindo ler os valores da routine, depois um campo mascarado de segredos e só então o terminal do box, e `grokbot-kit route add` e `grokbot-kit route test`, nessa ordem (AC 110; revisada pela AD-031)
 Proof: `uv run pytest tests/test_skill_doc.py -k routine_setup_order`
 
 **C135** - No `SKILL.md`, o aviso de que a key não pode aparecer em print, colagem ou mensagem vem antes do passo de abrir o painel da routine (AC 111)
@@ -485,6 +485,13 @@ Proof: `uv run pytest tests/test_run_guards.py -k other_refusals_exit_2`
 **C148** - `--prompt-file <f>` acrescenta o conteúdo de `<f>` como último argumento da CLI, depois dos extras de `--` (door 13)
 Proof: `uv run pytest tests/test_run_guards.py -k prompt_file_appended_last`
 
+### Acréscimos depois do UAT do S8 (21/10/2026, aprovados pelo Rodrigo)
+
+A AD-032 abre a door 23; este check é aditivo e não muda nenhum aprovado.
+
+**C149** - O job `publish` do `release.yml` faz checkout de `skills/grokbot-kit/SKILL.md` e o `gh release create` anexa esse arquivo junto com `dist/*`, sem que ele entre no artefato `dist` enviado ao PyPI; os dois READMEs baixam a skill de `https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md` e de nenhuma URL com tag (AC 120, door 23)
+Proof: `uv run pytest tests/test_workflows.py -k release_attaches_skill`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -528,6 +535,7 @@ Proof: `uv run pytest tests/test_run_guards.py -k prompt_file_appended_last`
 | `grokbot-kit setup tiers`: exit codes (2) | `0` C146 · `2` C146 | - |
 | `grokbot-kit run`: demais recusas com `2` (4) | sink fora de `[sinks]` C147 · `--label` inválido C147 · `--cwd` não diretório C147 · `--prompt-file` ilegível C147 | - |
 | door 13: repasse à CLI (2) | extras depois de `--` C148 · conteúdo do `--prompt-file` por último C148 | - |
+| door 23: onde a skill aparece (2) | arquivo `SKILL.md` no GitHub Release C149 · URL `latest` nos dois READMEs C149 | - |
 
 - Claims que nomeiam status HTTP, exit code ou forma de resposta: C54, C72, C76-C94, C101-C122 - cada um tem prova que cruza a fronteira (receptor HTTP local ou subprocesso do executável)
 - Nenhum outro check afirma mais do que o caso único que a sua prova exercita
@@ -584,3 +592,6 @@ Os arquivos ainda não existem, então o tamanho é projetado: KB estimados por 
 - Mechanism (lote S7): um builder
 - Lote S8 (C126-C145, 20/10/2026): arquivos tocados ≈ 49 KB (`SKILL.md`, `tests/test_skill_doc.py`, e pela door 22 `setup.py`, `cli.py`, `tests/test_setup_tiers.py` e `CHANGELOG.md`) ≈ 12k, mais a leitura fixa de `plan.md` (78 KB) e deste arquivo (50 KB) ≈ 32k: 44k, abaixo do budget de 150k
 - Mechanism (lote S8): um builder
+- Revisão AD-031 (21/10/2026, depois do UAT do S8): C130 e C134 reescritas com o ok do Rodrigo; arquivos tocados ≈ 30 KB (`SKILL.md`, `tests/test_skill_doc.py`, os dois READMEs, `CHANGELOG.md`) ≈ 8k, mais a leitura fixa ≈ 32k: 40k, abaixo do budget de 150k
+- Mechanism (revisão AD-031): um builder
+- Door 23 (AD-032, 21/10/2026): arquivos tocados ≈ 12 KB (`release.yml`, `tests/test_workflows.py`, os dois READMEs) ≈ 3k, mais a leitura fixa ≈ 32k: 35k, abaixo do budget de 150k; um builder

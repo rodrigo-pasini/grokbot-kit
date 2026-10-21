@@ -8,6 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-21
+
+### Added
+
+- Each GitHub Release carries `SKILL.md` (the `skills/grokbot-kit/` skill of that tag), so
+  `https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md` always gives the skill of the
+  latest release; the README quick start prompt downloads it from there.
+
+### Changed
+
+- The `skills/grokbot-kit/` skill stores secrets with `grokbot-kit secret set` reading the value from standard
+  input: the bot reads the routine URL and key with its own tools or asks for each value in a masked secret field;
+  a terminal on the box is only the fallback when there is no masked field. The README quick start prompt says the
+  same and shows screenshots of a setup and a task.
+
 ## [0.2.0] - 2026-10-21
 
 ### Added
@@ -78,6 +93,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `pytest`, `pre-commit`, CI and release workflows, Dependabot, issue and pull request templates.
 - `grokbot-kit --version`. The commands described in the README are not implemented yet.
 
-[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/rodrigo-pasini/grokbot-kit/releases/tag/v0.1.0
