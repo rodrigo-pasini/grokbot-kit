@@ -465,6 +465,8 @@ def test_apply_rewrites_plugin_with_new_exe(kit: Kit, receiver: Receiver, plugin
 # C22 - AC 19
 def test_apply_success_output_and_state(kit: Kit, receiver: Receiver) -> None:
     venv = venv_for(kit, receiver)
+    # o PyPI diz 8.0.0 e o executável novo responde 9.0.0: a `<nova>` vem do `--version` do executável
+    receiver.respond(pypi("8.0.0"))
     write_plugin(kit.home)
     write_state(kit.home, skipped="9.0.0", later_until=stamp(datetime.now(UTC) + timedelta(hours=5)))
     result = venv.apply()
@@ -572,6 +574,18 @@ def test_apply_installer_failed_timeout(monkeypatch: pytest.MonkeyPatch, tmp_pat
     assert update.apply() == 1
     calls = [json.loads(line) for line in (tmp_path / "calls.jsonl").read_text(encoding="utf-8").splitlines()]
     assert [c["tool"] for c in calls] == ["upgrader:uv"]
+
+
+# C28 - AC 24: o instalador do recibo não existe no `PATH`
+def test_apply_installer_failed_not_found(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, receiver: Receiver, capsys: pytest.CaptureFixture[str]
+) -> None:
+    in_process(monkeypatch, tmp_path, receiver)
+    empty = tmp_path / "empty-bin"
+    empty.mkdir()
+    monkeypatch.setenv("PATH", str(empty))
+    assert update.apply() == 1
+    assert capsys.readouterr().err.startswith("cannot run uv:")
 
 
 # C29 - AC 25
