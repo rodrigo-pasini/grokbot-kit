@@ -62,6 +62,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: src/grokbot_kit/update.py:280-281 (Test policy: ponto de entrada) (update)
 - last seen: 2026-10-21T20:03:47Z
 
+### L-009 - Uma guarda de comparação de versão precisa de prova nos dois lados do limite (igual e menor), não só na igualdade
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `update` · harmful: 0
+- features: kit-update
+- evidence: F11 src/grokbot_kit/update.py:288 (C39) (update)
+- last seen: 2026-10-21T21:03:18Z
+
+### L-010 - Quando um AC diz que um caminho de erro não muda o estado, afirme cada campo nomeado com uma precondição não nula
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `update` · harmful: 0
+- features: kit-update
+- evidence: F14 src/grokbot_kit/update.py:290 (C39, AC 37) (update)
+- last seen: 2026-10-21T21:03:18Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
