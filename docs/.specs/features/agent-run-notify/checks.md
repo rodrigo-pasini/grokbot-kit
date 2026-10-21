@@ -424,7 +424,7 @@ Proof: `uv run pytest tests/test_skill_doc.py -k single_multichoice_cli_question
 **C129** - O `SKILL.md` instrui `grokbot-kit setup cli add` e, por CLI, perguntar assinatura ou API key e rodar `grokbot-kit login` (AC 105)
 Proof: `uv run pytest tests/test_skill_doc.py -k cli_add_and_login_per_cli`
 
-**C130** - O `SKILL.md` proíbe pedir key, sender key ou URL secreta no chat e instrui `grokbot-kit secret set <name>` num terminal do box (AC 106)
+**C130** - O `SKILL.md` proíbe pedir key, sender key ou URL secreta no chat e instrui `grokbot-kit secret set <name>` com o valor na entrada padrão, vindo das ferramentas do bot ou de um campo mascarado de segredos, nunca como argumento, e o terminal do box só sem campo mascarado (AC 106; revisada pela AD-031)
 Proof: `uv run pytest tests/test_skill_doc.py -k never_ask_secret_in_chat`
 
 **C131** - O `SKILL.md` instrui, diante de segredo colado ou print com a key, avisar para regenerar no painel e gravar de novo com `grokbot-kit secret set`, sem gravar nem repetir o valor (AC 107)
@@ -436,7 +436,7 @@ Proof: `uv run pytest tests/test_skill_doc.py -k default_cli_step`
 **C133** - O `SKILL.md` instrui `grokbot-kit setup models refresh` e propor tiers só com ids descobertos, com os gratuitos do opencode primeiro em `trivial` e `standard` (AC 109)
 Proof: `uv run pytest tests/test_skill_doc.py -k models_refresh_and_free_first`
 
-**C134** - O `SKILL.md` instrui criar a routine com webhook trigger, `grokbot-kit secret set <bot>-url` e `grokbot-kit secret set <bot>-key` no terminal, `grokbot-kit route add` e `grokbot-kit route test`, nessa ordem (AC 110)
+**C134** - O `SKILL.md` instrui criar a routine com webhook trigger, `grokbot-kit secret set <bot>-url` e `grokbot-kit secret set <bot>-key` pela entrada padrão, preferindo ler os valores da routine, depois um campo mascarado de segredos e só então o terminal do box, e `grokbot-kit route add` e `grokbot-kit route test`, nessa ordem (AC 110; revisada pela AD-031)
 Proof: `uv run pytest tests/test_skill_doc.py -k routine_setup_order`
 
 **C135** - No `SKILL.md`, o aviso de que a key não pode aparecer em print, colagem ou mensagem vem antes do passo de abrir o painel da routine (AC 111)
@@ -584,3 +584,5 @@ Os arquivos ainda não existem, então o tamanho é projetado: KB estimados por 
 - Mechanism (lote S7): um builder
 - Lote S8 (C126-C145, 20/10/2026): arquivos tocados ≈ 49 KB (`SKILL.md`, `tests/test_skill_doc.py`, e pela door 22 `setup.py`, `cli.py`, `tests/test_setup_tiers.py` e `CHANGELOG.md`) ≈ 12k, mais a leitura fixa de `plan.md` (78 KB) e deste arquivo (50 KB) ≈ 32k: 44k, abaixo do budget de 150k
 - Mechanism (lote S8): um builder
+- Revisão AD-031 (21/10/2026, depois do UAT do S8): C130 e C134 reescritas com o ok do Rodrigo; arquivos tocados ≈ 30 KB (`SKILL.md`, `tests/test_skill_doc.py`, os dois READMEs, `CHANGELOG.md`) ≈ 8k, mais a leitura fixa ≈ 32k: 40k, abaixo do budget de 150k
+- Mechanism (revisão AD-031): um builder
