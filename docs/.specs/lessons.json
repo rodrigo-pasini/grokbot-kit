@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 4,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "ac_gap::write repository state proofs against refs and facts that stay true after the step never against a local branch ref or a one time precondition",
+      "text": "Write repository-state proofs against refs and facts that stay true after the step, never against a local branch ref or a one-time precondition",
+      "signal": "ac_gap",
+      "scope": "repo-setup",
+      "status": "candidate",
+      "features": [
+        "agent-run-notify"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C30 checks.md:109; C25 checks.md:94 (repo-setup)"
+      ],
+      "created": "2026-10-21T00:07:45Z",
+      "last_seen": "2026-10-21T00:07:45Z"
+    },
+    {
+      "id": "L-002",
+      "key": "ac_gap::give every usage refusal an entry point has its own boundary test not only the refusals the acceptance criteria name",
+      "text": "Give every usage refusal an entry point has its own boundary test, not only the refusals the acceptance criteria name",
+      "signal": "ac_gap",
+      "scope": "cli-guards",
+      "status": "candidate",
+      "features": [
+        "agent-run-notify"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/grokbot_kit/run.py:49,54,57,63 (cli-guards)"
+      ],
+      "created": "2026-10-21T00:07:45Z",
+      "last_seen": "2026-10-21T00:07:45Z"
+    },
+    {
+      "id": "L-003",
+      "key": "spec_precision_gap::when a check names an open flag such as o excl assert the flag or a behaviour only that flag produces",
+      "text": "When a check names an open flag such as O_EXCL, assert the flag or a behaviour only that flag produces",
+      "signal": "spec_precision_gap",
+      "scope": "locking",
+      "status": "candidate",
+      "features": [
+        "agent-run-notify"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C86 tests/test_redeliver.py:133 (locking)"
+      ],
+      "created": "2026-10-21T00:07:45Z",
+      "last_seen": "2026-10-21T00:07:45Z"
+    }
+  ]
+}

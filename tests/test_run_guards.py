@@ -229,3 +229,46 @@ def test_bare_rejected_for_claude_control_other_tools_launch(kit: Kit, tool: str
     result = kit.run("--tool", tool, "--target", "bot-a", "--label", "bare", "--", "--bare", "oi")
     assert result.returncode == 0, result.stderr
     assert kit.launched()["argv"][-2:] == ["--bare", "oi"]
+
+
+# C147 - Test policy "Ponto de entrada que não decide": as demais recusas do `run` saem com `2` antes do task dir
+def other_refusal(kit: Kit, cause: str) -> list[str]:
+    base = ["--target", "bot-a", "--label", "recusa"]
+    if cause == "sink da rota fora de [sinks]":
+        kit.write_config(default_config(kit.sink).replace('sinks = ["arquivo"]', 'sinks = ["arquivo", "sumido"]'))
+        return [*base, "--", "oi"]
+    if cause == "--label inválido":
+        return ["--target", "bot-a", "--label", "com espaço", "--", "oi"]
+    if cause == "--cwd não é diretório":
+        return [*base, "--cwd", str(kit.home / "nao-existe"), "--", "oi"]
+    if cause == "--prompt-file ilegível":
+        return [*base, "--prompt-file", str(kit.home / "nao-existe.txt")]
+    raise AssertionError(cause)
+
+
+@pytest.mark.parametrize(
+    ("cause", "named"),
+    [
+        ("sink da rota fora de [sinks]", "sumido"),
+        ("--label inválido", "--label"),
+        ("--cwd não é diretório", "--cwd"),
+        ("--prompt-file ilegível", "--prompt-file"),
+    ],
+)
+def test_other_refusals_exit_2(kit: Kit, cause: str, named: str) -> None:
+    result = kit.run(*other_refusal(kit, cause))
+    assert result.returncode == 2, result.stderr
+    assert named in result.stderr
+    assert kit.tasks() == []
+    assert not kit.sink.exists()
+    assert not kit.record.exists(), "o agente foi lançado"
+
+
+# C148 - door 13: `--prompt-file` acrescenta o conteúdo do arquivo como último argumento, depois dos extras
+def test_prompt_file_appended_last(kit: Kit) -> None:
+    prompt = kit.home / "prompt.txt"
+    prompt.write_text("renomeie as variáveis\nde x.py", encoding="utf-8")
+    result = kit.run("--target", "bot-a", "--label", "pf", "--prompt-file", str(prompt), "--", "--extra", "valor")
+    assert result.returncode == 0, result.stderr
+    argv = kit.launched()["argv"]
+    assert argv[-3:] == ["--extra", "valor", "renomeie as variáveis\nde x.py"]

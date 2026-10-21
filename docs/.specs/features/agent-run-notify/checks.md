@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/agent-run-notify/plan.md`
 
-145 checks em 9 slices · 11 one-way doors · 3 open, das quais 1 bloqueia (pergunta 2 → C66, C69)
+148 checks em 9 slices (C146-C148 acrescentados na verificação) · 11 one-way doors · 3 open, das quais 1 bloqueia (pergunta 2 → C66, C69)
 
 Convenções das provas:
 
@@ -91,7 +91,8 @@ Proof: `uv run pytest tests/test_repo_files.py -k door_10_tree`
 Proof: `gh auth status --active --hostname github.com --json hosts --jq '.hosts["github.com"][] | select(.active) | {login, state, scopes}' | jq -e '.login=="rodrigo-pasini" and .state=="success" and ((.scopes // "") == "" or (.scopes | test("(^|, )repo(,|$)")))'`
 
 **C25** - Antes de criar, `gh repo view rodrigo-pasini/grokbot-kit` e `git remote get-url origin` saem ambos com código diferente de `0` (AC 21)
-Proof: `! gh repo view rodrigo-pasini/grokbot-kit --json name >/dev/null 2>&1 && ! git remote get-url origin >/dev/null 2>&1`
+Proof: `grep -nE '^\| AD-024 \|.*precondições C24/C25 verdes' docs/.specs/STATE.md`
+Prova histórica, renegociada na verificação de 20/10/2026 (a precondição só vale antes da criação e não se repete); a original, rodada no build do S0 e registrada na AD-024, era `! gh repo view rodrigo-pasini/grokbot-kit --json name >/dev/null 2>&1 && ! git remote get-url origin >/dev/null 2>&1`.
 
 **C26** - `79f430f2af45c0d3ca32b72df7f00162225dfe5d` e `0c3e4a28b6e1595bc1f2fe83ee57221a51b0e17d` são ancestrais de `main`, e os 5 comandos de qualidade saem com `0` no commit enviado (AC 22)
 Proof: `git merge-base --is-ancestor 0c3e4a28b6e1595bc1f2fe83ee57221a51b0e17d main && uv sync --locked && uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest`
@@ -471,6 +472,19 @@ Proof: `uv run pytest tests/test_skill_doc.py -k install_location_and_allowed_co
 **C145** - A rubrica e os exemplos do `SKILL.md` não citam nenhum id de modelo literal; ids só vêm de `setup models refresh` (AC 109, AC 119, AD-011)
 Proof: `uv run pytest tests/test_skill_doc.py -k no_literal_model_ids`
 
+### Acréscimos da verificação (rodada 1, 20/10/2026, aprovados pelo Rodrigo)
+
+O Verifier achou a door 22 sem check e recusas do `run` e a door 13 sem prova; estes checks são aditivos e não mudam nenhum aprovado.
+
+**C146** - `grokbot-kit setup tiers <tool> <tier> <id>...` grava `[cli.<tool>.tiers] <tier>` com os ids na ordem dada, sem mexer no resto do config, e sai com `0`; sai com `2`, sem mudar o config, com tool fora de `setup.installed` (citando `grokbot-kit setup cli add <tool>`), id fora de `[cli.<tool>] models` (citando o id e `grokbot-kit setup models refresh <tool>`), tool ou tier desconhecido ou nenhum id (door 22)
+Proof: `uv run pytest tests/test_setup_tiers.py -k setup_tiers`
+
+**C147** - O `run` sai com `2` antes de criar task dir, lançar o agente ou enviar evento, citando a causa em stderr, quando a rota usa um sink fora de `[sinks]`, o `--label` foge de `^[A-Za-z0-9][A-Za-z0-9._-]*$`, o `--cwd` não é diretório ou o `--prompt-file` não pode ser lido (AC 47, Test policy "Ponto de entrada que não decide")
+Proof: `uv run pytest tests/test_run_guards.py -k other_refusals_exit_2`
+
+**C148** - `--prompt-file <f>` acrescenta o conteúdo de `<f>` como último argumento da CLI, depois dos extras de `--` (door 13)
+Proof: `uv run pytest tests/test_run_guards.py -k prompt_file_appended_last`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -511,6 +525,9 @@ Proof: `uv run pytest tests/test_skill_doc.py -k no_literal_model_ids`
 | `README.md`: seções (8) | C5, table-driven over all 8 | - |
 | `.gitignore`: padrões (10) | C16, table-driven over all 10 | - |
 | rubrica `complex` (4 classes) | C140, table-driven over all 4 | - |
+| `grokbot-kit setup tiers`: exit codes (2) | `0` C146 · `2` C146 | - |
+| `grokbot-kit run`: demais recusas com `2` (4) | sink fora de `[sinks]` C147 · `--label` inválido C147 · `--cwd` não diretório C147 · `--prompt-file` ilegível C147 | - |
+| door 13: repasse à CLI (2) | extras depois de `--` C148 · conteúdo do `--prompt-file` por último C148 | - |
 
 - Claims que nomeiam status HTTP, exit code ou forma de resposta: C54, C72, C76-C94, C101-C122 - cada um tem prova que cruza a fronteira (receptor HTTP local ou subprocesso do executável)
 - Nenhum outro check afirma mais do que o caso único que a sua prova exercita
