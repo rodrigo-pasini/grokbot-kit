@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 6,
+  "next_id": 7,
   "lessons": [
     {
       "id": "L-001",
@@ -94,6 +94,24 @@
       ],
       "created": "2026-10-21T18:42:44Z",
       "last_seen": "2026-10-21T18:42:44Z"
+    },
+    {
+      "id": "L-006",
+      "key": "spec_precision_gap::when a new case reaches code that picks between fixed problem messages the check names which message that case gets and its proof asserts that text",
+      "text": "When a new case reaches code that picks between fixed problem messages, the check names which message that case gets and its proof asserts that text",
+      "signal": "spec_precision_gap",
+      "scope": "doctor",
+      "status": "candidate",
+      "features": [
+        "agent-run-notify"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "P1 C151 tests/test_doctor.py:251 plan.md:176 src/grokbot_kit/doctor.py:108-114 (doctor)"
+      ],
+      "created": "2026-10-21T19:01:35Z",
+      "last_seen": "2026-10-21T19:01:35Z"
     }
   ]
 }
