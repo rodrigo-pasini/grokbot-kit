@@ -486,6 +486,14 @@ def test_apply_success_output_and_state(kit: Kit, receiver: Receiver) -> None:
     assert state["later_until"] is None
 
 
+# C22 - AC 19: sem `--version` legível no executável novo, a `<nova>` é o `latest` da checagem
+def test_apply_success_output_and_state_version_unreadable(kit: Kit, receiver: Receiver) -> None:
+    venv = venv_for(kit, receiver)
+    result = venv.apply(FAKE_NEW_VERSION="broken")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == f"grokbot-kit {__version__} -> 9.0.0\n"
+
+
 # C23 - AC 20
 def test_apply_already_latest(kit: Kit, receiver: Receiver) -> None:
     venv = venv_for(kit, receiver)
@@ -607,18 +615,26 @@ def test_apply_plugin_failed(kit: Kit, receiver: Receiver) -> None:
     assert message in result.stderr
 
 
-# C39 - AC 37
-def test_apply_installer_left_version(kit: Kit, receiver: Receiver) -> None:
+# C39 - AC 37: o executável novo responde a mesma versão ou uma menor que a instalada
+@pytest.mark.parametrize("left", [__version__, lower_than(__version__)], ids=["same", "lower"])
+def test_apply_installer_left_version(kit: Kit, receiver: Receiver, left: str) -> None:
     venv = venv_for(kit, receiver)
     write_plugin(kit.home)
-    write_state(kit.home, skipped="9.0.0")
-    result = venv.apply(FAKE_NEW_VERSION=__version__, FAKE_UPGRADE_STDERR_LINES="25")
+    later_until = stamp(datetime.now(UTC) + timedelta(hours=5))
+    write_state(kit.home, skipped="9.0.0", later_until=later_until)
+    result = venv.apply(FAKE_NEW_VERSION=left, FAKE_UPGRADE_STDERR_LINES="25")
     assert result.returncode == 1
-    assert f"left grokbot-kit at {__version__}; it may be pinned to a version" in result.stderr
+    message = (
+        f"uv left grokbot-kit at {left}; it may be pinned to a version: "
+        "reinstall the latest grokbot-kit with the tool that installed it"
+    )
+    assert result.stderr.splitlines()[0] == message
     for i in range(1, 26):
         assert (f"installer line {i:02d}" in result.stderr) is (i > 5), i
     assert venv.new_kit_calls() == []
-    assert read_state(kit.home)["skipped"] == "9.0.0"
+    state = read_state(kit.home)
+    assert state["skipped"] == "9.0.0"
+    assert state["later_until"] == later_until
 
 
 def dead_pid() -> int:
