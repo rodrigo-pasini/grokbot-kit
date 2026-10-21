@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/kit-update/plan.md`
 
-39 checks em 5 slices (C39 aditivo pela AD-037) · 5 one-way doors · 0 open
+40 checks em 5 slices (C39 e C40 aditivos pela AD-037) · 5 one-way doors · 0 open
 
 Convenções das provas:
 
@@ -116,8 +116,11 @@ Proof: `uv run pytest tests/test_update.py -k apply_plugin_failed`
 **C30** - Com `~/.grokbot-kit/update.lock` contendo o pid de um processo vivo, `update apply` sai com `2`; com o pid de um processo que não existe, o lock é tomado e o `apply` segue; depois do `apply`, o lock não existe (AC 26)
 Proof: `uv run pytest tests/test_update.py -k apply_lock`
 
-**C31** - No box, com o kit instalado por `uv tool install --managed-python <wheel>` num `HOME` limpo, o plugin instalado e `GROKBOT_KIT_PYPI_URL` num receptor em `9.0.0`, `update apply` roda o `uv tool upgrade grokbot-kit` real e sai com `0`, e o plugin continua chamando `~/.local/bin/grokbot-kit` (AC 17, AC 18, door 5)
+**C31** - No box, com o kit instalado sem versão fixada por `uv tool install --managed-python --find-links <dir> grokbot-kit` a partir de uma wheel deste checkout marcada `50.0.0`, num `HOME` limpo, com o plugin instalado, uma wheel `50.0.1` acrescentada a `<dir>` e `GROKBOT_KIT_PYPI_URL` num receptor em `99.0.0`, `update apply` roda o `uv tool upgrade grokbot-kit` real, sai com `0`, imprime `grokbot-kit 50.0.0 -> 50.0.1`, e o plugin continua chamando `~/.local/bin/grokbot-kit` (AC 17, AC 18, AC 19, door 5; cenário reescrito pela AD-037: o anterior, instalado do arquivo de wheel, virou a C40)
 Proof: `uv run pytest -m integration tests/integration/test_install.py -k update_apply_uv`
+
+**C40** - No box, com o kit instalado por `uv tool install --managed-python <arquivo da wheel deste checkout>` num `HOME` limpo e `GROKBOT_KIT_PYPI_URL` num receptor em `9.0.0`, `update apply` roda o `uv tool upgrade grokbot-kit` real, que não atualiza, e sai com `1` com `uv left grokbot-kit at <versão do checkout>; it may be pinned to a version` em stderr (AC 37, AD-037)
+Proof: `uv run pytest -m integration tests/integration/test_install.py -k update_apply_pinned_uv`
 
 **C39** - Com o `bin/grokbot-kit` trocado pelo instalador falso respondendo `--version` com a versão instalada, o plugin presente, `skipped` = `9.0.0` no estado e 25 linhas em stderr do instalador, `update apply` sai com `1`, stderr tem `left grokbot-kit at <instalada>; it may be pinned to a version` e exatamente as últimas 20 linhas do instalador, `install opencode` não é chamado e o estado continua com `skipped` = `9.0.0` (AC 37)
 Proof: `uv run pytest tests/test_update.py -k apply_installer_left_version`
@@ -157,7 +160,7 @@ Proof: `uv run pytest tests/test_doctor.py -k doctor_update_text_line`
 | `update check` exit (1) | `0` C4, C7 | - |
 | `update check` texto (3) | disponível C8 · última C8 · falhou C8 | - |
 | `update apply` exit (3) | `0` C22, C23 · `1` C24, C28, C29, C39 · `2` C25, C27, C30 | - |
-| `update apply` caminhos de saída (11) | instalador saiu com `0` sem atualizar C39 · sucesso C22 · já na última C23 · checagem falhou C24 · instalador desconhecido C25 · tarefa rodando C27 · instalador saiu com erro C28 · instalador passou do timeout C28 · instalador fora do `PATH` C28 · plugin falhou C29 · lock de outro `apply` C30 | - |
+| `update apply` caminhos de saída (11) | instalador saiu com `0` sem atualizar C39, C40 · sucesso C22 · já na última C23 · checagem falhou C24 · instalador desconhecido C25 · tarefa rodando C27 · instalador saiu com erro C28 · instalador passou do timeout C28 · instalador fora do `PATH` C28 · plugin falhou C29 · lock de outro `apply` C30 | - |
 | `update skip` exit (2) | `0` C13 · `2` C14 | - |
 | `update later` exit (1) | `0` C16 | - |
 | `doctor --json` exit com update (1) | `0` C37 | - |
@@ -213,4 +216,4 @@ leitura fixa de `plan.md` (18 KB) e deste arquivo (~16 KB) ≈ 9k: 34k, abaixo d
 
 - S1 = 14k; S2 a 22k; S3 a 33k; S4 a 39k; S5 a 44k (com sobreposição de arquivos; o total real é o 34k acima) → um builder
 - Mechanism: um builder
-- C10 e C31 rodam só no box (`-m integration`); o `pipx` real não existe no box
+- C10, C31 e C40 rodam só no box (`-m integration`); o `pipx` real não existe no box
