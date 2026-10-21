@@ -107,7 +107,7 @@ Proof: `uv run pytest tests/test_update.py -k running_task_predicate`
 **C27** - Com uma tarefa rodando em `~/.grokbot-kit/tasks/`, `update apply` sai com `2`, o `task_id` dela aparece em stderr e nenhum instalador é chamado (AC 23)
 Proof: `uv run pytest tests/test_update.py -k apply_refuses_running_task`
 
-**C28** - Com `FAKE_UPGRADE_EXIT=3` e 30 linhas em stderr do instalador falso, `update apply` sai com `1`, stderr tem `3` e exatamente as últimas 20 linhas, e `install opencode` não é chamado; um instalador que passa do timeout também dá `1` (AC 24)
+**C28** - Com `FAKE_UPGRADE_EXIT=3` e 30 linhas em stderr do instalador falso, `update apply` sai com `1`, stderr tem `3` e exatamente as últimas 20 linhas, e `install opencode` não é chamado; um instalador que passa do timeout também dá `1`, e um instalador que não existe no `PATH` dá `1` com `cannot run <instalador>` em stderr (AC 24; o caso do `PATH` entrou na verificação, rodada 1)
 Proof: `uv run pytest tests/test_update.py -k apply_installer_failed`
 
 **C29** - Com upgrade em `0` e o `install opencode` do executável novo saindo com `1`, `update apply` sai com `1` com `upgraded to 9.0.0, but the opencode plugin was not rewritten; run: grokbot-kit install opencode` em stderr (AC 25)
@@ -154,6 +154,7 @@ Proof: `uv run pytest tests/test_doctor.py -k doctor_update_text_line`
 | `update check` exit (1) | `0` C4, C7 | - |
 | `update check` texto (3) | disponível C8 · última C8 · falhou C8 | - |
 | `update apply` exit (3) | `0` C22, C23 · `1` C24, C28, C29 · `2` C25, C27, C30 | - |
+| `update apply` caminhos de saída (10) | sucesso C22 · já na última C23 · checagem falhou C24 · instalador desconhecido C25 · tarefa rodando C27 · instalador saiu com erro C28 · instalador passou do timeout C28 · instalador fora do `PATH` C28 · plugin falhou C29 · lock de outro `apply` C30 | - |
 | `update skip` exit (2) | `0` C13 · `2` C14 | - |
 | `update later` exit (1) | `0` C16 | - |
 | `doctor --json` exit com update (1) | `0` C37 | - |
@@ -182,7 +183,7 @@ Evidência:
 - `update.py`, instalador: 3 linhas -> decide (C9 + C19/C25)
 - `update.py`, tarefa rodando: 5 casos -> decide (C26 + C27); análogo: `gc.removable` (`tests/test_gc.py`), mesma
   forma e já provado na própria camada
-- `update.py`, `apply`: 7 caminhos de saída -> ponto de entrada que decide, provado na fronteira (C22-C30)
+- `update.py`, `apply`: 10 caminhos de saída -> ponto de entrada que decide, provado na fronteira (C22-C30)
 - `doctor.py`: repassa o objeto -> instrumentação, coberta por C37/C38
 
 Custo: 6 provas na própria camada e 28 na fronteira, em 3 arquivos de teste, mais 2 `-m integration` no box.
