@@ -276,3 +276,56 @@ def add_routine(kit: Kit, receiver: Receiver, target: str = "bot-r", headers: di
     kit.write_config(
         kit.config_text() + routine_route(target, f"rotina-{target}", f"{target}-url", f"{target}-key", headers)
     )
+
+
+PLUGIN_PROMPT = "Revise {pr} em {workspace}; grave {result_file}; task dir {task_dir}.\n"
+
+
+def plugin_manifest(name: str = "teste") -> dict[str, Any]:
+    """Manifesto válido (door 2) de um plugin de teste com uma entrada `repo` chamada `pr`."""
+    return {
+        "schema": "grokbot-kit.plugin/v0",
+        "name": name,
+        "version": "1.2.3",
+        "description": "plugin de teste",
+        "prompt": "prompt.md",
+        "inputs": {"pr": {"kind": "repo", "required": True}},
+        "capabilities": {"write": "task-dir", "network": "on", "commands": ["git", "gh pr view"]},
+        "result": {"required": ["summary"]},
+    }
+
+
+def toml_text(data: dict[str, Any]) -> str:
+    """TOML de um dicionário de escalares, listas e tabelas aninhadas (o suficiente para manifestos de teste)."""
+    lines: list[str] = []
+
+    def emit(prefix: str, table: dict[str, Any]) -> None:
+        if prefix:
+            lines.append(f"[{prefix}]")
+        lines.extend(f"{k} = {json.dumps(v)}" for k, v in table.items() if not isinstance(v, dict))
+        for k, v in table.items():
+            if isinstance(v, dict):
+                emit(f"{prefix}.{k}" if prefix else k, v)
+
+    emit("", data)
+    return "\n".join(lines) + "\n"
+
+
+def write_plugin(
+    path: Path,
+    manifest: dict[str, Any] | None = None,
+    *,
+    prompt: str = PLUGIN_PROMPT,
+    claude_name: str | None = None,
+) -> Path:
+    """Diretório de plugin no layout da door 1: `.claude-plugin/plugin.json`, `grokbot-kit.toml`, prompt e uma skill."""
+    manifest = plugin_manifest() if manifest is None else manifest
+    name = manifest.get("name", "teste")
+    (path / ".claude-plugin").mkdir(parents=True, exist_ok=True)
+    meta = {"name": claude_name or name, "version": "1.2.3", "description": "plugin de teste"}
+    (path / ".claude-plugin" / "plugin.json").write_text(json.dumps(meta), encoding="utf-8")
+    (path / "grokbot-kit.toml").write_text(toml_text(manifest), encoding="utf-8")
+    (path / "prompt.md").write_text(prompt, encoding="utf-8")
+    (path / "skills" / "teste").mkdir(parents=True, exist_ok=True)
+    (path / "skills" / "teste" / "SKILL.md").write_text("---\nname: teste\ndescription: t\n---\n", encoding="utf-8")
+    return path

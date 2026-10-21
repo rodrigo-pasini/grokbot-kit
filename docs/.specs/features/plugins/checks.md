@@ -46,7 +46,7 @@ Proof: `uv run pytest tests/test_plugin_spike.py -k host_dependent_cell_has_prob
 **C8** - A matriz que `plugin.py` usa é igual, célula a célula, à tabela de `spike.md` (AC 6, door 8)
 Proof: `uv run pytest tests/test_plugin_spike.py -k package_matrix_matches_spike`
 
-### S2 - o plugin é instalado, listado e removido · 4 arquivos · ~70 KB · ~18k
+### S2 - o plugin é instalado, listado e removido · 4 arquivos · ~70 KB · ~18k · done (C9-C26)
 
 **C9** - `plugin list --json` imprime `{"plugins": [...]}` com `code-review` e `bug-verify` (`source` `builtin`) e um plugin instalado de diretório (`source` `dir`), ordenados por `name`; cada item tem exatamente as chaves `name`, `version`, `description`, `source`, `origin`, `commit`, `inputs`, `capabilities`, `support` (AC 9, door 4)
 Proof: `uv run pytest tests/test_plugin.py -k list_json_shape`

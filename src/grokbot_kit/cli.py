@@ -97,6 +97,21 @@ def build_parser() -> "argparse.ArgumentParser":
     update_sub.add_parser("skip", help="do not ask again about this version").add_argument("version")
     update_sub.add_parser("later", help="do not ask again for 24 hours")
 
+    plugin = sub.add_parser("plugin", help="list, inspect, install and remove plugins (ready-made tasks)")
+    plugin_sub = plugin.add_subparsers(dest="plugin_command", required=True)
+    plugin_sub.add_parser("list", help="builtin and installed plugins").add_argument(
+        "--json", action="store_true", help="machine-readable output"
+    )
+    plugin_show = plugin_sub.add_parser("show", help="manifest, inputs, capabilities and support of each CLI")
+    plugin_show.add_argument("plugin", metavar="NAME_OR_ORIGIN", help="installed name, directory or git URL")
+    plugin_show.add_argument("--json", action="store_true", help="machine-readable output")
+    plugin_add = plugin_sub.add_parser("add", help="install a pinned copy of a plugin from a directory or git URL")
+    plugin_add.add_argument("origin", help="directory or git URL")
+    plugin_add.add_argument("--ref", help="git branch, tag or commit (default: the default branch)")
+    plugin_add.add_argument("--replace", action="store_true", help="install over a plugin with the same name")
+    plugin_add.add_argument("--yes", action="store_true", help="do not ask for confirmation")
+    plugin_sub.add_parser("rm", help="remove an installed plugin").add_argument("name")
+
     secret = sub.add_parser("secret", help="store secrets in ~/.secrets/grokbot-kit/ (mode 0600)")
     secret_sub = secret.add_subparsers(dest="secret_command", required=True)
     secret_sub.add_parser("set", help="read a secret from the terminal (no echo) or stdin").add_argument("name")
@@ -162,6 +177,16 @@ def main(argv: list[str] | None = None) -> int:
         if args.update_command == "apply":
             return update.apply()
         return update.skip(args.version) if args.update_command == "skip" else update.later()
+    if args.command == "plugin":
+        from grokbot_kit import plugin
+
+        if args.plugin_command == "list":
+            return plugin.list_cmd(args.json)
+        if args.plugin_command == "show":
+            return plugin.show(args.plugin, args.json)
+        if args.plugin_command == "add":
+            return plugin.add(args.origin, args.ref, args.replace, args.yes)
+        return plugin.rm(args.name)
     if args.command == "secret":
         from grokbot_kit.secret import set_secret
 

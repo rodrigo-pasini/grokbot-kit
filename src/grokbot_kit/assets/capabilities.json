@@ -1,0 +1,23 @@
+{
+  "claude": {
+    "write": "unsupported",
+    "network": "unsupported",
+    "commands": "unsupported",
+    "workspace_config": "unsupported",
+    "skills": "unsupported"
+  },
+  "opencode": {
+    "write": "unsupported",
+    "network": "unsupported",
+    "commands": "unsupported",
+    "workspace_config": "unsupported",
+    "skills": "unsupported"
+  },
+  "codex": {
+    "write": "unsupported",
+    "network": "unsupported",
+    "commands": "unsupported",
+    "workspace_config": "unsupported",
+    "skills": "unsupported"
+  }
+}
