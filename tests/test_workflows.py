@@ -117,7 +117,7 @@ def test_dependabot_ecosystems() -> None:
         assert update["directory"] == "/"
 
 
-# C149 - AC 120, door 23
+# C149 - AC 125, door 23
 SKILL_PATH = "skills/grokbot-kit/SKILL.md"
 SKILL_LATEST = "https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md"
 
