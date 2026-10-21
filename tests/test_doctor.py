@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from conftest import Kit, Receiver, closed_port_url, default_config, write_secret
+from conftest import Kit, Receiver, closed_port_url, default_config, write_plugin, write_secret
 
 from grokbot_kit import __version__, doctor
 
@@ -324,3 +324,30 @@ def test_doctor_update_text_line(kit: Kit, receiver: Receiver) -> None:
     result = run_doctor(kit, GROKBOT_KIT_PYPI_URL=receiver.url)
     assert gets(receiver) == 2
     assert not [line for line in result.stdout.splitlines() if line.startswith("update:")]
+
+
+# C58 - AC 65, AC 66
+def test_plugins_listed_and_problems(kit: Kit, tmp_path: Path) -> None:
+    assert kit.cli("install", "opencode").returncode == 0
+    code, out = report(kit)
+    assert (code, out["problems"]) == (0, [])
+    assert [(p["name"], p["source"]) for p in out["plugins"]] == [("bug-verify", "builtin"), ("code-review", "builtin")]
+    for p in out["plugins"]:
+        assert {"name", "version", "source"} <= set(p)
+
+    source = write_plugin(tmp_path / "teste")
+    assert kit.cli("plugin", "add", str(source), "--yes").returncode == 0
+    _, out = report(kit)
+    assert ("teste", "dir") in [(p["name"], p["source"]) for p in out["plugins"]]
+    (kit.home / ".grokbot-kit" / "plugins" / "teste" / "grokbot-kit.toml").write_text("name = \n", encoding="utf-8")
+    code, out = report(kit)
+    assert code == 1
+    assert len(out["problems"]) == 1, out["problems"]
+    assert "teste" not in [p["name"] for p in out["plugins"]]
+    assert [p for p in out["problems"] if "plugin teste" in p and "grokbot-kit.toml" in p], out["problems"]
+
+    _, out = report(kit, FAKE_GH_AUTH_EXIT="1")
+    assert "gh is not logged in; plugins with repo inputs cannot run" in out["problems"]
+    text = run_doctor(kit, FAKE_GH_AUTH_EXIT="1")
+    assert "problem: gh is not logged in; plugins with repo inputs cannot run" in text.stdout
+    assert "plugin code-review " in text.stdout

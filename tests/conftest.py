@@ -140,12 +140,18 @@ def clean_path() -> str:
 
 @pytest.fixture
 def fresh(tmp_path: Path) -> Kit:
-    """Box limpo: `HOME` isolado sem config, nenhuma CLI no `PATH` e `FAKE_CALLS` gravando as chamadas."""
+    """Box limpo: `HOME` isolado sem config, nenhuma CLI de agente no `PATH` e `FAKE_CALLS` gravando as chamadas.
+
+    O `gh` é o falso (logado), na frente do `/usr/bin`: o `doctor` o consulta por causa do plugin próprio
+    `code-review`, e o `gh` real do box não pode decidir um teste."""
     home = tmp_path / "home"
     home.mkdir()
+    gh_dir = tmp_path / "gh-bin"
+    gh_dir.mkdir()
+    (gh_dir / "gh").symlink_to(FAKES / "gh")
     env = {
         "HOME": str(home),
-        "PATH": clean_path(),
+        "PATH": f"{gh_dir}{os.pathsep}{clean_path()}",
         "LANG": "C.UTF-8",
         "FAKE_CALLS": str(tmp_path / "calls.jsonl"),
         "GROKBOT_KIT_PYPI_URL": closed_port_url(),

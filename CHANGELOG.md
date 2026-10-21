@@ -8,6 +8,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Plugins: ready-made tasks with their own prompt, inputs and declared capabilities (`write`, `network`,
+  `commands`). `grokbot-kit plugin list [--json]`, `plugin show <name-or-origin> [--json]`,
+  `plugin add <dir-or-git-url> [--ref <ref>] [--replace] [--yes]` and `plugin rm <name>`; installed plugins are
+  pinned copies in `~/.grokbot-kit/plugins/`. The plugin format `grokbot-kit.plugin/v0` may change before 1.0; see
+  [docs/plugins.md](docs/plugins.md).
+- `grokbot-kit run --plugin <name> --input <key>=<value>` clones the PR or branch of a `repo` input into the task
+  dir, runs the plugin prompt there and refuses (`2`, before the task dir) a CLI that cannot enforce a capability
+  the plugin declares. Until the capability matrix is proven on the box, every CLI is `unsupported`.
+- Builtin plugins `code-review` (one `COMMENT` review with inline comments on a GitHub PR) and `bug-verify` (checks
+  an error alert against the code).
+- `grokbot-kit doctor` lists the plugins (`plugins`) and the capability support of each CLI (`plugin_support`), and
+  reports an unreadable installed plugin and a `gh` that is not logged in.
+- The skill lists the plugins before delegating, runs a matching plugin instead of writing a prompt, and installs a
+  plugin only after showing its capabilities and asking.
+
+### Changed
+
+- `grokbot-kit.event/v1` gains `plugin` and `result` (`null` outside plugin tasks) and the `exit_reason`
+  `result_invalid`. A plugin task never ends as `denied`: it ends `ok` only with a valid `result.json`.
+
 ## [0.3.1] - 2026-10-21
 
 ### Fixed

@@ -32,7 +32,7 @@ acrescenta o que entra antes do lançamento e o que é conferido depois.
 5. `run.py` (exists) lança e supervisiona como hoje, com `cwd` no workspace e o prompt do plugin com as entradas
 6. ao sair, `run.py` (exists) lê o resultado (door 6), `terminal.py` (exists) classifica com a regra de plugin e
    `payload.py` (exists) monta o evento com `plugin` e `result` (door 5); `deliver.py` (exists) entrega à routine
-7. `doctor.py` (exists) lista os plugins e acusa manifesto ilegível, CLI que não impõe uma capacidade e `gh` ausente
+7. `doctor.py` (exists) lista os plugins e a matriz de suporte por CLI, e acusa manifesto ilegível e `gh` sem login
 
 ## Impact
 

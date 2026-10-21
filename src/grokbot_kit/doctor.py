@@ -1,6 +1,7 @@
 """`grokbot-kit doctor [--json]`: versões, CLIs, login, padrão, tiers, rotas e segredos (AC 100, door 21).
 
-`kit.update` traz o objeto da checagem de release (kit-update, AC 34-36, door 4).
+`kit.update` traz o objeto da checagem de release (kit-update, AC 34-36, door 4); `plugins` e `plugin_support`, os
+plugins e a matriz de capacidades por CLI (plugins, AC 65-66).
 """
 
 import json
@@ -12,6 +13,7 @@ import sys
 from typing import Any
 
 from grokbot_kit import config, launch, opencode_plugin, update
+from grokbot_kit import plugin as plugins
 from grokbot_kit.launch import TOOLS
 
 TIERS = ("trivial", "standard", "complex")
@@ -125,6 +127,9 @@ def problems(out: dict[str, Any], facts: dict[str, Any]) -> list[str]:
             found.append(f"secret {name!r} has mode {secret['mode']}, expected 0600; run: chmod 600 {name}")
     for name in facts.get("missing_secrets", []):
         found.append(f"secret {name!r} is used in the config but not found; run: grokbot-kit secret set {name}")
+    found += facts.get("plugin_problems", [])
+    if facts.get("gh_logged_in") is False:
+        found.append("gh is not logged in; plugins with repo inputs cannot run")
     return found
 
 
@@ -153,6 +158,11 @@ def collect() -> tuple[dict[str, Any], dict[str, Any]]:
     used = [sink[k] for sink in cfg.get("sinks", {}).values() for k in SECRET_KEYS if k in sink]
     used += [cli["api_key_secret"] for cli in cfg.get("cli", {}).values() if "api_key_secret" in cli]
     facts["missing_secrets"] = sorted({str(n) for n in used if str(n) not in secrets})
+    found_plugins = plugins.all_plugins()
+    facts["plugin_problems"] = plugins.installed()[1]
+    if any(spec["kind"] == "repo" for p in found_plugins for spec in p.manifest["inputs"].values()):
+        gh = _call(["gh", "auth", "status"], dict(os.environ))
+        facts["gh_logged_in"] = gh is not None and gh.returncode == 0
     out = {
         "ok": True,
         "problems": [],
@@ -162,6 +172,8 @@ def collect() -> tuple[dict[str, Any], dict[str, Any]]:
         "cli": {tool: _cli(tool, cfg.get("cli", {}).get(tool, {}), default) for tool in installed},
         "routes": {target: list(route.get("sinks", [])) for target, route in cfg.get("routes", {}).items()},
         "secrets": secrets,
+        "plugins": [{"name": p.name, "version": p.manifest["version"], "source": p.source} for p in found_plugins],
+        "plugin_support": plugins.matrix(),
     }
     return out, facts
 
@@ -186,6 +198,10 @@ def _text(out: dict[str, Any]) -> str:
         lines.append(f"route {target}: {', '.join(sinks)}")
     for name, secret in out["secrets"].items():
         lines.append(f"secret {name}: {secret['mode']}")
+    for p in out["plugins"]:
+        lines.append(f"plugin {p['name']} {p['version']} ({p['source']})")
+    for tool, cells in out["plugin_support"].items():
+        lines.append(f"plugin support {tool}: " + " ".join(f"{k}={v}" for k, v in cells.items()))
     lines += [f"problem: {p}" for p in out["problems"]] or ["ok"]
     return "\n".join(lines)
 

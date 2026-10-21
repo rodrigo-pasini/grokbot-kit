@@ -399,3 +399,54 @@ def test_every_cited_command_exists_includes_update() -> None:
         assert command in commands, command
     assert not any(c.split()[0] == "curl" for c in sh_commands())
     assert not re.search(r"`curl\s", text())
+
+
+# C54 - AC 60, AC 61
+def test_plugin_list_and_run() -> None:
+    s = norm(section("Plugins"))
+    assert "```sh grokbot-kit plugin list --json ```" in s
+    p = norm(paragraph_with("o que o kit sabe fazer"))
+    assert "antes de delegar uma tarefa" in p
+    shown = norm(paragraph_with("Mostre ao usuário o `name`"))
+    for field in ("`name`", "`description`", "`capabilities`"):
+        assert field in shown, field
+    run = norm(paragraph_with("casa com um plugin listado"))
+    assert "não escreva prompt" in run
+    assert "`grokbot-kit run --plugin <nome>`" in run
+    assert "`--input <entrada>=<valor>`" in run
+    assert (
+        "grokbot-kit run --plugin <nome> --input <entrada>=<valor> --target <este bot> --label <rótulo>"
+        in sh_commands()
+    )
+    assert "[Plugins](#plugins)" in section("Tarefa")
+
+
+# C55 - AC 62
+def test_plugin_install_confirms() -> None:
+    s = norm(section("Plugins"))
+    steps = [
+        "`grokbot-kit plugin show <origem> --json`",
+        "mostre ao usuário as `capabilities`",
+        "Pergunte se ele quer instalar",
+        "Só com o sim, rode `grokbot-kit plugin add <origem> --yes`",
+    ]
+    positions = [s.find(step) for step in steps]
+    assert -1 not in positions, list(zip(steps, positions, strict=True))
+    assert positions == sorted(positions)
+    assert s.count("plugin add") == 1, "o `plugin add` só aparece depois do sim"
+
+
+# C56 - AC 63
+def test_plugin_commands_exist_in_help() -> None:
+    for command in sh_commands():
+        assert not command.startswith("curl"), command
+    assert not [c for c in cited_commands() if "curl" in c]
+    plugin_commands = [c for c in cited_commands() if "plugin" in c]
+    assert len(plugin_commands) >= 4, plugin_commands
+    for command in plugin_commands:
+        tokens = shlex.split(command.replace("<", "'<").replace(">", ">'"))[1:]
+        words = [t for t in tokens[:2] if re.fullmatch(r"[a-z][a-z-]*", t)]
+        result = help_of(words)
+        assert result.returncode == 0, (command, result.stderr)
+        for flag in re.findall(r"(?<!\S)(--[a-z][a-z-]*)", command):
+            assert flag in result.stdout, (command, flag)

@@ -198,7 +198,7 @@ Proof: `uv run pytest tests/test_builtin_plugins.py -k bug_verify_instructions`
 **C53** - No box, com o repositório de teste que tem um `ZeroDivisionError` conhecido e o alerta dele, a routine recebe `reproduced` `yes` e o arquivo do bug em `suspects` (AC 56, AC 57)
 Proof: `uv run pytest -m integration tests/integration/test_builtin_plugins.py -k bug_verify_reproduces`
 
-### S7 - o bot e quem escreve plugins sabem usar · 5 arquivos · ~45 KB · ~12k
+### S7 - o bot e quem escreve plugins sabem usar · 5 arquivos · ~45 KB · ~12k · parcial: C54-C56, C58 verdes; C57 verde contra a matriz do pacote, fecha com o C8 (S1)
 
 **C54** - O `SKILL.md` manda rodar `grokbot-kit plugin list --json` quando o usuário pergunta o que o kit sabe fazer e antes de delegar, mostrar nome, descrição e capacidades, e usar `run --plugin <nome>` com as entradas quando o pedido casa com um plugin (AC 60, AC 61)
 Proof: `uv run pytest tests/test_skill_doc.py -k plugin_list_and_run`
