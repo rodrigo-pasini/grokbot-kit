@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/agent-run-notify/plan.md`
 
-148 checks em 9 slices (C146-C148 acrescentados na verificação) · 11 one-way doors · 3 open, das quais 1 bloqueia (pergunta 2 → C66, C69)
+149 checks em 9 slices (C146-C148 acrescentados na verificação, C149 pela AD-032) · 11 one-way doors · 3 open, das quais 1 bloqueia (pergunta 2 → C66, C69)
 
 Convenções das provas:
 
@@ -485,6 +485,13 @@ Proof: `uv run pytest tests/test_run_guards.py -k other_refusals_exit_2`
 **C148** - `--prompt-file <f>` acrescenta o conteúdo de `<f>` como último argumento da CLI, depois dos extras de `--` (door 13)
 Proof: `uv run pytest tests/test_run_guards.py -k prompt_file_appended_last`
 
+### Acréscimos depois do UAT do S8 (21/10/2026, aprovados pelo Rodrigo)
+
+A AD-032 abre a door 23; este check é aditivo e não muda nenhum aprovado.
+
+**C149** - O job `publish` do `release.yml` faz checkout de `skills/grokbot-kit/SKILL.md` e o `gh release create` anexa esse arquivo junto com `dist/*`, sem que ele entre no artefato `dist` enviado ao PyPI; os dois READMEs baixam a skill de `https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md` e de nenhuma URL com tag (AC 120, door 23)
+Proof: `uv run pytest tests/test_workflows.py -k release_attaches_skill`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -528,6 +535,7 @@ Proof: `uv run pytest tests/test_run_guards.py -k prompt_file_appended_last`
 | `grokbot-kit setup tiers`: exit codes (2) | `0` C146 · `2` C146 | - |
 | `grokbot-kit run`: demais recusas com `2` (4) | sink fora de `[sinks]` C147 · `--label` inválido C147 · `--cwd` não diretório C147 · `--prompt-file` ilegível C147 | - |
 | door 13: repasse à CLI (2) | extras depois de `--` C148 · conteúdo do `--prompt-file` por último C148 | - |
+| door 23: onde a skill aparece (2) | arquivo `SKILL.md` no GitHub Release C149 · URL `latest` nos dois READMEs C149 | - |
 
 - Claims que nomeiam status HTTP, exit code ou forma de resposta: C54, C72, C76-C94, C101-C122 - cada um tem prova que cruza a fronteira (receptor HTTP local ou subprocesso do executável)
 - Nenhum outro check afirma mais do que o caso único que a sua prova exercita
@@ -586,3 +594,4 @@ Os arquivos ainda não existem, então o tamanho é projetado: KB estimados por 
 - Mechanism (lote S8): um builder
 - Revisão AD-031 (21/10/2026, depois do UAT do S8): C130 e C134 reescritas com o ok do Rodrigo; arquivos tocados ≈ 30 KB (`SKILL.md`, `tests/test_skill_doc.py`, os dois READMEs, `CHANGELOG.md`) ≈ 8k, mais a leitura fixa ≈ 32k: 40k, abaixo do budget de 150k
 - Mechanism (revisão AD-031): um builder
+- Door 23 (AD-032, 21/10/2026): arquivos tocados ≈ 12 KB (`release.yml`, `tests/test_workflows.py`, os dois READMEs) ≈ 3k, mais a leitura fixa ≈ 32k: 35k, abaixo do budget de 150k; um builder
