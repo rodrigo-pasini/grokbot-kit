@@ -31,6 +31,7 @@ STDERR_TAIL = 20
 VERSION = re.compile(r"\d+\.\d+\.\d+")
 UPGRADE_ARGV = {"uv": ["uv", "tool", "upgrade", "grokbot-kit"], "pipx": ["pipx", "upgrade", "grokbot-kit"]}
 RECEIPTS = (("uv-receipt.toml", "uv"), ("pipx_metadata.json", "pipx"))
+PINNED = "it may be pinned to a version: reinstall the latest grokbot-kit with the tool that installed it"
 UNKNOWN_INSTALLER = "cannot tell how grokbot-kit was installed; upgrade it with the tool that installed it"
 
 
@@ -279,11 +280,14 @@ def _apply() -> int:
         return _fail(1, f"{' '.join(argv)} did not finish in {INSTALL_TIMEOUT}s")
     except OSError as e:
         return _fail(1, f"cannot run {argv[0]}: {e.strerror}")
+    tail = "\n".join(upgrade.stderr.splitlines()[-STDERR_TAIL:])
     if upgrade.returncode != 0:
-        tail = "\n".join(upgrade.stderr.splitlines()[-STDERR_TAIL:])
         return _fail(1, f"{' '.join(argv)} exited with {upgrade.returncode}\n{tail}".rstrip())
     exe = launch.kit_executable()
     new = _version_of(exe) or out["latest"]
+    if not newer(new, out["installed"]):
+        # instalação fixada numa versão: o `uv tool upgrade` não atualiza e ainda sai com 0 (AC 37)
+        return _fail(1, f"{argv[0]} left grokbot-kit at {new}; {PINNED}\n{tail}".rstrip())
     if opencode_plugin.plugin_path().exists() and _call([exe, "install", "opencode"]) != 0:
         return _fail(
             1, f"upgraded to {new}, but the opencode plugin was not rewritten; run: grokbot-kit install opencode"

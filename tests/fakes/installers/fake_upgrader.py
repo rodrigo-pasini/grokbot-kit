@@ -3,7 +3,8 @@
 
 Grava a chamada em `FAKE_CALLS` (`tool` = `upgrader:<uv|pipx>`, argv), escreve `FAKE_UPGRADE_STDERR_LINES` linhas
 `installer line NN` em stderr, dorme `FAKE_UPGRADE_SLEEP` segundos e sai com `FAKE_UPGRADE_EXIT` (padrão `0`). Saindo
-com `0`, troca o executável `FAKE_KIT_EXE` por um `grokbot-kit` novo: `--version` imprime `grokbot-kit 9.0.0`; o resto
+com `0`, troca o executável `FAKE_KIT_EXE` por um `grokbot-kit` novo: `--version` imprime `grokbot-kit <FAKE_NEW_VERSION>`
+(padrão `9.0.0`); o resto
 grava a chamada em `FAKE_CALLS` (`tool` = `new-kit`) e sai com `FAKE_NEW_KIT_EXIT` (padrão `0`).
 """
 
@@ -16,7 +17,7 @@ NEW_KIT = """#!{python}
 import json, os, sys
 args = sys.argv[1:]
 if args == ["--version"]:
-    print("grokbot-kit 9.0.0")
+    print("grokbot-kit {version}")
     sys.exit(0)
 calls = os.environ.get("FAKE_CALLS")
 if calls:
@@ -38,7 +39,7 @@ if code == 0 and os.environ.get("FAKE_KIT_EXE"):
     exe = os.environ["FAKE_KIT_EXE"]
     tmp = exe + ".new"
     with open(tmp, "w", encoding="utf-8") as f:
-        f.write(NEW_KIT.format(python=sys.executable))
+        f.write(NEW_KIT.format(python=sys.executable, version=os.environ.get("FAKE_NEW_VERSION", "9.0.0")))
     os.chmod(tmp, 0o755)
     os.replace(tmp, exe)
     print(f"Upgraded grokbot-kit to 9.0.0 ({name} fake)")

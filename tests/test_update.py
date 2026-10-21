@@ -607,6 +607,20 @@ def test_apply_plugin_failed(kit: Kit, receiver: Receiver) -> None:
     assert message in result.stderr
 
 
+# C39 - AC 37
+def test_apply_installer_left_version(kit: Kit, receiver: Receiver) -> None:
+    venv = venv_for(kit, receiver)
+    write_plugin(kit.home)
+    write_state(kit.home, skipped="9.0.0")
+    result = venv.apply(FAKE_NEW_VERSION=__version__, FAKE_UPGRADE_STDERR_LINES="25")
+    assert result.returncode == 1
+    assert f"left grokbot-kit at {__version__}; it may be pinned to a version" in result.stderr
+    for i in range(1, 26):
+        assert (f"installer line {i:02d}" in result.stderr) is (i > 5), i
+    assert venv.new_kit_calls() == []
+    assert read_state(kit.home)["skipped"] == "9.0.0"
+
+
 def dead_pid() -> int:
     proc = subprocess.Popen(["/bin/true"])
     proc.wait()
