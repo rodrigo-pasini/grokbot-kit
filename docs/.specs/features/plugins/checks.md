@@ -173,7 +173,7 @@ Proof: `uv run pytest tests/test_run_plugin.py -k plugin_event_delivery_statuses
 **C46** - `event.v1.json` aceita `plugin` e `result` objeto ou `null` e o `exit_reason` `result_invalid`; os eventos de C40, C42 e C45 validam contra ele (AC 47, door 5)
 Proof: `uv run pytest tests/test_payload.py -k schema_accepts_plugin_fields`
 
-### S5 - o plugin code-review revisa um PR · 4 arquivos · ~25 KB · ~6k
+### S5 - o plugin code-review revisa um PR · 4 arquivos · ~25 KB · ~6k · parcial: C47, C48 verdes; C49, C50 rodam no box
 
 **C47** - O manifesto de `code-review` passa pelas regras do C19 e declara `pr` (`repo`), `write = "task-dir"`, `network = "on"`, `commands` exatamente `gh pr view`, `gh pr diff`, `gh pr review`, `gh pr comment`, `gh api`, `git`, `pytest`, `npm test`, `go test`, `cargo test`, e `result.required` = `summary`, `verdict`, `findings`, `review_url` (AC 48)
 Proof: `uv run pytest tests/test_builtin_plugins.py -k code_review_manifest`
@@ -187,7 +187,7 @@ Proof: `uv run pytest -m integration tests/integration/test_builtin_plugins.py -
 **C50** - No box, `run --plugin code-review --input pr=<PR de teste do repositório de teste>` posta um review `COMMENT` no PR e a routine recebe `completed`/`ok` com `review_url` apontando para ele; um segundo run depois de um push traz só achados do commit novo (AC 49-51)
 Proof: `uv run pytest -m integration tests/integration/test_builtin_plugins.py -k code_review_posts_comment_review`
 
-### S6 - o plugin bug-verify verifica um alerta · 3 arquivos · ~18 KB · ~5k
+### S6 - o plugin bug-verify verifica um alerta · 3 arquivos · ~18 KB · ~5k · parcial: C51, C52 verdes; C53 roda no box
 
 **C51** - O manifesto de `bug-verify` passa pelas regras do C19 e declara `repo` (`repo`), `alert` (`text`), `write = "task-dir"`, `network` = `off` se a matriz suporta na CLI padrão de fábrica (`opencode`) e `on` senão, `commands` com `git` e os executores de teste do C47, e `result.required` = `summary`, `reproduced`, `suspects`, `next_step` (AC 55)
 Proof: `uv run pytest tests/test_builtin_plugins.py -k bug_verify_manifest`
