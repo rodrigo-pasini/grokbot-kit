@@ -225,6 +225,32 @@ def test_opencode_plugin_other_executable(kit: Kit) -> None:
     assert "plugin: stale" in run_doctor(kit).stdout
 
 
+# C151 - AC 126, door 24
+@pytest.mark.parametrize("case", ["sem a linha", "valor não string", "valor não JSON", "ilegível"])
+def test_plugin_without_exe_line(kit: Kit, case: str) -> None:
+    assert kit.cli("install", "opencode").returncode == 0
+    path = plugin_file(kit)
+    lines = path.read_text(encoding="utf-8").splitlines()
+    exe_line = [i for i, line in enumerate(lines) if line.startswith("const GROKBOT_KIT = ")]
+    assert len(exe_line) == 1
+    if case == "sem a linha":
+        del lines[exe_line[0]]
+    elif case == "valor não string":
+        lines[exe_line[0]] = "const GROKBOT_KIT = 42"
+    elif case == "valor não JSON":
+        lines[exe_line[0]] = "const GROKBOT_KIT = process.env.GROKBOT_KIT"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    if case == "ilegível":
+        path.chmod(0)
+    code, out = report(kit)
+    assert code == 1
+    plugin = out["cli"]["opencode"]["plugin"]
+    assert plugin["exe"] is None
+    assert plugin["ok"] is False
+    found = [p for p in out["problems"] if "plugin" in p]
+    assert len(found) == 1 and "grokbot-kit install opencode" in found[0]
+
+
 def test_opencode_plugin_not_installed_tool(kit: Kit) -> None:
     kit.write_config(default_config(kit.sink, installed=("claude",)))
     code, out = report(kit)
