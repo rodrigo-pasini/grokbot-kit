@@ -32,17 +32,35 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C86 tests/test_redeliver.py:133 (locking)
 - last seen: 2026-10-21T00:07:45Z
 
-### L-004 - Quando um valor pode vir de duas fontes (PyPI e o --version do executável novo), o teste deve fazer as duas responderem valores diferentes, senão a fonte errada passa
+### L-004 - When a workflow step depends on files an earlier step produced, assert the step order, not only that each step exists
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `ci-workflows` · harmful: 0
+- features: agent-run-notify
+- evidence: F4 C149 .github/workflows/release.yml:45-52 tests/test_workflows.py:128-135 (ci-workflows)
+- last seen: 2026-10-21T18:42:44Z
+
+### L-005 - Give every input a parser maps to the same fallback its own test, including a file that exists but lacks the expected line
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `doctor` · harmful: 0
+- features: agent-run-notify
+- evidence: F9 C150 door 24 plan.md:176 src/grokbot_kit/doctor.py:49-56 (doctor)
+- last seen: 2026-10-21T18:42:44Z
+
+### L-006 - When a new case reaches code that picks between fixed problem messages, the check names which message that case gets and its proof asserts that text
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `doctor` · harmful: 0
+- features: agent-run-notify
+- evidence: P1 C151 tests/test_doctor.py:251 plan.md:176 src/grokbot_kit/doctor.py:108-114 (doctor)
+- last seen: 2026-10-21T19:01:35Z
+
+### L-007 - Quando um valor pode vir de duas fontes (PyPI e o --version do executável novo), o teste deve fazer as duas responderem valores diferentes, senão a fonte errada passa
 - signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `update` · harmful: 0
 - features: kit-update
 - evidence: F3 src/grokbot_kit/update.py:286 (C22) (update)
-- last seen: 2026-10-21T19:37:04Z
+- last seen: 2026-10-21T20:03:47Z
 
-### L-005 - Ao contar os caminhos de saída de um ponto de entrada, conte também o except OSError de um subprocesso (executável ausente no PATH) e dê a ele uma prova
+### L-008 - Ao contar os caminhos de saída de um ponto de entrada, conte também o except OSError de um subprocesso (executável ausente no PATH) e dê a ele uma prova
 - signal: `ac_gap` · recurrence: 1 feature(s) · scope: `update` · harmful: 0
 - features: kit-update
 - evidence: src/grokbot_kit/update.py:280-281 (Test policy: ponto de entrada) (update)
-- last seen: 2026-10-21T19:37:08Z
+- last seen: 2026-10-21T20:03:47Z
 
 ## Quarantined (failed when applied - ignore)
 

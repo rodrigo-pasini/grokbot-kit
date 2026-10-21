@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 6,
+  "next_id": 9,
   "lessons": [
     {
       "id": "L-001",
@@ -61,6 +61,60 @@
     },
     {
       "id": "L-004",
+      "key": "surviving_mutant::when a workflow step depends on files an earlier step produced assert the step order not only that each step exists",
+      "text": "When a workflow step depends on files an earlier step produced, assert the step order, not only that each step exists",
+      "signal": "surviving_mutant",
+      "scope": "ci-workflows",
+      "status": "candidate",
+      "features": [
+        "agent-run-notify"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F4 C149 .github/workflows/release.yml:45-52 tests/test_workflows.py:128-135 (ci-workflows)"
+      ],
+      "created": "2026-10-21T18:42:44Z",
+      "last_seen": "2026-10-21T18:42:44Z"
+    },
+    {
+      "id": "L-005",
+      "key": "ac_gap::give every input a parser maps to the same fallback its own test including a file that exists but lacks the expected line",
+      "text": "Give every input a parser maps to the same fallback its own test, including a file that exists but lacks the expected line",
+      "signal": "ac_gap",
+      "scope": "doctor",
+      "status": "candidate",
+      "features": [
+        "agent-run-notify"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F9 C150 door 24 plan.md:176 src/grokbot_kit/doctor.py:49-56 (doctor)"
+      ],
+      "created": "2026-10-21T18:42:44Z",
+      "last_seen": "2026-10-21T18:42:44Z"
+    },
+    {
+      "id": "L-006",
+      "key": "spec_precision_gap::when a new case reaches code that picks between fixed problem messages the check names which message that case gets and its proof asserts that text",
+      "text": "When a new case reaches code that picks between fixed problem messages, the check names which message that case gets and its proof asserts that text",
+      "signal": "spec_precision_gap",
+      "scope": "doctor",
+      "status": "candidate",
+      "features": [
+        "agent-run-notify"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "P1 C151 tests/test_doctor.py:251 plan.md:176 src/grokbot_kit/doctor.py:108-114 (doctor)"
+      ],
+      "created": "2026-10-21T19:01:35Z",
+      "last_seen": "2026-10-21T19:01:35Z"
+    },
+    {
+      "id": "L-007",
       "key": "surviving_mutant::quando um valor pode vir de duas fontes pypi e o version do executavel novo o teste deve fazer as duas responderem valores diferentes senao a fonte errada passa",
       "text": "Quando um valor pode vir de duas fontes (PyPI e o --version do executável novo), o teste deve fazer as duas responderem valores diferentes, senão a fonte errada passa",
       "signal": "surviving_mutant",
@@ -74,11 +128,11 @@
       "evidence": [
         "F3 src/grokbot_kit/update.py:286 (C22) (update)"
       ],
-      "created": "2026-10-21T19:37:04Z",
-      "last_seen": "2026-10-21T19:37:04Z"
+      "created": "2026-10-21T20:03:47Z",
+      "last_seen": "2026-10-21T20:03:47Z"
     },
     {
-      "id": "L-005",
+      "id": "L-008",
       "key": "ac_gap::ao contar os caminhos de saida de um ponto de entrada conte tambem o except oserror de um subprocesso executavel ausente no path e de a ele uma prova",
       "text": "Ao contar os caminhos de saída de um ponto de entrada, conte também o except OSError de um subprocesso (executável ausente no PATH) e dê a ele uma prova",
       "signal": "ac_gap",
@@ -92,8 +146,8 @@
       "evidence": [
         "src/grokbot_kit/update.py:280-281 (Test policy: ponto de entrada) (update)"
       ],
-      "created": "2026-10-21T19:37:08Z",
-      "last_seen": "2026-10-21T19:37:08Z"
+      "created": "2026-10-21T20:03:47Z",
+      "last_seen": "2026-10-21T20:03:47Z"
     }
   ]
 }
