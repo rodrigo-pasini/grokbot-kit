@@ -145,6 +145,7 @@ SURFACE_COMMANDS = {
     "doctor",
     "install",
     "uninstall",
+    "update",
 }
 
 
@@ -165,4 +166,4 @@ def test_env_contract_and_commands(kit: Kit) -> None:
     assert help_text.returncode == 0
     listed = help_text.stdout.split("{", 1)[1].split("}", 1)[0].split(",")
     assert set(listed) == SURFACE_COMMANDS
-    assert len(listed) == 11
+    assert len(listed) == 12
