@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 4,
+  "next_id": 7,
   "lessons": [
     {
       "id": "L-001",
@@ -58,6 +58,60 @@
       ],
       "created": "2026-10-21T00:07:45Z",
       "last_seen": "2026-10-21T00:07:45Z"
+    },
+    {
+      "id": "L-004",
+      "key": "surviving_mutant::when a workflow step depends on files an earlier step produced assert the step order not only that each step exists",
+      "text": "When a workflow step depends on files an earlier step produced, assert the step order, not only that each step exists",
+      "signal": "surviving_mutant",
+      "scope": "ci-workflows",
+      "status": "candidate",
+      "features": [
+        "agent-run-notify"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F4 C149 .github/workflows/release.yml:45-52 tests/test_workflows.py:128-135 (ci-workflows)"
+      ],
+      "created": "2026-10-21T18:42:44Z",
+      "last_seen": "2026-10-21T18:42:44Z"
+    },
+    {
+      "id": "L-005",
+      "key": "ac_gap::give every input a parser maps to the same fallback its own test including a file that exists but lacks the expected line",
+      "text": "Give every input a parser maps to the same fallback its own test, including a file that exists but lacks the expected line",
+      "signal": "ac_gap",
+      "scope": "doctor",
+      "status": "candidate",
+      "features": [
+        "agent-run-notify"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F9 C150 door 24 plan.md:176 src/grokbot_kit/doctor.py:49-56 (doctor)"
+      ],
+      "created": "2026-10-21T18:42:44Z",
+      "last_seen": "2026-10-21T18:42:44Z"
+    },
+    {
+      "id": "L-006",
+      "key": "spec_precision_gap::when a new case reaches code that picks between fixed problem messages the check names which message that case gets and its proof asserts that text",
+      "text": "When a new case reaches code that picks between fixed problem messages, the check names which message that case gets and its proof asserts that text",
+      "signal": "spec_precision_gap",
+      "scope": "doctor",
+      "status": "candidate",
+      "features": [
+        "agent-run-notify"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "P1 C151 tests/test_doctor.py:251 plan.md:176 src/grokbot_kit/doctor.py:108-114 (doctor)"
+      ],
+      "created": "2026-10-21T19:01:35Z",
+      "last_seen": "2026-10-21T19:01:35Z"
     }
   ]
 }

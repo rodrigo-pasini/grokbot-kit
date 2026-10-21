@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/agent-run-notify/plan.md`
 
-150 checks em 9 slices (C146-C148 acrescentados na verificação, C149 pela AD-032, C150 pela AD-033) · 11 one-way doors · 3 open, das quais 1 bloqueia (pergunta 2 → C66, C69)
+151 checks em 9 slices (C146-C148 acrescentados na verificação, C149 pela AD-032, C150 pela AD-033, C151 pela AD-035) · 11 one-way doors · 3 open, das quais 1 bloqueia (pergunta 2 → C66, C69)
 
 Convenções das provas:
 
@@ -497,6 +497,11 @@ A AD-033 abre a door 24; o C115 e o C121 continuam iguais, e os seus cenários d
 **C150** - Com `opencode` em `setup.installed`, `doctor --json` sai com `0` e `cli.opencode.plugin.ok` `true` depois de `grokbot-kit install opencode`; sai com `1`, `exe` `null` e um problema citando `grokbot-kit install opencode` sem o arquivo do plugin; e sai com `1`, `ok` `false`, `exe` igual ao caminho gravado e um problema citando esse caminho e `grokbot-kit install opencode` quando o plugin chama outro executável; sem `opencode` instalado não há `plugin` nem problema de plugin (AC 126, door 24)
 Proof: `uv run pytest tests/test_doctor.py -k opencode_plugin`
 
+A rodada 3 do Verifier achou o membro "arquivo sem a linha" da door 24 sem prova (AD-035); este check é aditivo.
+
+**C151** - Com `opencode` em `setup.installed` e o arquivo do plugin presente sem a linha `const GROKBOT_KIT = "<caminho>"`, com essa linha trazendo um valor que não é string JSON, ou ilegível, `doctor --json` sai com `1`, `cli.opencode.plugin.exe` `null`, `ok` `false` e um problema citando `grokbot-kit install opencode` (AC 126, door 24)
+Proof: `uv run pytest tests/test_doctor.py -k plugin_without_exe_line`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -528,7 +533,7 @@ Proof: `uv run pytest tests/test_doctor.py -k opencode_plugin`
 | descoberta de modelos por CLI (3) | `opencode` C104 · `claude` C105 · `codex` C106 | - |
 | login por CLI (3) | `codex` C113 · `claude` C114 · `opencode` C115 | - |
 | predicado do `gc` (4) | terminada e antiga C122 · terminada e recente C122 · em andamento C122 · `undelivered.jsonl` não vazio C122 | - |
-| doors (11) | 1 C125 · 2 C57 · 3 C95 · 4 C124 · 5 C97 · 6 C123 · 7 C45 · 8 C144 · 9 C3 · 10 C23 · 11 C21, C29, C33, C35, C36 | - |
+| doors (24) | 1 C125 · 2 C57 · 3 C95 · 4 C124 · 5 C97 · 6 C123 · 7 C45 · 8 C144 · 9 C3 · 10 C23 · 11 C21, C29, C33, C35, C36 · 12 C104 · 13 C111, C148 · 14 C63-C70 · 15 C80, C84 · 16 C104-C106 · 17 C103, C122 · 18 C108-C110 · 19 C112 · 20 C113, C114 · 21 C121 · 22 C146 · 23 C149 · 24 C150, C151 | - |
 | Relations: constraints one-way (5) | um terminal por task C52 · chave de dedupe única C97 · `target` existe antes de lançar C76 · `default_cli` em `installed` C96 · ids de tier descobertos C96, C101 | - |
 | Relations: entidades (10) | `Config` C95 · `CliProfile` C112 · `ModelTier` C100 · `TierTimeout` C103 · `Route` C76 · `Sink` C78 · `Task` C124 · `Event` C56 · `TerminalEvent` C52 · `Delivery` C80 | - |
 | startup config: hook do kit registrado (3 lugares) | `--settings` do Claude C43 · `-c` inline do Codex C45 · plugin global do opencode C116 | - |
@@ -541,7 +546,7 @@ Proof: `uv run pytest tests/test_doctor.py -k opencode_plugin`
 | `grokbot-kit run`: demais recusas com `2` (4) | sink fora de `[sinks]` C147 · `--label` inválido C147 · `--cwd` não diretório C147 · `--prompt-file` ilegível C147 | - |
 | door 13: repasse à CLI (2) | extras depois de `--` C148 · conteúdo do `--prompt-file` por último C148 | - |
 | door 23: onde a skill aparece (2) | arquivo `SKILL.md` no GitHub Release C149 · URL `latest` nos dois READMEs C149 | - |
-| door 24: estado do plugin do opencode (4) | instalado e atual C150 · ausente C150 · outro executável C150 · `opencode` fora de `setup.installed` C150 | - |
+| door 24: estado do plugin do opencode (5) | instalado e atual C150 · ausente C150 · presente sem a linha do executável C151 · outro executável C150 · `opencode` fora de `setup.installed` C150 | - |
 
 - Claims que nomeiam status HTTP, exit code ou forma de resposta: C54, C72, C76-C94, C101-C122 - cada um tem prova que cruza a fronteira (receptor HTTP local ou subprocesso do executável)
 - Nenhum outro check afirma mais do que o caso único que a sua prova exercita
@@ -602,3 +607,4 @@ Os arquivos ainda não existem, então o tamanho é projetado: KB estimados por 
 - Mechanism (revisão AD-031): um builder
 - Door 23 (AD-032, 21/10/2026): arquivos tocados ≈ 12 KB (`release.yml`, `tests/test_workflows.py`, os dois READMEs) ≈ 3k, mais a leitura fixa ≈ 32k: 35k, abaixo do budget de 150k; um builder
 - Door 24 (AD-033, 21/10/2026): arquivos tocados ≈ 25 KB (`doctor.py`, `tests/test_doctor.py`, `CHANGELOG.md`) ≈ 6k, mais a leitura fixa ≈ 33k: 39k, abaixo do budget de 150k; um builder
+- Rodada 3 do Verifier (AD-035, 21/10/2026): arquivos tocados ≈ 20 KB (`tests/test_doctor.py`, `tests/test_workflows.py`) ≈ 5k, mais a leitura fixa ≈ 33k: 38k, abaixo do budget de 150k; um builder

@@ -32,6 +32,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C86 tests/test_redeliver.py:133 (locking)
 - last seen: 2026-10-21T00:07:45Z
 
+### L-004 - When a workflow step depends on files an earlier step produced, assert the step order, not only that each step exists
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `ci-workflows` · harmful: 0
+- features: agent-run-notify
+- evidence: F4 C149 .github/workflows/release.yml:45-52 tests/test_workflows.py:128-135 (ci-workflows)
+- last seen: 2026-10-21T18:42:44Z
+
+### L-005 - Give every input a parser maps to the same fallback its own test, including a file that exists but lacks the expected line
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `doctor` · harmful: 0
+- features: agent-run-notify
+- evidence: F9 C150 door 24 plan.md:176 src/grokbot_kit/doctor.py:49-56 (doctor)
+- last seen: 2026-10-21T18:42:44Z
+
+### L-006 - When a new case reaches code that picks between fixed problem messages, the check names which message that case gets and its proof asserts that text
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `doctor` · harmful: 0
+- features: agent-run-notify
+- evidence: P1 C151 tests/test_doctor.py:251 plan.md:176 src/grokbot_kit/doctor.py:108-114 (doctor)
+- last seen: 2026-10-21T19:01:35Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

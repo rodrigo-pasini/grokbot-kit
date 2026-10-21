@@ -128,6 +128,9 @@ def test_release_attaches_skill() -> None:
     checkouts = [s for s in publish["steps"] if s.get("uses", "").startswith("actions/checkout@")]
     assert len(checkouts) == 1
     assert SKILL_PATH in str(checkouts[0].get("with", {}).get("sparse-checkout", ""))
+    # o checkout limpa o workspace: depois do download, apagaria o `dist/` (AD-035)
+    download = next(s for s in publish["steps"] if s.get("uses", "").startswith("actions/download-artifact@"))
+    assert publish["steps"].index(checkouts[0]) < publish["steps"].index(download)
     attach = next(s for s in publish["steps"] if "gh release create" in s.get("run", ""))
     assert "dist/*" in attach["run"] and SKILL_PATH in attach["run"]
     assert "SKILL" not in runs(jobs["build"])
