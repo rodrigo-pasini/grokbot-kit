@@ -8,10 +8,11 @@ import subprocess
 import sys
 from typing import Any
 
-from grokbot_kit import config
+from grokbot_kit import config, launch, opencode_plugin
 from grokbot_kit.launch import TOOLS
 
 TIERS = ("trivial", "standard", "complex")
+PLUGIN_EXE_PREFIX = "const GROKBOT_KIT = "
 STATUS_ARGV = {"claude": ["auth", "status"], "codex": ["login", "status"], "opencode": ["auth", "list"]}
 COMMAND_TIMEOUT = 60
 SECRET_KEYS = ("url_secret", "key_secret", "token_secret", "webhook_secret")
@@ -41,6 +42,21 @@ def _opencode_logged_in(proc: subprocess.CompletedProcess[str]) -> bool:
     return False
 
 
+def _plugin() -> dict[str, Any]:
+    """O plugin global do opencode e o executável que ele chama (door 24)."""
+    path = opencode_plugin.plugin_path()
+    exe = None
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith(PLUGIN_EXE_PREFIX):
+                value = json.loads(line.removeprefix(PLUGIN_EXE_PREFIX))
+                exe = value if isinstance(value, str) else None
+                break
+    except (OSError, ValueError):
+        exe = None
+    return {"path": str(path), "exe": exe, "ok": exe == launch.kit_executable()}
+
+
 def _cli(tool: str, cli: dict[str, Any], default: str | None) -> dict[str, Any]:
     bin_path = os.path.expanduser(str(cli.get("bin", tool)))
     method = "api-key" if tool == "claude" and "api_key_secret" in cli else "subscription"
@@ -58,13 +74,16 @@ def _cli(tool: str, cli: dict[str, Any], default: str | None) -> dict[str, Any]:
     else:
         logged_in = status.returncode == 0
     tiers = cli.get("tiers", {})
-    return {
+    entry = {
         "bin": bin_path,
         "version": (version.stdout.strip().splitlines() or [""])[0] if version and version.returncode == 0 else None,
         "default": tool == default,
         "login": {"command": " ".join([tool, *STATUS_ARGV[tool]]), "method": method, "logged_in": logged_in},
         "tiers": {tier: len(tiers.get(tier, [])) for tier in TIERS},
     }
+    if tool == "opencode":
+        entry["plugin"] = _plugin()
+    return entry
 
 
 def problems(out: dict[str, Any], facts: dict[str, Any]) -> list[str]:
@@ -85,6 +104,14 @@ def problems(out: dict[str, Any], facts: dict[str, Any]) -> list[str]:
             found.append(f"{cli['login']['command']} failed")
         elif not logged_in and tool != "opencode":
             found.append(f"{tool} is not logged in; run: grokbot-kit login {tool}")
+        plugin = cli.get("plugin")
+        if plugin and plugin["exe"] is None:
+            found.append(f"opencode plugin not found at {plugin['path']}; run: grokbot-kit install opencode")
+        elif plugin and not plugin["ok"]:
+            found.append(
+                f"opencode plugin at {plugin['path']} calls {plugin['exe']}, not {launch.kit_executable()}; "
+                "run: grokbot-kit install opencode"
+            )
     mode = facts.get("secrets_dir_mode")
     if mode is not None and mode != 0o700:
         found.append(
@@ -145,6 +172,10 @@ def _text(out: dict[str, Any]) -> str:
         default = " (default)" if cli["default"] else ""
         lines.append(f"{tool}{default}: {cli['version'] or 'version unknown'} at {cli['bin']}")
         lines.append(f"  login: {state} ({login['method']}, {login['command']}); tiers: {tiers}")
+        if "plugin" in cli:
+            plugin = cli["plugin"]
+            plugin_state = "missing" if plugin["exe"] is None else "ok" if plugin["ok"] else "stale"
+            lines.append(f"  plugin: {plugin_state} ({plugin['path']})")
     for target, sinks in out["routes"].items():
         lines.append(f"route {target}: {', '.join(sinks)}")
     for name, secret in out["secrets"].items():

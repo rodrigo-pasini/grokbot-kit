@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/agent-run-notify/plan.md`
 
-149 checks em 9 slices (C146-C148 acrescentados na verificação, C149 pela AD-032) · 11 one-way doors · 3 open, das quais 1 bloqueia (pergunta 2 → C66, C69)
+150 checks em 9 slices (C146-C148 acrescentados na verificação, C149 pela AD-032, C150 pela AD-033) · 11 one-way doors · 3 open, das quais 1 bloqueia (pergunta 2 → C66, C69)
 
 Convenções das provas:
 
@@ -489,8 +489,13 @@ Proof: `uv run pytest tests/test_run_guards.py -k prompt_file_appended_last`
 
 A AD-032 abre a door 23; este check é aditivo e não muda nenhum aprovado.
 
-**C149** - O job `publish` do `release.yml` faz checkout de `skills/grokbot-kit/SKILL.md` e o `gh release create` anexa esse arquivo junto com `dist/*`, sem que ele entre no artefato `dist` enviado ao PyPI; os dois READMEs baixam a skill de `https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md` e de nenhuma URL com tag (AC 120, door 23)
+**C149** - O job `publish` do `release.yml` faz checkout de `skills/grokbot-kit/SKILL.md` e o `gh release create` anexa esse arquivo junto com `dist/*`, sem que ele entre no artefato `dist` enviado ao PyPI; os dois READMEs baixam a skill de `https://github.com/rodrigo-pasini/grokbot-kit/releases/latest/download/SKILL.md` e de nenhuma URL com tag (AC 125, door 23)
 Proof: `uv run pytest tests/test_workflows.py -k release_attaches_skill`
+
+A AD-033 abre a door 24; o C115 e o C121 continuam iguais, e os seus cenários de `doctor` com exit `0` passam a ter o plugin instalado (`grokbot-kit install opencode`, como no setup da skill), porque sem ele a door 24 aponta um problema real.
+
+**C150** - Com `opencode` em `setup.installed`, `doctor --json` sai com `0` e `cli.opencode.plugin.ok` `true` depois de `grokbot-kit install opencode`; sai com `1`, `exe` `null` e um problema citando `grokbot-kit install opencode` sem o arquivo do plugin; e sai com `1`, `ok` `false`, `exe` igual ao caminho gravado e um problema citando esse caminho e `grokbot-kit install opencode` quando o plugin chama outro executável; sem `opencode` instalado não há `plugin` nem problema de plugin (AC 126, door 24)
+Proof: `uv run pytest tests/test_doctor.py -k opencode_plugin`
 
 ## Coverage
 
@@ -536,6 +541,7 @@ Proof: `uv run pytest tests/test_workflows.py -k release_attaches_skill`
 | `grokbot-kit run`: demais recusas com `2` (4) | sink fora de `[sinks]` C147 · `--label` inválido C147 · `--cwd` não diretório C147 · `--prompt-file` ilegível C147 | - |
 | door 13: repasse à CLI (2) | extras depois de `--` C148 · conteúdo do `--prompt-file` por último C148 | - |
 | door 23: onde a skill aparece (2) | arquivo `SKILL.md` no GitHub Release C149 · URL `latest` nos dois READMEs C149 | - |
+| door 24: estado do plugin do opencode (4) | instalado e atual C150 · ausente C150 · outro executável C150 · `opencode` fora de `setup.installed` C150 | - |
 
 - Claims que nomeiam status HTTP, exit code ou forma de resposta: C54, C72, C76-C94, C101-C122 - cada um tem prova que cruza a fronteira (receptor HTTP local ou subprocesso do executável)
 - Nenhum outro check afirma mais do que o caso único que a sua prova exercita
@@ -595,3 +601,4 @@ Os arquivos ainda não existem, então o tamanho é projetado: KB estimados por 
 - Revisão AD-031 (21/10/2026, depois do UAT do S8): C130 e C134 reescritas com o ok do Rodrigo; arquivos tocados ≈ 30 KB (`SKILL.md`, `tests/test_skill_doc.py`, os dois READMEs, `CHANGELOG.md`) ≈ 8k, mais a leitura fixa ≈ 32k: 40k, abaixo do budget de 150k
 - Mechanism (revisão AD-031): um builder
 - Door 23 (AD-032, 21/10/2026): arquivos tocados ≈ 12 KB (`release.yml`, `tests/test_workflows.py`, os dois READMEs) ≈ 3k, mais a leitura fixa ≈ 32k: 35k, abaixo do budget de 150k; um builder
+- Door 24 (AD-033, 21/10/2026): arquivos tocados ≈ 25 KB (`doctor.py`, `tests/test_doctor.py`, `CHANGELOG.md`) ≈ 6k, mais a leitura fixa ≈ 33k: 39k, abaixo do budget de 150k; um builder

@@ -229,10 +229,11 @@ def test_login_claude_methods_and_env_scope_bad_secret(fresh: Kit) -> None:
     assert fresh.tasks() == []
 
 
-# C115 - AC 94
+# C115 - AC 94 (o `doctor` "OK" inclui o plugin do opencode instalado, door 24)
 def test_login_opencode_and_free_without_login(fresh: Kit) -> None:
     install(fresh, "opencode")
     assert cli(fresh, "setup", "default", "opencode").returncode == 0
+    assert cli(fresh, "install", "opencode").returncode == 0
     assert not [c for c in calls_of(fresh, "opencode") if c["argv"][:2] == ["auth", "login"]]
     doctor = cli(fresh, "doctor", "--json")
     assert doctor.returncode == 0, doctor.stdout + doctor.stderr

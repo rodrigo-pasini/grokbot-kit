@@ -1,4 +1,4 @@
-"""Provas do `grokbot-kit doctor` (check C121; AC 100, door 21)."""
+"""Provas do `grokbot-kit doctor` (checks C121 e C150; AC 100 e 126, doors 21 e 24)."""
 
 import json
 import os
@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from conftest import Kit, write_secret
+from conftest import Kit, default_config, write_secret
 
 from grokbot_kit import __version__, doctor
 
@@ -39,8 +39,9 @@ def report(kit: Kit, **extra: str) -> tuple[int, dict[str, Any]]:
     return result.returncode, json.loads(result.stdout)
 
 
-# C121 - AC 100
+# C121 - AC 100 (o "tudo OK" inclui o plugin do opencode instalado, door 24)
 def test_fields_and_exit_codes(kit: Kit) -> None:
+    assert kit.cli("install", "opencode").returncode == 0
     write_secret(kit.home, "bot-a-key", "crsr_x\n")
     code, out = report(kit)
     assert code == 0, out
@@ -91,6 +92,7 @@ def test_fields_and_exit_codes_logged_out(kit: Kit, tool: str) -> None:
 
 
 def test_fields_and_exit_codes_opencode_free(kit: Kit) -> None:
+    assert kit.cli("install", "opencode").returncode == 0
     code, out = report(kit, FAKE_OPENCODE_CREDENTIALS="0")
     assert code == 0, out
     assert out["cli"]["opencode"]["login"]["logged_in"] is False
@@ -176,3 +178,56 @@ def test_fields_and_exit_codes_layer(out: dict[str, Any], facts: dict[str, Any],
     else:
         assert len(found) == 1, found
         assert expect in found[0]
+
+
+def plugin_file(kit: Kit) -> Path:
+    return kit.home / ".config" / "opencode" / "plugins" / "grokbot-kit.ts"
+
+
+# C150 - AC 126, door 24
+def test_opencode_plugin_installed(kit: Kit) -> None:
+    assert kit.cli("install", "opencode").returncode == 0
+    code, out = report(kit)
+    assert code == 0, out
+    plugin = out["cli"]["opencode"]["plugin"]
+    assert plugin["path"] == str(plugin_file(kit))
+    assert plugin["ok"] is True
+    assert isinstance(plugin["exe"], str) and os.path.isabs(plugin["exe"])
+    assert not any("plugin" in p for p in out["problems"])
+    assert "plugin: ok" in run_doctor(kit).stdout
+
+
+def test_opencode_plugin_missing(kit: Kit) -> None:
+    code, out = report(kit)
+    assert code == 1
+    plugin = out["cli"]["opencode"]["plugin"]
+    assert plugin == {"path": str(plugin_file(kit)), "exe": None, "ok": False}
+    found = [p for p in out["problems"] if "plugin" in p]
+    assert len(found) == 1 and "grokbot-kit install opencode" in found[0]
+    assert "plugin: missing" in run_doctor(kit).stdout
+
+
+def test_opencode_plugin_other_executable(kit: Kit) -> None:
+    assert kit.cli("install", "opencode").returncode == 0
+    path = plugin_file(kit)
+    current = report(kit)[1]["cli"]["opencode"]["plugin"]["exe"]
+    text = path.read_text(encoding="utf-8")
+    assert text.count(json.dumps(current)) == 1
+    path.write_text(text.replace(json.dumps(current), json.dumps("/old/bin/grokbot-kit")), encoding="utf-8")
+    code, out = report(kit)
+    assert code == 1
+    plugin = out["cli"]["opencode"]["plugin"]
+    assert plugin["exe"] == "/old/bin/grokbot-kit"
+    assert plugin["ok"] is False
+    found = [p for p in out["problems"] if "plugin" in p]
+    assert len(found) == 1
+    assert "/old/bin/grokbot-kit" in found[0] and "grokbot-kit install opencode" in found[0]
+    assert "plugin: stale" in run_doctor(kit).stdout
+
+
+def test_opencode_plugin_not_installed_tool(kit: Kit) -> None:
+    kit.write_config(default_config(kit.sink, installed=("claude",)))
+    code, out = report(kit)
+    assert code == 0, out
+    assert all("plugin" not in cli for cli in out["cli"].values())
+    assert not any("plugin" in p for p in out["problems"])
