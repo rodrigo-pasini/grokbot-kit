@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-21
+
 ### Added
 
 - `grokbot-kit update check [--json]` tells whether PyPI has a newer `grokbot-kit` (cached 24 h in
@@ -115,7 +117,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `pytest`, `pre-commit`, CI and release workflows, Dependabot, issue and pull request templates.
 - `grokbot-kit --version`. The commands described in the README are not implemented yet.
 
-[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.1.0...v0.2.0

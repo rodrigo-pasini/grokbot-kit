@@ -1,6 +1,6 @@
 [project]
 name = "grokbot-kit"
-version = "0.2.2"
+version = "0.3.0"
 description = "Grok Bot integration kit: delegate tasks to headless coding agents (opencode, Claude Code, Codex) and wake the right Grok Bot routine when they finish or need input."
 readme = "README.md"
 license = "MIT"
