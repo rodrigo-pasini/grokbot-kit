@@ -50,6 +50,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: P1 C151 tests/test_doctor.py:251 plan.md:176 src/grokbot_kit/doctor.py:108-114 (doctor)
 - last seen: 2026-10-21T19:01:35Z
 
+### L-007 - Quando um valor pode vir de duas fontes (PyPI e o --version do executável novo), o teste deve fazer as duas responderem valores diferentes, senão a fonte errada passa
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `update` · harmful: 0
+- features: kit-update
+- evidence: F3 src/grokbot_kit/update.py:286 (C22) (update)
+- last seen: 2026-10-21T20:03:47Z
+
+### L-008 - Ao contar os caminhos de saída de um ponto de entrada, conte também o except OSError de um subprocesso (executável ausente no PATH) e dê a ele uma prova
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `update` · harmful: 0
+- features: kit-update
+- evidence: src/grokbot_kit/update.py:280-281 (Test policy: ponto de entrada) (update)
+- last seen: 2026-10-21T20:03:47Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

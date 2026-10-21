@@ -143,7 +143,13 @@ def fresh(tmp_path: Path) -> Kit:
     """Box limpo: `HOME` isolado sem config, nenhuma CLI no `PATH` e `FAKE_CALLS` gravando as chamadas."""
     home = tmp_path / "home"
     home.mkdir()
-    env = {"HOME": str(home), "PATH": clean_path(), "LANG": "C.UTF-8", "FAKE_CALLS": str(tmp_path / "calls.jsonl")}
+    env = {
+        "HOME": str(home),
+        "PATH": clean_path(),
+        "LANG": "C.UTF-8",
+        "FAKE_CALLS": str(tmp_path / "calls.jsonl"),
+        "GROKBOT_KIT_PYPI_URL": closed_port_url(),
+    }
     return Kit(home=home, sink=tmp_path / "sink.jsonl", record=tmp_path / "launched.json", env=env)
 
 
@@ -179,13 +185,19 @@ class Receiver:
         receiver = self
 
         class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                self._answer("GET")
+
             def do_POST(self) -> None:
+                self._answer("POST")
+
+            def _answer(self, method: str) -> None:
                 length = int(self.headers.get("Content-Length", "0"))
                 body = self.rfile.read(length)
                 with receiver._lock:
                     receiver.requests.append(
                         Received(
-                            "POST", self.path, {k.lower(): v for k, v in self.headers.items()}, body, time.monotonic()
+                            method, self.path, {k.lower(): v for k, v in self.headers.items()}, body, time.monotonic()
                         )
                     )
                     index = min(len(receiver.requests), len(receiver.responses)) - 1

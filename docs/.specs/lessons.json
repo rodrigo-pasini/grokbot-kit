@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 7,
+  "next_id": 9,
   "lessons": [
     {
       "id": "L-001",
@@ -112,6 +112,42 @@
       ],
       "created": "2026-10-21T19:01:35Z",
       "last_seen": "2026-10-21T19:01:35Z"
+    },
+    {
+      "id": "L-007",
+      "key": "surviving_mutant::quando um valor pode vir de duas fontes pypi e o version do executavel novo o teste deve fazer as duas responderem valores diferentes senao a fonte errada passa",
+      "text": "Quando um valor pode vir de duas fontes (PyPI e o --version do executável novo), o teste deve fazer as duas responderem valores diferentes, senão a fonte errada passa",
+      "signal": "surviving_mutant",
+      "scope": "update",
+      "status": "candidate",
+      "features": [
+        "kit-update"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F3 src/grokbot_kit/update.py:286 (C22) (update)"
+      ],
+      "created": "2026-10-21T20:03:47Z",
+      "last_seen": "2026-10-21T20:03:47Z"
+    },
+    {
+      "id": "L-008",
+      "key": "ac_gap::ao contar os caminhos de saida de um ponto de entrada conte tambem o except oserror de um subprocesso executavel ausente no path e de a ele uma prova",
+      "text": "Ao contar os caminhos de saída de um ponto de entrada, conte também o except OSError de um subprocesso (executável ausente no PATH) e dê a ele uma prova",
+      "signal": "ac_gap",
+      "scope": "update",
+      "status": "candidate",
+      "features": [
+        "kit-update"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/grokbot_kit/update.py:280-281 (Test policy: ponto de entrada) (update)"
+      ],
+      "created": "2026-10-21T20:03:47Z",
+      "last_seen": "2026-10-21T20:03:47Z"
     }
   ]
 }
