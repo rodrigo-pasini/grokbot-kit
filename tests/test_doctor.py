@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from conftest import Kit, default_config, write_secret
+from conftest import Kit, Receiver, closed_port_url, default_config, write_secret
 
 from grokbot_kit import __version__, doctor
 
@@ -17,7 +17,14 @@ STATUS_COMMAND = {"claude": "claude auth status", "codex": "codex login status",
 
 def run_doctor(kit: Kit, *args: str, **extra: str) -> subprocess.CompletedProcess[str]:
     saved = kit.env
-    kit.env = {**saved, "FAKE_CALLS": str(kit.home.parent / "calls.jsonl"), "FAKE_OPENCODE_CREDENTIALS": "2", **extra}
+    kit.env = {
+        **saved,
+        "FAKE_CALLS": str(kit.home.parent / "calls.jsonl"),
+        "FAKE_OPENCODE_CREDENTIALS": "2",
+        # o `doctor` consulta o PyPI (`kit.update`); nos testes, nunca o de verdade
+        "GROKBOT_KIT_PYPI_URL": closed_port_url(),
+        **extra,
+    }
     try:
         return kit.cli("doctor", *args)
     finally:
@@ -231,3 +238,63 @@ def test_opencode_plugin_not_installed_tool(kit: Kit) -> None:
     assert code == 0, out
     assert all("plugin" not in cli for cli in out["cli"].values())
     assert not any("plugin" in p for p in out["problems"])
+
+
+# --- kit-update (checks C37 e C38; AC 34-36) ----------------------------------------------------------------------
+
+UPDATE_KEYS = {
+    "installed",
+    "latest",
+    "update_available",
+    "ask",
+    "skipped",
+    "later_until",
+    "checked_at",
+    "installer",
+    "error",
+}
+
+
+def pypi(version: str) -> tuple[int, str]:
+    return (200, json.dumps({"info": {"version": version}}))
+
+
+def gets(receiver: Receiver) -> int:
+    return sum(1 for r in receiver.requests if r.method == "GET")
+
+
+# C37 - AC 34, AC 35
+def test_doctor_update_field(kit: Kit, receiver: Receiver) -> None:
+    assert kit.cli("install", "opencode").returncode == 0
+    write_secret(kit.home, "bot-a-key", "crsr_x\n")
+    receiver.respond(pypi("9.0.0"))
+    code, out = report(kit, GROKBOT_KIT_PYPI_URL=receiver.url)
+    assert code == 0, out
+    assert out["ok"] is True
+    assert out["problems"] == []
+    update = out["kit"]["update"]
+    assert set(update) == UPDATE_KEYS
+    assert update["update_available"] is True
+    assert update["latest"] == "9.0.0"
+    assert gets(receiver) == 1
+
+    code, again = report(kit, GROKBOT_KIT_PYPI_URL=receiver.url)
+    assert code == 0
+    assert again["kit"]["update"]["latest"] == "9.0.0"
+    assert gets(receiver) == 1
+
+
+UPDATE_LINE = "update: grokbot-kit 9.0.0 available; run: grokbot-kit update apply"
+
+
+# C38 - AC 36
+def test_doctor_update_text_line(kit: Kit, receiver: Receiver) -> None:
+    receiver.respond(pypi("9.0.0"))
+    result = run_doctor(kit, GROKBOT_KIT_PYPI_URL=receiver.url)
+    assert UPDATE_LINE in result.stdout.splitlines()
+
+    (kit.home / ".grokbot-kit" / "update.json").unlink()
+    receiver.respond(pypi(__version__))
+    result = run_doctor(kit, GROKBOT_KIT_PYPI_URL=receiver.url)
+    assert gets(receiver) == 2
+    assert not [line for line in result.stdout.splitlines() if line.startswith("update:")]

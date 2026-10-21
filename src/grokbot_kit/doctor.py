@@ -1,4 +1,7 @@
-"""`grokbot-kit doctor [--json]`: versões, CLIs, login, padrão, tiers, rotas e segredos (AC 100, door 21)."""
+"""`grokbot-kit doctor [--json]`: versões, CLIs, login, padrão, tiers, rotas e segredos (AC 100, door 21).
+
+`kit.update` traz o objeto da checagem de release (kit-update, AC 34-36, door 4).
+"""
 
 import json
 import os
@@ -8,7 +11,7 @@ import subprocess
 import sys
 from typing import Any
 
-from grokbot_kit import config, launch, opencode_plugin
+from grokbot_kit import config, launch, opencode_plugin, update
 from grokbot_kit.launch import TOOLS
 
 TIERS = ("trivial", "standard", "complex")
@@ -153,7 +156,7 @@ def collect() -> tuple[dict[str, Any], dict[str, Any]]:
     out = {
         "ok": True,
         "problems": [],
-        "kit": {"version": __version__},
+        "kit": {"version": __version__, "update": update.status()},
         "python": {"version": platform.python_version(), "executable": sys.executable},
         "setup": {"installed": installed, "default_cli": default},
         "cli": {tool: _cli(tool, cfg.get("cli", {}).get(tool, {}), default) for tool in installed},
@@ -165,6 +168,9 @@ def collect() -> tuple[dict[str, Any], dict[str, Any]]:
 
 def _text(out: dict[str, Any]) -> str:
     lines = [f"grokbot-kit {out['kit']['version']} (Python {out['python']['version']}, {out['python']['executable']})"]
+    kit_update = out["kit"]["update"]
+    if kit_update["update_available"]:
+        lines.append(f"update: grokbot-kit {kit_update['latest']} available; run: grokbot-kit update apply")
     for tool, cli in out["cli"].items():
         login = cli["login"]
         state = {True: "logged in", False: "not logged in", None: "unknown"}[login["logged_in"]]
