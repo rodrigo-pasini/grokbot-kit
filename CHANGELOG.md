@@ -21,7 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Builtin plugins `code-review` (one `COMMENT` review with inline comments on a GitHub PR) and `bug-verify` (checks
   an error alert against the code).
 - `grokbot-kit doctor` lists the plugins (`plugins`) and the capability support of each CLI (`plugin_support`), and
-  reports an unreadable installed plugin and a `gh` that is not logged in.
+  reports an unreadable installed plugin as a problem. A `gh` that is not logged in shows as `gh.logged_in` `false`
+  and a `gh:` line, without changing `problems` or the exit code.
 - The skill lists the plugins before delegating, runs a matching plugin instead of writing a prompt, and installs a
   plugin only after showing its capabilities and asking.
 

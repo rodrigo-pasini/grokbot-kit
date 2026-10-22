@@ -1,7 +1,8 @@
 """`grokbot-kit doctor [--json]`: versões, CLIs, login, padrão, tiers, rotas e segredos (AC 100, door 21).
 
 `kit.update` traz o objeto da checagem de release (kit-update, AC 34-36, door 4); `plugins` e `plugin_support`, os
-plugins e a matriz de capacidades por CLI (plugins, AC 65-66).
+plugins e a matriz de capacidades por CLI (plugins, AC 65-66); `gh.logged_in`, o login do `gh` quando algum plugin
+tem entrada `repo` (`null` senão), um aviso que, como o `kit.update`, não mexe em `problems` (AD-039).
 """
 
 import json
@@ -128,8 +129,6 @@ def problems(out: dict[str, Any], facts: dict[str, Any]) -> list[str]:
     for name in facts.get("missing_secrets", []):
         found.append(f"secret {name!r} is used in the config but not found; run: grokbot-kit secret set {name}")
     found += facts.get("plugin_problems", [])
-    if facts.get("gh_logged_in") is False:
-        found.append("gh is not logged in; plugins with repo inputs cannot run")
     return found
 
 
@@ -160,9 +159,10 @@ def collect() -> tuple[dict[str, Any], dict[str, Any]]:
     facts["missing_secrets"] = sorted({str(n) for n in used if str(n) not in secrets})
     found_plugins = plugins.all_plugins()
     facts["plugin_problems"] = plugins.installed()[1]
+    gh_logged_in = None
     if any(spec["kind"] == "repo" for p in found_plugins for spec in p.manifest["inputs"].values()):
         gh = _call(["gh", "auth", "status"], dict(os.environ))
-        facts["gh_logged_in"] = gh is not None and gh.returncode == 0
+        gh_logged_in = gh is not None and gh.returncode == 0
     out = {
         "ok": True,
         "problems": [],
@@ -174,6 +174,7 @@ def collect() -> tuple[dict[str, Any], dict[str, Any]]:
         "secrets": secrets,
         "plugins": [{"name": p.name, "version": p.manifest["version"], "source": p.source} for p in found_plugins],
         "plugin_support": plugins.matrix(),
+        "gh": {"logged_in": gh_logged_in},
     }
     return out, facts
 
@@ -202,6 +203,8 @@ def _text(out: dict[str, Any]) -> str:
         lines.append(f"plugin {p['name']} {p['version']} ({p['source']})")
     for tool, cells in out["plugin_support"].items():
         lines.append(f"plugin support {tool}: " + " ".join(f"{k}={v}" for k, v in cells.items()))
+    if out["gh"]["logged_in"] is False:
+        lines.append("gh: not logged in; plugins with repo inputs cannot run; run: gh auth login")
     lines += [f"problem: {p}" for p in out["problems"]] or ["ok"]
     return "\n".join(lines)
 

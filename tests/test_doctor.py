@@ -346,8 +346,13 @@ def test_plugins_listed_and_problems(kit: Kit, tmp_path: Path) -> None:
     assert "teste" not in [p["name"] for p in out["plugins"]]
     assert [p for p in out["problems"] if "plugin teste" in p and "grokbot-kit.toml" in p], out["problems"]
 
-    _, out = report(kit, FAKE_GH_AUTH_EXIT="1")
-    assert "gh is not logged in; plugins with repo inputs cannot run" in out["problems"]
+    shutil.rmtree(kit.home / ".grokbot-kit" / "plugins" / "teste")
+    code, out = report(kit)
+    assert (code, out["problems"], out["gh"]) == (0, [], {"logged_in": True})
+    code, out = report(kit, FAKE_GH_AUTH_EXIT="1")
+    assert (code, out["problems"], out["gh"]) == (0, [], {"logged_in": False})
     text = run_doctor(kit, FAKE_GH_AUTH_EXIT="1")
-    assert "problem: gh is not logged in; plugins with repo inputs cannot run" in text.stdout
+    assert text.returncode == 0
+    assert "gh: not logged in; plugins with repo inputs cannot run; run: gh auth login" in text.stdout.splitlines()
+    assert "problem:" not in text.stdout
     assert "plugin code-review " in text.stdout
