@@ -126,6 +126,7 @@ MORE_INVALID: list[tuple[str, Callable[[Path], None], str]] = [
         "at most one input of kind 'repo'",
     ),
     ("capabilities_ausente", with_manifest(lambda m: m.pop("capabilities")), "capabilities is missing"),
+    ("capabilities_nao_tabela", with_manifest(lambda m: m.update(capabilities="tudo")), "capabilities must be a table"),
     ("result_ausente", with_manifest(lambda m: m.pop("result")), "result is missing"),
     ("max_bytes_zero", with_manifest(lambda m: m["result"].update(max_bytes=0)), "result.max_bytes must be a positive"),
     ("prompt_fora_do_plugin", prompt_outside_plugin, "prompt file '../fora.md' not found"),
