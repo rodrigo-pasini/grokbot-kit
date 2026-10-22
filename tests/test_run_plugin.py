@@ -139,6 +139,18 @@ def test_launches_in_clone_with_prompt(kit: Kit, env: dict[str, str], tmp_path: 
     assert launched["env"]["GROKBOT_KIT_RESULT_FILE"] == str(task_dir / "result.json")
 
 
+# C36 na fronteira (door 8): o opencode recebe o harness no env e o `PWD` do clone, que é por onde ele acha o projeto
+def test_opencode_gets_harness_env_and_pwd(kit: Kit, env: dict[str, str]) -> None:
+    result = run_plugin(kit, env, "teste", "--input", f"pr={PR_URL}")
+    assert result.returncode == 0, result.stderr
+    task_dir = kit.task_dir()
+    launched = kit.launched()
+    assert launched["cwd"] == launched["env"]["PWD"] == str(task_dir / "work")
+    assert launched["env"]["OPENCODE_DISABLE_PROJECT_CONFIG"] == "1"
+    content = json.loads(launched["env"]["OPENCODE_CONFIG_CONTENT"])
+    assert content["skills"] == {"paths": [str(task_dir / "plugin" / "skills")]}
+
+
 # C28 - AC 26, door 7
 def test_branch_url_checkout(kit: Kit, env: dict[str, str]) -> None:
     result = run_plugin(kit, env, "teste", "--input", "pr=https://github.com/o/r/tree/feat/x")

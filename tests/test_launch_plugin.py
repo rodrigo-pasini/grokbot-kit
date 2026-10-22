@@ -1,10 +1,13 @@
 """Provas do harness por CLI (checks C36 e C39; AC 34-38 e 40, door 8).
 
-C39: sem `--plugin`, o argv e o `claude-settings.json` são os de antes desta feature, literais. C36 (o harness de
-cada CLI a partir das capacidades) entra quando a matriz da door 8 estiver provada no box (S1).
+C39: sem `--plugin`, o argv e o `claude-settings.json` são os de antes desta feature, literais. C36: o harness de cada
+CLI a partir das capacidades, literal, como na linha da door 8 (o Codex não tem harness: a matriz o tira dos plugins).
 """
 
+import json
 from pathlib import Path
+
+import pytest
 
 from grokbot_kit import launch
 
@@ -48,3 +51,77 @@ def test_argv_without_plugin_matches_baseline(tmp_path: Path) -> None:
     ]
     hook = {"type": "command", "command": f"{EXE} emit --from claude"}
     assert launch.claude_settings(EXE) == {"hooks": {"PermissionRequest": [{"matcher": "*", "hooks": [hook]}]}}
+
+
+CAPS = {"write": "task-dir", "network": "off", "commands": ["git", "gh pr view"]}
+
+
+# C36 - AC 34-38, door 8
+def test_claude_harness(tmp_path: Path) -> None:
+    h = launch.plugin_harness("claude", CAPS, tmp_path, tmp_path / "plugin", None)
+    assert h.args == [
+        "--restricted",
+        "--strict-mcp-config",
+        "--tools",
+        "Read,Glob,Grep,Edit,Write,Skill,Bash",
+        "--add-dir",
+        str(tmp_path),
+        "--plugin-dir",
+        str(tmp_path / "plugin"),
+        "--permission-mode",
+        "dontAsk",
+    ]
+    assert h.permissions == {
+        "allow": [
+            f"Edit(/{tmp_path}/**)",
+            f"Write(/{tmp_path}/**)",
+            "Bash(git)",
+            "Bash(git *)",
+            "Bash(gh pr view)",
+            "Bash(gh pr view *)",
+        ],
+        "deny": [
+            f"Edit(/{tmp_path}/plugin/**)",
+            f"Write(/{tmp_path}/plugin/**)",
+            "WebFetch",
+            "WebSearch",
+        ],
+    }
+    assert h.env == {}
+
+    none = launch.plugin_harness("claude", {**CAPS, "write": "none", "commands": []}, tmp_path, tmp_path, None)
+    assert "Read,Glob,Grep,Edit,Write,Skill" in none.args
+    assert none.permissions["allow"] == [f"Edit(/{tmp_path}/result.json)", f"Write(/{tmp_path}/result.json)"]
+
+
+# C36 - AC 34-38, door 8
+@pytest.mark.parametrize(("major", "args"), [(2, ["--standalone"]), (1, []), (None, [])])
+def test_opencode_harness(tmp_path: Path, major: int | None, args: list[str]) -> None:
+    h = launch.plugin_harness("opencode", CAPS, tmp_path, tmp_path / "plugin", major)
+    assert h.args == args
+    assert h.permissions == {}
+    assert {k: v for k, v in h.env.items() if k != "OPENCODE_CONFIG_CONTENT"} == {
+        "OPENCODE_DISABLE_PROJECT_CONFIG": "1",
+        "OPENCODE_DISABLE_CLAUDE_CODE_SKILLS": "1",
+    }
+    assert json.loads(h.env["OPENCODE_CONFIG_CONTENT"]) == {
+        "permission": {
+            "edit": {"*": "allow", f"{tmp_path}/plugin/*": "deny"},
+            "external_directory": {"*": "deny", f"{tmp_path}/*": "allow"},
+            "bash": {"*": "deny", "git": "allow", "git *": "allow", "gh pr view": "allow", "gh pr view *": "allow"},
+            "skill": "allow",
+            "webfetch": "deny",
+            "websearch": "deny",
+        },
+        "skills": {"paths": [str(tmp_path / "plugin" / "skills")]},
+    }
+    on = launch.plugin_harness("opencode", {**CAPS, "write": "none", "network": "on"}, tmp_path, tmp_path, major)
+    permission = json.loads(on.env["OPENCODE_CONFIG_CONTENT"])["permission"]
+    assert permission["edit"] == {"*": "deny", str(tmp_path / "result.json"): "allow"}
+    assert "webfetch" not in permission
+
+
+# C36 - door 8: o Codex não confina a escrita neste host (sandbox `bwrap`), então não tem harness
+def test_codex_has_no_harness(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="codex has no plugin harness"):
+        launch.plugin_harness("codex", CAPS, tmp_path, tmp_path, None)

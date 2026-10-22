@@ -139,7 +139,7 @@ if record:
                 "env": {
                     k: v
                     for k, v in os.environ.items()
-                    if k.startswith("GROKBOT_KIT_") or k in ("CODEX_HOME", "ANTHROPIC_API_KEY")
+                    if k.startswith(("GROKBOT_KIT_", "OPENCODE_")) or k in ("CODEX_HOME", "ANTHROPIC_API_KEY", "PWD")
                 },
                 "cwd": os.getcwd(),
             },

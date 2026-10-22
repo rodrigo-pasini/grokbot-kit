@@ -73,17 +73,23 @@ skills (`skills`).
 
 ## Capability matrix
 
-What each CLI can enforce, proven on the box with the installed versions. `os` is the system sandbox; `tool` is the
-tool's own permission; `unsupported` makes `run --plugin` exit `2` before creating the task, when the plugin needs
-that capability. `plugin show` and `doctor` show the same table.
+What each CLI can enforce, proven with real agents (`claude` 2.1.308, `opencode` 2.1.3, `codex` 0.163.0) on a Linux
+host that restricts unprivileged user namespaces, as Ubuntu does by default. `os` is the system sandbox; `tool` is the
+CLI's own permission; `unsupported` makes `run --plugin` exit `2` before creating the task, when the plugin needs that
+capability. `plugin show` and `doctor` show the same table.
 
 | CLI | `write` | `network: off` | `commands` | `workspace_config` | `skills` |
 | --- | --- | --- | --- | --- | --- |
-| `claude` | `unsupported` | `unsupported` | `unsupported` | `unsupported` | `unsupported` |
-| `opencode` | `unsupported` | `unsupported` | `unsupported` | `unsupported` | `unsupported` |
+| `claude` | `tool` | `unsupported` | `tool` | `tool` | `tool` |
+| `opencode` | `tool` | `unsupported` | `tool` | `tool` | `tool` |
 | `codex` | `unsupported` | `unsupported` | `unsupported` | `unsupported` | `unsupported` |
 
-A CLI without `write` or without `workspace_config` runs no plugin at all.
+A CLI without `write` or without `workspace_config` runs no plugin at all. Codex confines writes and network only
+with its `bwrap` sandbox, which does not start on such a host (`codex sandbox -- true` fails), so it runs no plugin.
+
+`tool` stops the agent's own tools, not what an allowed command runs: `pytest` or `npm test` run the repository's
+code with the box user's permissions. Allow a test runner only in a plugin whose repository you trust as much as a
+local `pytest` run.
 
 ## Result
 

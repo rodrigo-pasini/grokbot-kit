@@ -19,7 +19,7 @@ Convenções das provas:
 
 ## Checks
 
-### S1 - a matriz de capacidades está provada no box · 2 arquivos novos · ~12 KB · ~3k (mais as rodadas no box)
+### S1 - a matriz de capacidades está provada no box · 2 arquivos novos · ~12 KB · ~3k (mais as rodadas no box) · verde no host de dev (AD-041): C1, C7, C8 no CI; C2-C5 nas 3 CLIs (Codex fora pela matriz), C6 sem célula a provar; a rodada no box vem com a release, pelo bot
 
 **C1** - `docs/.specs/features/plugins/spike.md` tem a matriz com exatamente 15 células (3 CLIs × `write`, `network`, `commands`, `workspace_config`, `skills`), cada uma `os`, `tool` ou `unsupported`, cada uma com a versão da CLI, o comando que a provou e a saída observada (AC 1, door 8)
 Proof: `uv run pytest tests/test_plugin_spike.py -k matrix_complete`
@@ -103,7 +103,7 @@ Proof: `uv run pytest tests/test_plugin.py -k running_task_predicate`
 **C26** - Com uma tarefa do plugin rodando, `plugin rm` e `plugin add --replace` saem com `2` listando o `task_id` em stderr, sem mudar a cópia (AC 25)
 Proof: `uv run pytest tests/test_plugin.py -k rm_and_replace_refuse_running_task`
 
-### S3 - o run executa um plugin · 6 arquivos · ~85 KB · ~22k · parcial: C27-C35, C38, C39 verdes (C34 fechado com a matriz de teste, ok do Rodrigo em 22/10/2026); C36 e C37 esperam o S1
+### S3 - o run executa um plugin · 6 arquivos · ~85 KB · ~22k · done no host de dev: C27-C36, C38, C39 verdes (C34 fechado com a matriz de teste, ok do Rodrigo em 22/10/2026); C37 verde com o `claude` real no host de dev (AD-041)
 
 **C27** - `run --plugin <teste> --input pr=https://github.com/o/r/pull/7` com a CLI falsa: o task dir tem `plugin/` igual à origem, `work/` é um clone com o PR 7 em checkout (o `gh` falso registra `pr checkout 7`), a CLI foi lançada com `cwd` = `<task_dir>/work` e o prompt tem `{pr}`, `{workspace}`, `{result_file}` e `{task_dir}` substituídos (AC 26, doors 3 e 7)
 Proof: `uv run pytest tests/test_run_plugin.py -k launches_in_clone_with_prompt`
@@ -198,7 +198,7 @@ Proof: `uv run pytest tests/test_builtin_plugins.py -k bug_verify_instructions`
 **C53** - No box, com o repositório de teste que tem um `ZeroDivisionError` conhecido e o alerta dele, a routine recebe `reproduced` `yes` e o arquivo do bug em `suspects` (AC 56, AC 57)
 Proof: `uv run pytest -m integration tests/integration/test_builtin_plugins.py -k bug_verify_reproduces`
 
-### S7 - o bot e quem escreve plugins sabem usar · 5 arquivos · ~45 KB · ~12k · parcial: C54-C56, C58 verdes; C57 verde contra a matriz do pacote, fecha com o C8 (S1)
+### S7 - o bot e quem escreve plugins sabem usar · 5 arquivos · ~45 KB · ~12k · done: C54-C58 verdes (C57 contra a matriz do pacote, que o C8 iguala à de `spike.md`)
 
 **C54** - O `SKILL.md` manda rodar `grokbot-kit plugin list --json` quando o usuário pergunta o que o kit sabe fazer e antes de delegar, mostrar nome, descrição e capacidades, e usar `run --plugin <nome>` com as entradas quando o pedido casa com um plugin (AC 60, AC 61)
 Proof: `uv run pytest tests/test_skill_doc.py -k plugin_list_and_run`

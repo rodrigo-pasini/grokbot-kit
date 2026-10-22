@@ -17,7 +17,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   [docs/plugins.md](docs/plugins.md).
 - `grokbot-kit run --plugin <name> --input <key>=<value>` clones the PR or branch of a `repo` input into the task
   dir, runs the plugin prompt there and refuses (`2`, before the task dir) a CLI that cannot enforce a capability
-  the plugin declares. Until the capability matrix is proven on the box, every CLI is `unsupported`.
+  the plugin declares. `claude` and `opencode` enforce `write`, `commands`, the ignored workspace configuration and the
+  plugin skills with their own permissions; no CLI enforces `network = "off"`, and `codex` runs no plugin (its sandbox
+  needs `bwrap`, which does not start where unprivileged user namespaces are restricted).
 - Builtin plugins `code-review` (one `COMMENT` review with inline comments on a GitHub PR) and `bug-verify` (checks
   an error alert against the code).
 - `grokbot-kit doctor` lists the plugins (`plugins`) and the capability support of each CLI (`plugin_support`), and
@@ -29,7 +31,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - `grokbot-kit.event/v1` gains `plugin` and `result` (`null` outside plugin tasks) and the `exit_reason`
-  `result_invalid`. A plugin task never ends as `denied`: it ends `ok` only with a valid `result.json`.
+  `result_invalid`. A plugin task never ends as `denied`: it ends `ok` only with a valid `result.json`. Its permission
+  requests go to `kit.log`, not to the routine as `needs_input`.
+
+### Fixed
+
+- The agent gets `PWD` set to its working directory. It inherited the `PWD` of the process that ran `grokbot-kit run`,
+  and opencode, which finds its project from `PWD`, worked on that directory's project instead of `--cwd`.
 
 ## [0.3.1] - 2026-10-21
 

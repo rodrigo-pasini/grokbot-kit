@@ -327,10 +327,19 @@ def run(args: argparse.Namespace) -> int:
         extras = [prompt]
 
     kit_exe = launch.kit_executable()
-    if tool == "claude":
-        settings = json.dumps(launch.claude_settings(kit_exe), indent=2) + "\n"
-        (task_dir / "claude-settings.json").write_text(settings, encoding="utf-8")
     bin_path = os.path.expanduser(r["cli"].get("bin", tool))
+    harness = launch.Harness([], {}, {})
+    if task:
+        major = launch.cli_major(bin_path) if tool == "opencode" else None
+        caps = task["plugin"].manifest["capabilities"]
+        harness = launch.plugin_harness(tool, caps, task_dir, task_dir / "plugin", major)
+        extras = [*harness.args, *extras]
+    if tool == "claude":
+        claude_settings: dict[str, Any] = launch.claude_settings(kit_exe)
+        if harness.permissions:
+            claude_settings["permissions"] = harness.permissions
+        settings = json.dumps(claude_settings, indent=2) + "\n"
+        (task_dir / "claude-settings.json").write_text(settings, encoding="utf-8")
     argv = launch.agent_argv(tool, bin_path, r["model"], task_dir, kit_exe, extras)
     env = {
         **os.environ,
@@ -339,6 +348,9 @@ def run(args: argparse.Namespace) -> int:
         "GROKBOT_KIT_LABEL": args.label,
         "GROKBOT_KIT_TASK_DIR": str(task_dir),
         **config.cli_env(tool, r["cli"]),
+        **harness.env,
+        # o herdado apontaria para onde o kit foi chamado; o opencode acha o projeto pelo `PWD`, não pelo cwd
+        "PWD": str(cwd),
     }
     if task:
         env["GROKBOT_KIT_RESULT_FILE"] = str(task_dir / "result.json")
