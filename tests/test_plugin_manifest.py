@@ -82,6 +82,65 @@ INVALID: list[tuple[str, Callable[[Path], None], str]] = [
 assert len(INVALID) == 15
 
 
+def symlink_in_skills(path: Path) -> None:
+    write_plugin(path)
+    (path / "skills" / "teste" / "fora").symlink_to("/etc/passwd")
+
+
+def prompt_not_utf8(path: Path) -> None:
+    write_plugin(path)
+    (path / "prompt.md").write_bytes(b"Revise {pr} \xff\xfe\n")
+
+
+def claude_manifest_not_json(path: Path) -> None:
+    write_plugin(path)
+    (path / ".claude-plugin" / "plugin.json").write_text("{nome: x", encoding="utf-8")
+
+
+def prompt_outside_plugin(path: Path) -> None:
+    manifest = plugin_manifest()
+    manifest["prompt"] = "../fora.md"
+    write_plugin(path, manifest)
+    (path.parent / "fora.md").write_text("Revise {pr}.\n", encoding="utf-8")
+
+
+# As outras recusas de `read_plugin` (door 1 e door 2), além das 15 do C19
+MORE_INVALID: list[tuple[str, Callable[[Path], None], str]] = [
+    ("link_simbolico", symlink_in_skills, "plugin has a symbolic link: skills/teste/fora"),
+    ("prompt_nao_utf8", prompt_not_utf8, "is not UTF-8 text"),
+    ("version_vazia", with_manifest(lambda m: m.update(version="")), "version must be a non-empty string"),
+    ("plugin_json_invalido", claude_manifest_not_json, ".claude-plugin/plugin.json is not valid JSON"),
+    (
+        "entrada_com_nome_de_variavel",
+        with_manifest(lambda m: m["inputs"].update(workspace={"kind": "text"})),
+        "input name 'workspace' must match",
+    ),
+    (
+        "required_nao_booleano",
+        with_manifest(lambda m: m["inputs"]["pr"].update(required="sim")),
+        "inputs.pr.required must be true or false",
+    ),
+    (
+        "duas_entradas_repo",
+        with_manifest(lambda m: m["inputs"].update(outro={"kind": "repo"})),
+        "at most one input of kind 'repo'",
+    ),
+    ("capabilities_ausente", with_manifest(lambda m: m.pop("capabilities")), "capabilities is missing"),
+    ("result_ausente", with_manifest(lambda m: m.pop("result")), "result is missing"),
+    ("max_bytes_zero", with_manifest(lambda m: m["result"].update(max_bytes=0)), "result.max_bytes must be a positive"),
+    ("prompt_fora_do_plugin", prompt_outside_plugin, "prompt file '../fora.md' not found"),
+]
+
+
+@pytest.mark.parametrize(("case", "build", "message"), MORE_INVALID, ids=[c[0] for c in MORE_INVALID])
+def test_manifest_rules_more(tmp_path: Path, case: str, build: Callable[[Path], None], message: str) -> None:
+    build(tmp_path / "p")
+    with pytest.raises(plugin.PluginError) as raised:
+        plugin.read_plugin(tmp_path / "p")
+    assert raised.value.code == 2
+    assert message in str(raised.value)
+
+
 # C19 - AC 19
 def test_manifest_rules_valid_plugin_normalized(tmp_path: Path) -> None:
     manifest = plugin.read_plugin(write_plugin(tmp_path / "p"))

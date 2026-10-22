@@ -280,6 +280,14 @@ def test_add_refuses_invalid_manifest(
     assert entries(kit) == []
 
 
+# door 4: `--ref` fixa um commit de um git; com um diretório não há o que fixar
+def test_add_refuses_ref_for_directory(kit: Kit, tmp_path: Path) -> None:
+    result = install(kit, write_plugin(tmp_path / "p"), "--ref", "main")
+    assert result.returncode == 2, result.stderr
+    assert "--ref only applies to a git URL" in result.stderr
+    assert entries(kit) == []
+
+
 # C20 - AC 20
 def test_add_refuses_builtin_name(kit: Kit, tmp_path: Path) -> None:
     result = install(kit, write_plugin(tmp_path / "cr", plugin_manifest("code-review")))

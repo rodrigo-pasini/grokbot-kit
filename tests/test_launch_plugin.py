@@ -57,7 +57,7 @@ CAPS = {"write": "task-dir", "network": "off", "commands": ["git", "gh pr view"]
 
 
 # C36 - AC 34-38, door 8
-def test_claude_harness(tmp_path: Path) -> None:
+def test_harness_per_cli_and_capability_claude(tmp_path: Path) -> None:
     h = launch.plugin_harness("claude", CAPS, tmp_path, tmp_path / "plugin", None)
     assert h.args == [
         "--restricted",
@@ -96,7 +96,7 @@ def test_claude_harness(tmp_path: Path) -> None:
 
 # C36 - AC 34-38, door 8
 @pytest.mark.parametrize(("major", "args"), [(2, ["--standalone"]), (1, []), (None, [])])
-def test_opencode_harness(tmp_path: Path, major: int | None, args: list[str]) -> None:
+def test_harness_per_cli_and_capability_opencode(tmp_path: Path, major: int | None, args: list[str]) -> None:
     h = launch.plugin_harness("opencode", CAPS, tmp_path, tmp_path / "plugin", major)
     assert h.args == args
     assert h.permissions == {}
@@ -122,6 +122,6 @@ def test_opencode_harness(tmp_path: Path, major: int | None, args: list[str]) ->
 
 
 # C36 - door 8: o Codex não confina a escrita neste host (sandbox `bwrap`), então não tem harness
-def test_codex_has_no_harness(tmp_path: Path) -> None:
+def test_harness_per_cli_and_capability_codex(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="codex has no plugin harness"):
         launch.plugin_harness("codex", CAPS, tmp_path, tmp_path, None)

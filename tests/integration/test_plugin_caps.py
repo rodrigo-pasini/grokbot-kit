@@ -15,9 +15,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from test_real_cli import TERMINAL_EVENTS, prepare_home
 
 from grokbot_kit import plugin
+from integration.test_real_cli import TERMINAL_EVENTS, prepare_home
 
 pytestmark = pytest.mark.integration
 
@@ -201,7 +201,7 @@ def test_network_off_denied(tmp_path: Path, tool: str) -> None:
 
 
 # C37 - AC 34-38
-def test_claude_plugin_task_enforced(tmp_path: Path) -> None:
+def test_run_plugin_claude_end_to_end(tmp_path: Path) -> None:
     needs("claude", "write")
     work = tmp_path / "repo"
     work.mkdir()
