@@ -7,6 +7,7 @@ Cada regra é provada na própria camada (`grokbot_kit.payload`, `grokbot_kit.te
 import itertools
 import json
 import re
+import shutil
 import subprocess
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
@@ -66,6 +67,10 @@ DOOR_2_FIELDS = {
     "started_at",
     "timestamp",
 }
+# door 5 da feature plugins: aditivos a `grokbot-kit.event/v1`, `null` fora de tarefa de plugin
+DOOR_5_FIELDS = {"plugin", "result"}
+EVENT_FIELDS = DOOR_2_FIELDS | DOOR_5_FIELDS
+
 DOOR_2_TEST_NULLS = (
     "task_id",
     "task_label",
@@ -86,6 +91,7 @@ EXIT_REASONS = {
     "timeout",
     "interrupted",
     "needs_input",
+    "result_invalid",  # door 5 da feature plugins
 }
 
 RFC3339_UTC = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|\+00:00)$")
@@ -203,8 +209,8 @@ def test_task_event_required_fields_and_schema_rejects_null(tmp_path: Path, fiel
 # C57 - door 2
 def test_schema_matches_door_2() -> None:
     props = SCHEMA["properties"]
-    assert set(props) == DOOR_2_FIELDS
-    assert set(SCHEMA["required"]) == DOOR_2_FIELDS
+    assert set(props) == EVENT_FIELDS
+    assert set(SCHEMA["required"]) == EVENT_FIELDS
     assert SCHEMA["additionalProperties"] is False
     assert props["schema"] == {"const": "grokbot-kit.event/v1"}
     assert set(props["event"]["enum"]) == {"completed", "error", "timeout", "needs_input", "test"}
@@ -245,6 +251,7 @@ def test_schema_matches_door_2_nullable_only_for_test(tmp_path: Path) -> None:
         "transcript_path": None,
         "timestamp": "2026-10-19T12:00:00Z",
         **dict.fromkeys(DOOR_2_TEST_NULLS),
+        **dict.fromkeys(DOOR_5_FIELDS),
     }
     VALIDATOR.validate(probe)
     task = payload.task_event(
@@ -401,3 +408,64 @@ def test_timestamps_rfc3339_utc_layer(tmp_path: Path) -> None:
     assert payload.rfc3339(datetime(2026, 10, 19, 12, 0, 5, tzinfo=UTC)) == "2026-10-19T12:00:05Z"
     asked = payload.needs_input_event(task_meta(tmp_path), tmp_path, kind="question", tool_name=None, detail=None)
     assert RFC3339_UTC.match(asked["timestamp"])
+
+
+# C45 - AC 46
+def test_no_plugin_fields_null(kit: Kit, tmp_path: Path) -> None:
+    event = payload.task_event(
+        task_meta(tmp_path), tmp_path, event="completed", status="ok", exit_reason="success", exit_code=0, summary=""
+    )
+    assert event["plugin"] is None
+    assert event["result"] is None
+    assert payload.route_test_event("bot-a")["plugin"] is None
+    assert payload.route_test_event("bot-a")["result"] is None
+    for tool in ("claude", "opencode", "codex"):
+        shutil.rmtree(kit.home / ".grokbot-kit", ignore_errors=True)
+        kit.sink.unlink(missing_ok=True)
+        cli_event = run_task(kit, tool, FAKE_STDOUT=OK_OUTPUT[tool])
+        assert cli_event["plugin"] is None
+        assert cli_event["result"] is None
+        VALIDATOR.validate(cli_event)
+
+
+PLUGIN_META = {
+    "name": "nota",
+    "version": "1.2.3",
+    "source": "git",
+    "commit": "a" * 40,
+    "capabilities": {},
+    "support": {},
+}
+
+
+# C46 - AC 47, door 5
+def test_schema_accepts_plugin_fields(tmp_path: Path) -> None:
+    props = SCHEMA["properties"]
+    assert "result_invalid" in props["exit_reason"]["enum"]
+    meta = {**task_meta(tmp_path), "plugin": PLUGIN_META}
+    ok = payload.task_event(
+        meta,
+        tmp_path,
+        event="completed",
+        status="ok",
+        exit_reason="success",
+        exit_code=0,
+        summary="s",
+        result={"summary": "s", "findings": []},
+    )
+    assert ok["plugin"] == {"name": "nota", "version": "1.2.3", "source": "git", "commit": "a" * 40}
+    VALIDATOR.validate(ok)
+    invalid = payload.task_event(
+        meta, tmp_path, event="error", status="failed", exit_reason="result_invalid", exit_code=0, summary="r"
+    )
+    assert invalid["result"] is None
+    VALIDATOR.validate(invalid)
+    for field, value in (
+        ("plugin", {"name": "nota", "version": "1.2.3", "source": "git"}),
+        ("plugin", {**ok["plugin"], "source": "outro"}),
+        ("plugin", {**ok["plugin"], "extra": 1}),
+        ("result", ["não", "objeto"]),
+        ("result", "texto"),
+    ):
+        assert not VALIDATOR.is_valid({**ok, field: value}), (field, value)
+    assert not VALIDATOR.is_valid({**ok, "exit_reason": "result_missing"})

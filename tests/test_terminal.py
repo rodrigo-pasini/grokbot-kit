@@ -219,3 +219,63 @@ def test_run_exit_mirrors_agent(kit: Kit, code: int) -> None:
     )
     assert result.returncode == code, result.stderr
     assert kit.sink_events()[0]["exit_code"] == code
+
+
+# C43 - AC 44
+def test_plugin_task_never_denied() -> None:
+    denied = AgentOutput(error=False, permission_denied=True, summary="")
+    for needs_input in (False, True):
+        assert terminal.classify(0, denied, needs_input=needs_input, plugin=True, result_valid=True) == (
+            "completed",
+            "ok",
+            "success",
+        )
+        assert terminal.classify(0, denied, needs_input=needs_input, plugin=True, result_valid=False) == (
+            "error",
+            "failed",
+            "result_invalid",
+        )
+    assert terminal.classify(0, denied, needs_input=False) == ("completed", "denied", "permission_denied")
+
+
+# C44 - AC 45: a mesma precedência de hoje antes do resultado, que só decide quando o agente saiu limpo
+PLUGIN_PRECEDENCE = [
+    ("timeout", 124, CLEAN, "timeout", True, ("timeout", "timeout", "timeout")),
+    ("interrompida", 130, CLEAN, "interrupted", True, ("error", "interrupted", "interrupted")),
+    (
+        "binario_ausente",
+        127,
+        AgentOutput(error=True, permission_denied=False, summary=""),
+        None,
+        True,
+        ("error", "failed", "agent_error"),
+    ),
+    (
+        "erro_do_agente",
+        0,
+        AgentOutput(error=True, permission_denied=False, summary=""),
+        None,
+        True,
+        ("error", "failed", "agent_error"),
+    ),
+    ("exit_diferente_de_0", 3, CLEAN, None, True, ("error", "failed", "nonzero_exit")),
+    ("resultado_invalido", 0, CLEAN, None, False, ("error", "failed", "result_invalid")),
+    (
+        "negacao_com_resultado_valido",
+        0,
+        AgentOutput(error=False, permission_denied=True, summary=""),
+        None,
+        True,
+        ("completed", "ok", "success"),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("case", "code", "output", "stopped", "valid", "expected"), PLUGIN_PRECEDENCE, ids=[r[0] for r in PLUGIN_PRECEDENCE]
+)
+def test_plugin_precedence_table(
+    case: str, code: int, output: AgentOutput, stopped: str | None, valid: bool, expected: tuple[str, str, str]
+) -> None:
+    got = terminal.classify(code, output, needs_input=True, stopped=stopped, plugin=True, result_valid=valid)
+    assert got == expected

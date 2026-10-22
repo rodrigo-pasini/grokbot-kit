@@ -5,7 +5,7 @@ por symlink, as credenciais do Claude (`~/.claude/.credentials.json`) e do openc
 (`~/.local/share/opencode/auth.json`). O Codex usa o `CODEX_HOME` isolado da door 7, `~/.grokbot-kit/codex-home` do
 `HOME` real, com login próprio; o `~/.codex` do usuário nunca entra (AC 98).
 
-Modelos: `haiku` no Claude (alias documentado); no opencode, `GROKBOT_KIT_IT_OPENCODE_MODEL` ou o primeiro modelo
+Modelos: `GROKBOT_KIT_IT_CLAUDE_MODEL` ou `haiku` no Claude (alias documentado); no opencode, `GROKBOT_KIT_IT_OPENCODE_MODEL` ou o primeiro modelo
 `-free` impresso por `opencode models`; e o id de `GROKBOT_KIT_IT_CODEX_MODEL` no Codex.
 """
 
@@ -40,7 +40,7 @@ def real_bin(tool: str) -> str:
 
 def model_for(tool: str) -> str:
     if tool == "claude":
-        return "haiku"
+        return os.environ.get("GROKBOT_KIT_IT_CLAUDE_MODEL") or "haiku"
     if tool == "opencode":
         if os.environ.get("GROKBOT_KIT_IT_OPENCODE_MODEL"):
             return os.environ["GROKBOT_KIT_IT_OPENCODE_MODEL"]

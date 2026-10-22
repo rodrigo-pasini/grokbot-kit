@@ -5,6 +5,7 @@ import json
 import os
 import re
 import secrets
+import shutil
 import signal
 import subprocess
 import sys
@@ -14,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from grokbot_kit import config, deliver, launch, payload, resolve, terminal
+from grokbot_kit import plugin as plugins
 from grokbot_kit.payload import rfc3339
 
 SECRET_KEYS = ("url_secret", "key_secret", "token_secret", "webhook_secret")
@@ -27,6 +29,77 @@ POLL_SECONDS = 0.05
 
 class UsageError(Exception):
     pass
+
+
+PR_URL_RE = re.compile(r"^https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/pull/([0-9]+)/?$")
+BRANCH_URL_RE = re.compile(
+    r"^https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/tree/([A-Za-z0-9_.][A-Za-z0-9_./-]*?)/?$"
+)
+MAX_FILE_BYTES = 1024 * 1024
+MAX_TEXT_BYTES = 64 * 1024
+
+
+def _repo_target(key: str, url: str) -> tuple[str, str | None, str | None]:
+    """`(owner/repo, número do PR, branch)` de uma entrada `repo` (door 7)."""
+    pr = PR_URL_RE.match(url)
+    if pr:
+        return pr.group(1), pr.group(2), None
+    branch = BRANCH_URL_RE.match(url)
+    if branch and ".." not in branch.group(2):
+        return branch.group(1), None, branch.group(2)
+    raise UsageError(
+        f"--input {key} must be https://github.com/<owner>/<repo>/pull/<n> or "
+        f"https://github.com/<owner>/<repo>/tree/<branch>, not {url!r}"
+    )
+
+
+def _plugin_task(args: argparse.Namespace, tool: str) -> dict[str, Any] | None:
+    """O plugin, as entradas e o alvo do clone de `run --plugin`, validados antes do task dir (AC 27-32)."""
+    if not args.plugin:
+        if args.input:
+            raise UsageError("--input needs --plugin")
+        return None
+    if args.prompt_file or args.extras:
+        raise UsageError("--plugin takes its prompt from the plugin; remove --prompt-file and the arguments after --")
+    found = plugins.find(args.plugin)
+    if found is None:
+        raise UsageError(f"no plugin named {args.plugin}; run: grokbot-kit plugin list")
+    name = found.name
+    declared: dict[str, dict[str, Any]] = found.manifest["inputs"]
+    repo = next((k for k, spec in declared.items() if spec["kind"] == "repo"), None)
+    if repo and args.cwd:
+        raise UsageError(f"--cwd does not apply to plugin {name}: its workspace is the clone of input {repo}")
+    values: dict[str, str] = {}
+    for raw in args.input:
+        key, sep, value = raw.partition("=")
+        if not sep:
+            raise UsageError(f"--input {raw!r} must be KEY=VALUE")
+        if key not in declared:
+            raise UsageError(f"plugin {name} has no input {key!r}; inputs: {', '.join(declared) or 'none'}")
+        if key in values:
+            raise UsageError(f"--input {key} given twice")
+        values[key] = value
+    for key, spec in declared.items():
+        if spec["required"] and key not in values:
+            raise UsageError(f"plugin {name} needs --input {key}=<{spec['kind']}>")
+    target = None
+    for key, value in values.items():
+        kind = declared[key]["kind"]
+        if kind == "repo":
+            target = _repo_target(key, value)
+        elif kind == "text" and len(value.encode("utf-8")) > MAX_TEXT_BYTES:
+            raise UsageError(f"--input {key} has more than {MAX_TEXT_BYTES} bytes")
+        elif kind == "file":
+            path = Path(value).expanduser().resolve()
+            if not path.is_file():
+                raise UsageError(f"--input {key}: file not found: {path}")
+            if path.stat().st_size > MAX_FILE_BYTES:
+                raise UsageError(f"--input {key}: {path} has more than {MAX_FILE_BYTES} bytes")
+            values[key] = str(path)
+    refused = plugins.unenforceable(found, tool)
+    if refused:
+        raise UsageError(f"plugin {name} needs {refused}, which {tool} cannot enforce")
+    return {"plugin": found, "values": values, "target": target}
 
 
 def _resolve(args: argparse.Namespace, cfg: dict[str, Any]) -> dict[str, Any]:
@@ -52,6 +125,10 @@ def _resolve(args: argparse.Namespace, cfg: dict[str, Any]) -> dict[str, Any]:
                 config.check_secret(sink[key])
     if not LABEL_RE.match(args.label):
         raise UsageError("--label must use only letters, digits, '.', '_' and '-'")
+    try:
+        task = _plugin_task(args, agent.tool)
+    except plugins.PluginError as e:
+        raise UsageError(str(e)) from None
     cwd = Path(args.cwd or os.getcwd()).resolve()
     if not cwd.is_dir():
         raise UsageError(f"--cwd is not a directory: {cwd}")
@@ -66,6 +143,7 @@ def _resolve(args: argparse.Namespace, cfg: dict[str, Any]) -> dict[str, Any]:
         "cli": cli,
         "cwd": cwd,
         "extras": extras,
+        "task": task,
     }
 
 
@@ -165,6 +243,66 @@ def _write_meta(task_dir: Path, meta: dict[str, Any]) -> None:
     (task_dir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def _prepare_plugin(task: dict[str, Any], task_dir: Path, cwd: Path) -> tuple[dict[str, Any], Path, str]:
+    """Copia o plugin e as entradas `file` para o task dir (door 3) e devolve `(meta["plugin"], cwd, prompt)`."""
+    source: plugins.Plugin = task["plugin"]
+    copy = task_dir / "plugin"
+    shutil.copytree(
+        source.path,
+        copy,
+        ignore=lambda d, names: [n for n in names if Path(d) == source.path and n in (".git", "origin.json")],
+    )
+    plugin = plugins.Plugin(copy, source.manifest, source.source, source.origin, source.commit)
+    declared = plugin.manifest["inputs"]
+    workspace = task_dir / "work" if task["target"] else cwd
+    values = {"workspace": str(workspace), "result_file": str(task_dir / "result.json"), "task_dir": str(task_dir)}
+    for key, value in task["values"].items():
+        if declared[key]["kind"] == "file":
+            (task_dir / "inputs").mkdir(exist_ok=True)
+            value = str(shutil.copyfile(value, task_dir / "inputs" / key))
+        values[key] = value
+    meta = {
+        "name": plugin.name,
+        "version": plugin.manifest["version"],
+        "source": plugin.source,
+        "commit": plugin.commit,
+        "capabilities": plugin.manifest["capabilities"],
+        "support": plugins.matrix()[task["tool"]],
+    }
+    return meta, workspace, plugins.render_prompt(plugin, values)
+
+
+def _clone(target: tuple[str, str | None, str | None], workspace: Path, timeout: int) -> str | None:
+    """Clona o PR ou a branch (door 7) com o `gh` do box; devolve o motivo da falha, ou `None`."""
+    slug, number, branch = target
+    steps: list[tuple[list[str], Path | None]] = [
+        (["gh", "repo", "clone", slug, str(workspace), *(["--", "--branch", branch] if branch else [])], None)
+    ]
+    if number:
+        steps.append((["gh", "pr", "checkout", number], workspace))
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GH_PROMPT_DISABLED": "1"}
+    for argv, cwd in steps:
+        try:
+            proc = subprocess.run(
+                argv,
+                cwd=cwd,
+                env=env,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+            )
+        except FileNotFoundError:
+            return "gh not found; install the GitHub CLI and run: gh auth login"
+        except subprocess.TimeoutExpired:
+            return f"{' '.join(argv)} timed out after {timeout}s"
+        if proc.returncode != 0:
+            output = (proc.stderr.strip() + "\n" + proc.stdout.strip()).strip()
+            return f"{' '.join(argv)} failed with exit {proc.returncode}: {output}"
+    return None
+
+
 def run(args: argparse.Namespace) -> int:
     try:
         cfg = config.load()
@@ -180,12 +318,29 @@ def run(args: argparse.Namespace) -> int:
     task_dir.mkdir(parents=True, mode=0o700)
     print(f"grokbot-kit: task dir {task_dir}", file=sys.stderr)
 
+    task = r["task"]
+    cwd: Path = r["cwd"]
+    extras: list[str] = r["extras"]
+    plugin_meta = None
+    if task:
+        plugin_meta, cwd, prompt = _prepare_plugin({**task, "tool": tool}, task_dir, cwd)
+        extras = [prompt]
+
     kit_exe = launch.kit_executable()
-    if tool == "claude":
-        settings = json.dumps(launch.claude_settings(kit_exe), indent=2) + "\n"
-        (task_dir / "claude-settings.json").write_text(settings, encoding="utf-8")
     bin_path = os.path.expanduser(r["cli"].get("bin", tool))
-    argv = launch.agent_argv(tool, bin_path, r["model"], task_dir, kit_exe, r["extras"])
+    harness = launch.Harness([], {}, {})
+    if task:
+        major = launch.cli_major(bin_path) if tool == "opencode" else None
+        caps = task["plugin"].manifest["capabilities"]
+        harness = launch.plugin_harness(tool, caps, task_dir, task_dir / "plugin", major)
+        extras = [*harness.args, *extras]
+    if tool == "claude":
+        claude_settings: dict[str, Any] = launch.claude_settings(kit_exe)
+        if harness.permissions:
+            claude_settings["permissions"] = harness.permissions
+        settings = json.dumps(claude_settings, indent=2) + "\n"
+        (task_dir / "claude-settings.json").write_text(settings, encoding="utf-8")
+    argv = launch.agent_argv(tool, bin_path, r["model"], task_dir, kit_exe, extras)
     env = {
         **os.environ,
         "GROKBOT_KIT_TASK_ID": task_id,
@@ -193,7 +348,12 @@ def run(args: argparse.Namespace) -> int:
         "GROKBOT_KIT_LABEL": args.label,
         "GROKBOT_KIT_TASK_DIR": str(task_dir),
         **config.cli_env(tool, r["cli"]),
+        **harness.env,
+        # o herdado apontaria para onde o kit foi chamado; o opencode acha o projeto pelo `PWD`, não pelo cwd
+        "PWD": str(cwd),
     }
+    if task:
+        env["GROKBOT_KIT_RESULT_FILE"] = str(task_dir / "result.json")
 
     meta: dict[str, Any] = {
         "task_id": task_id,
@@ -204,14 +364,24 @@ def run(args: argparse.Namespace) -> int:
         "model_source": r["model_source"],
         "tier": r["tier"],
         "timeout_seconds": r["timeout_seconds"],
-        "cwd": str(r["cwd"]),
+        "cwd": str(cwd),
         "started_at": rfc3339(started),
         "finished_at": None,
         "exit_code": None,
     }
     if tool == "codex":
         meta["codex_home"] = env["CODEX_HOME"]
+    if plugin_meta:
+        meta["plugin"] = plugin_meta
     _write_meta(task_dir, meta)
+
+    if task and task["target"]:
+        _log(task_dir, f"clone {task['target'][0]} into {cwd}")
+        failure = _clone(task["target"], cwd, r["timeout_seconds"])
+        if failure:
+            _log(task_dir, f"clone failed, agent not launched: {failure}")
+            return _finish(task_dir, cfg, args.target, meta, "error", "failed", "agent_error", 1, failure)
+
     _log(task_dir, f"launch {tool} model={r['model']} timeout={r['timeout_seconds']}s")
 
     with (task_dir / "out.jsonl").open("wb") as out, (task_dir / "stderr.log").open("wb") as err:
@@ -222,7 +392,7 @@ def run(args: argparse.Namespace) -> int:
             stdin=subprocess.DEVNULL,
             stdout=out,
             stderr=err,
-            cwd=r["cwd"],
+            cwd=cwd,
             env=env,
         )
     if returncode is None:
@@ -237,8 +407,49 @@ def run(args: argparse.Namespace) -> int:
     elif stopped == "interrupted":
         exit_code = EXIT_INTERRUPTED
     asked = _recorded_needs_input(task_dir)
-    event_name, status, exit_reason = terminal.classify(exit_code, output, needs_input=bool(asked), stopped=stopped)
+    result, invalid = None, ""
+    if task:
+        result, invalid = plugins.read_result(task_dir / "result.json", task["plugin"].manifest["result"])
+        if output.permission_denied or asked:
+            _log(task_dir, "the CLI denied a permission; in a plugin task this does not change the status")
+    event_name, status, exit_reason = terminal.classify(
+        exit_code, output, needs_input=bool(asked), stopped=stopped, plugin=bool(task), result_valid=result is not None
+    )
+    summary = output.summary
+    if exit_reason == "result_invalid":
+        summary = invalid
+    elif task and exit_reason == "success" and result is not None and isinstance(result.get("summary"), str):
+        summary = result["summary"][: terminal.SUMMARY_LIMIT]
     transcripts = [e["transcript_path"] for e in asked if isinstance(e.get("transcript_path"), str)]
+    return _finish(
+        task_dir,
+        cfg,
+        args.target,
+        meta,
+        event_name,
+        status,
+        exit_reason,
+        exit_code,
+        summary,
+        session_id=output.session_id,
+        transcript_path=transcripts[-1] if transcripts else None,
+        result=result if exit_reason == "success" else None,
+    )
+
+
+def _finish(
+    task_dir: Path,
+    cfg: dict[str, Any],
+    target: str,
+    meta: dict[str, Any],
+    event_name: str,
+    status: str,
+    exit_reason: str,
+    exit_code: int,
+    summary: str,
+    **fields: Any,
+) -> int:
+    """Monta e entrega o evento terminal e fecha o `meta.json`."""
     event = payload.task_event(
         meta,
         task_dir,
@@ -246,12 +457,11 @@ def run(args: argparse.Namespace) -> int:
         status=status,
         exit_reason=exit_reason,
         exit_code=exit_code,
-        summary=output.summary,
-        session_id=output.session_id,
-        transcript_path=transcripts[-1] if transcripts else None,
+        summary=summary[: terminal.SUMMARY_LIMIT],
+        **fields,
     )
     _log(task_dir, f"exit {exit_code}: {event_name}/{status}/{exit_reason}")
-    deliver.deliver(task_dir, cfg, args.target, event, "terminal")
+    deliver.deliver(task_dir, cfg, target, event, "terminal")
     meta.update(finished_at=event["timestamp"], exit_code=exit_code)
     _write_meta(task_dir, meta)
     return exit_code

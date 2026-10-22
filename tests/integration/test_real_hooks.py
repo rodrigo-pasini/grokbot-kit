@@ -12,7 +12,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from test_real_cli import REAL_HOME, link, model_for, prepare_home, real_bin
+
+from integration.test_real_cli import REAL_HOME, link, model_for, prepare_home, real_bin
 
 pytestmark = pytest.mark.integration
 

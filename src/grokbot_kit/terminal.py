@@ -69,10 +69,17 @@ def read_output(tool: str, task_dir: Path) -> AgentOutput:
 
 
 def classify(
-    exit_code: int, output: AgentOutput, *, needs_input: bool, stopped: str | None = None
+    exit_code: int,
+    output: AgentOutput,
+    *,
+    needs_input: bool,
+    stopped: str | None = None,
+    plugin: bool = False,
+    result_valid: bool = False,
 ) -> tuple[str, str, str]:
     """`(event, status, exit_reason)`; timeout e interrupção (`stopped`) vencem tudo, erro na saída vence exit
-    diferente de 0, e os dois vencem `denied`."""
+    diferente de 0, e os dois vencem `denied`. Numa tarefa de plugin (AC 41-45) não há `denied`: depois dessas
+    linhas vale o resultado, `success` se válido e `result_invalid` se não."""
     if stopped == "timeout":
         return "timeout", "timeout", "timeout"
     if stopped == "interrupted":
@@ -81,6 +88,8 @@ def classify(
         return "error", "failed", "agent_error"
     if exit_code != 0:
         return "error", "failed", "nonzero_exit"
+    if plugin:
+        return ("completed", "ok", "success") if result_valid else ("error", "failed", "result_invalid")
     if needs_input or output.permission_denied:
         return "completed", "denied", "permission_denied"
     return "completed", "ok", "success"

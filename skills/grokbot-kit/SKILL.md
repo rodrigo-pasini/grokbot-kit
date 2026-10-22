@@ -185,7 +185,42 @@ Se o campo `target` não for "<bot>", ignore o evento: ele é de outro bot.
 Senão, siga a skill grokbot-kit, seção "Quando um evento chega", com o evento lido.
 ```
 
+## Plugins
+
+Plugins são tarefas prontas do kit, como o `code-review` (revisa um PR do GitHub): cada um traz o próprio prompt,
+declara as entradas e as capacidades - o que o agente pode fazer (`write`, `network`, `commands`) - e devolve um
+resultado estruturado no evento.
+
+Quando o usuário pergunta o que o kit sabe fazer, e antes de delegar uma tarefa, rode:
+
+```sh
+grokbot-kit plugin list --json
+```
+
+Mostre ao usuário o `name`, a `description` e as `capabilities` de cada plugin.
+
+Quando o pedido casa com um plugin listado, não escreva prompt: rode `grokbot-kit run --plugin <nome>` com uma
+`--input <entrada>=<valor>` para cada entrada de `inputs` (as `required` são obrigatórias). Uma entrada `repo` é a URL
+de um PR (`https://github.com/<owner>/<repo>/pull/<n>`) ou de uma branch (`https://github.com/<owner>/<repo>/tree/<branch>`)
+do GitHub; o kit clona o repositório, então não passe `--cwd`.
+
+```sh
+grokbot-kit run --plugin <nome> --input <entrada>=<valor> --target <este bot> --label <rótulo>
+```
+
+Se o `run` sair com `2` dizendo que a CLI não consegue impor uma capacidade (`cannot enforce`), conte ao usuário e
+ofereça rodar com outra CLI, por `--tool`, que o `support` do plugin marque como `os` ou `tool` em todas as
+capacidades.
+
+Quando o usuário pede para instalar um plugin (um diretório ou uma URL git), siga esta ordem:
+
+1. Rode `grokbot-kit plugin show <origem> --json` e mostre ao usuário as `capabilities` e o `support` de cada CLI.
+2. Pergunte se ele quer instalar o plugin com essas capacidades.
+3. Só com o sim, rode `grokbot-kit plugin add <origem> --yes`.
+
 ## Tarefa
+
+Antes de escrever um prompt, veja em [Plugins](#plugins) se um plugin faz a tarefa.
 
 Toda tarefa vai a `grokbot-kit run` com `--target <este bot>` (o mesmo `<bot>` da rota) e um `--label` curto que
 descreve a tarefa (letras, dígitos, `.`, `_` e `-`). Passe o diretório do projeto com `--cwd <dir>` e o prompt depois
@@ -233,6 +268,9 @@ A routine acorda este bot com o webhook. Faça o parse de `body` como JSON e lei
 - `needs_input` (`permission` ou `question`), ou `completed` com `status` `denied`: mostre ao usuário o que o agente
   pediu (`needs_input.tool_name` e `needs_input.detail`) e ofereça retomar com o comando de `resume_hint` depois de
   ajustar a permissão. Um `needs_input` chega enquanto a tarefa ainda roda; o evento final vem depois.
+- Tarefa de plugin (campo `plugin` preenchido): com `status` `ok`, conte o resultado a partir de `result`, o objeto
+  que o plugin promete (o `summary` repete o dele). `error` com `exit_reason` `result_invalid` quer dizer que o agente
+  terminou sem gravar um resultado válido; o motivo está no `summary`. Uma tarefa de plugin nunca chega como `denied`.
 - `test`: é o `grokbot-kit route test`; só confirme que a rota funciona.
 
 ## Evento que não chegou
