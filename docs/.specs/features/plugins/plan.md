@@ -32,7 +32,7 @@ acrescenta o que entra antes do lançamento e o que é conferido depois.
 5. `run.py` (exists) lança e supervisiona como hoje, com `cwd` no workspace e o prompt do plugin com as entradas
 6. ao sair, `run.py` (exists) lê o resultado (door 6), `terminal.py` (exists) classifica com a regra de plugin e
    `payload.py` (exists) monta o evento com `plugin` e `result` (door 5); `deliver.py` (exists) entrega à routine
-7. `doctor.py` (exists) lista os plugins e a matriz de suporte por CLI, e acusa manifesto ilegível e `gh` sem login
+7. `doctor.py` (exists) lista os plugins e a matriz de suporte por CLI, acusa manifesto ilegível e avisa `gh` sem login
 
 ## Impact
 
@@ -180,7 +180,7 @@ Cada célula da door 8 tem valor provado nas versões do box, e é isso que o ki
 
 **Acceptance Criteria**
 
-48. The plugin próprio `code-review` SHALL declarar a entrada `pr` (`repo`), `write = "task-dir"`, `network = "on"`, `commands` só com leitura do PR, `gh pr review`, `gh pr comment`, `gh api` de leitura, `git` e executores de teste, e `result.required` = `summary`, `verdict`, `findings`, `review_url`
+48. The plugin próprio `code-review` SHALL declarar a entrada `pr` (`repo`), `write = "task-dir"`, `network = "on"`, `commands` só com leitura do PR, `gh pr review`, `gh pr comment`, `gh api` de leitura, `git` só de leitura (`git log`, `git diff`, `git show`, `git blame`) e executores de teste, e `result.required` = `summary`, `verdict`, `findings`, `review_url`
 49. WHEN o `code-review` roda num PR aberto THEN o agente SHALL postar um único review com comentários inline pelo `gh` do box e gravar `result.json` com `verdict` em `approve`, `comment` ou `request_changes`, `findings` como lista de objetos com `severity`, `file`, `line`, `message`, e `review_url`
 50. The review postado no GitHub SHALL ser sempre do tipo `COMMENT`; o `verdict` vai só ao `result`
 51. WHEN o PR já tem review anterior do mesmo usuário do `gh` THEN o agente SHALL ler esses reviews e o `result` SHALL trazer só achados novos ou ainda abertos
@@ -194,7 +194,7 @@ Cada célula da door 8 tem valor provado nas versões do box, e é isso que o ki
 
 **Acceptance Criteria**
 
-55. The plugin próprio `bug-verify` SHALL declarar as entradas `repo` (`repo`) e `alert` (`text`), `write = "task-dir"`, `network = "off"` se a matriz suportar na CLI padrão (senão `on`), `commands` com `git` e executores de teste, e `result.required` = `summary`, `reproduced`, `suspects`, `next_step`
+55. The plugin próprio `bug-verify` SHALL declarar as entradas `repo` (`repo`) e `alert` (`text`), `write = "task-dir"`, `network = "off"` se a matriz suportar na CLI padrão (senão `on`), `commands` com `git` só de leitura e executores de teste, e `result.required` = `summary`, `reproduced`, `suspects`, `next_step`
 56. WHEN o `bug-verify` roda THEN o agente SHALL gravar `result.json` com `reproduced` em `yes`, `no` ou `unknown` e `suspects` como lista de objetos com `file`, `line`, `reason`
 57. WHEN o agente reproduz o erro com um teste THEN o `result` SHALL trazer o comando do teste em `next_step`
 58. IF o alerta não tem mensagem de erro nem stack trace utilizável THEN o agente SHALL gravar `reproduced` `unknown` e `next_step` pedindo o dado que falta
@@ -210,9 +210,9 @@ Cada célula da door 8 tem valor provado nas versões do box, e é isso que o ki
 61. WHEN o pedido casa com um plugin listado THEN o `SKILL.md` SHALL mandar usar `run --plugin <nome>` com as entradas, sem escrever prompt
 62. WHEN o usuário pede para instalar um plugin THEN o `SKILL.md` SHALL mandar rodar `plugin show <origem> --json`, mostrar as capacidades ao usuário, perguntar e só com o sim rodar `plugin add <origem> --yes`
 63. The `SKILL.md` SHALL continuar sem `curl` e sem comando ou flag fora do `--help` do `grokbot-kit`
-64. The repositório SHALL ter um guia de autoria em `docs/plugins.md` com o layout da door 1, o manifesto e o vocabulário da door 2, a matriz da door 8, o contrato do resultado da door 6, o `code-review` comentado como exemplo, e o aviso de que o formato pode mudar antes da 1.0
+64. The repositório SHALL ter um guia de autoria em `docs/plugins.md`, em inglês e com a tradução em `docs/pt-BR/plugins.md` (AD-040), com o layout da door 1, o manifesto e o vocabulário da door 2, a matriz da door 8, o contrato do resultado da door 6, o `code-review` comentado como exemplo, e o aviso de que o formato pode mudar antes da 1.0
 65. WHEN `doctor --json` roda THEN a saída SHALL ter `plugins` com nome, versão e `source` de cada plugin, e `problems` SHALL ganhar uma entrada para manifesto ilegível de plugin instalado
-66. WHEN algum plugin tem entrada `repo` e `gh auth status` falha THEN o `doctor` SHALL acrescentar a `problems` `gh is not logged in; plugins with repo inputs cannot run`
+66. WHEN algum plugin tem entrada `repo` e `gh auth status` falha THEN o `doctor` SHALL mostrar `gh.logged_in` `false` e a linha `gh: not logged in; plugins with repo inputs cannot run; run: gh auth login`, sem mexer em `problems` nem no exit code (AD-039)
 
 **Independent test:** `tests/test_skill_doc.py` acha `plugin list --json`, `run --plugin` e o fluxo de confirmação do `plugin add --yes`; o guia existe com as cinco partes.
 

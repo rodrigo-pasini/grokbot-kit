@@ -162,7 +162,7 @@ Schema `grokbot-kit.event/v1`, mudança aditiva: `plugin` (`object|null`: `name`
 
 **Delivers** o plugin próprio de review de PR, escrito para ser o exemplo do guia. **Status: open.**
 
-Entradas: `pr` (`repo`, URL do PR). Capacidades: `write: task-dir`, `network: on`, `commands` com leitura do PR, `gh pr review`/comentário, `git` e os executores de teste. Resultado obrigatório: `summary`, `verdict` (`approve` | `comment` | `request_changes`), `findings` (lista com severidade, arquivo, linha, mensagem), `review_url`.
+Entradas: `pr` (`repo`, URL do PR). Capacidades: `write: task-dir`, `network: on`, `commands` com leitura do PR, `gh pr review`/comentário, `git` só de leitura (`log`, `diff`, `show`, `blame`; AD-038) e os executores de teste. Resultado obrigatório: `summary`, `verdict` (`approve` | `comment` | `request_changes`), `findings` (lista com severidade, arquivo, linha, mensagem), `review_url`.
 
 | State | What should happen | Caller sees |
 |---|---|---|
@@ -179,7 +179,7 @@ Entradas: `pr` (`repo`, URL do PR). Capacidades: `write: task-dir`, `network: on
 
 **Delivers** o plugin próprio que verifica um alerta de erro contra o código. **Status: open.**
 
-Entradas: `repo` (`repo`, URL de branch), `alert` (`text` ou `file`, o alerta como o bot recebeu). Capacidades: `write: task-dir`, `network: off` se o spike permitir, `commands` com `git` e executores de teste. Resultado obrigatório: `summary`, `reproduced` (`yes` | `no` | `unknown`), `suspects` (arquivo, linha, motivo), `next_step`.
+Entradas: `repo` (`repo`, URL de branch), `alert` (`text` ou `file`, o alerta como o bot recebeu). Capacidades: `write: task-dir`, `network: off` se o spike permitir, `commands` com `git` só de leitura e executores de teste. Resultado obrigatório: `summary`, `reproduced` (`yes` | `no` | `unknown`), `suspects` (arquivo, linha, motivo), `next_step`.
 
 | State | What should happen | Caller sees |
 |---|---|---|
