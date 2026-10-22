@@ -379,6 +379,26 @@ def test_denial_logged_not_status(kit: Kit, env: dict[str, str]) -> None:
     assert "the CLI denied a permission" in log
 
 
+# C43 - AC 44: o hook da CLI chama o `emit`, que numa tarefa de plugin só registra, sem acordar a routine
+def test_permission_request_not_sent_in_plugin_task(kit: Kit, env: dict[str, str]) -> None:
+    hook = {"hook_event_name": "PermissionRequest", "tool_name": "Bash", "tool_input": {"command": "touch x"}}
+    result = run_plugin(
+        kit,
+        env,
+        "nota",
+        "--input",
+        "nota=oi",
+        tool="claude",
+        FAKE_RESULT=json.dumps(VALID_RESULT),
+        FAKE_EMIT=json.dumps([{**hook, "session_id": "s1"}]),
+    )
+    assert result.returncode == 0, result.stderr
+    (event,) = kit.sink_events()
+    assert outcome(event) == ("completed", "ok", "success")
+    log = (kit.task_dir() / "kit.log").read_text(encoding="utf-8")
+    assert "permission request in a plugin task, not sent: Bash" in log
+
+
 def interrupted_run(kit: Kit, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
     exe = shutil.which("grokbot-kit")
     assert exe is not None

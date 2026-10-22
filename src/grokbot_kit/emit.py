@@ -110,6 +110,10 @@ def _emit(source: str, task_id: str, task_dir: str) -> None:
 
     directory = Path(task_dir)
     meta = json.loads((directory / "meta.json").read_text(encoding="utf-8"))
+    if meta.get("plugin"):
+        # numa tarefa de plugin a negação é esperada e não muda o status (plugins, AC 44)
+        _log(task_dir, f"--from {source}: {asked['kind']} request in a plugin task, not sent: {asked['tool_name']}")
+        return
     event = payload.needs_input_event(
         meta,
         directory,
