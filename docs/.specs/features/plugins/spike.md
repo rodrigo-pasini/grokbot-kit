@@ -3,7 +3,7 @@
 Rodado em 22/10/2026 no host de desenvolvimento (Linux 6.17, `kernel.apparmor_restrict_unprivileged_userns = 1`, a
 mesma restrição do box: `bwrap --ro-bind / / --unshare-net true` sai com `bwrap: loopback: Failed RTM_NEWADDR:
 Operation not permitted`). O box só é acessível pelo bot; a rodada lá, com a release, fica para a próxima task
-(AD-041). Versões: `claude` 2.1.308, `opencode` 2.1.3 (o box estava no 1.19.3), `codex-cli` 0.163.0.
+(AD-042). Versões: `claude` 2.1.308, `opencode` 2.1.3 (o box estava no 1.19.3), `codex-cli` 0.163.0.
 
 Cada célula foi provada pelas provas `-m integration` de `tests/integration/test_plugin_caps.py`, rodando
 `grokbot-kit run --plugin` com o harness de `launch.plugin_harness` e um agente real (`claude` com `sonnet` e `haiku`,

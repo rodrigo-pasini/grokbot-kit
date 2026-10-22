@@ -19,7 +19,7 @@ Convenções das provas:
 
 ## Checks
 
-### S1 - a matriz de capacidades está provada no box · 2 arquivos novos · ~12 KB · ~3k (mais as rodadas no box) · verde no host de dev (AD-041): C1, C7, C8 no CI; C2-C5 nas 3 CLIs (Codex fora pela matriz), C6 sem célula a provar; a rodada no box vem com a release, pelo bot
+### S1 - a matriz de capacidades está provada no box · 2 arquivos novos · ~12 KB · ~3k (mais as rodadas no box) · verde no host de dev (AD-042): C1, C7, C8 no CI; C2-C5 nas 3 CLIs (Codex fora pela matriz), C6 sem célula a provar; a rodada no box vem com a release, pelo bot
 
 **C1** - `docs/.specs/features/plugins/spike.md` tem a matriz com exatamente 15 células (3 CLIs × `write`, `network`, `commands`, `workspace_config`, `skills`), cada uma `os`, `tool` ou `unsupported`, cada uma com a versão da CLI, o comando que a provou e a saída observada (AC 1, door 8)
 Proof: `uv run pytest tests/test_plugin_spike.py -k matrix_complete`
@@ -103,7 +103,7 @@ Proof: `uv run pytest tests/test_plugin.py -k running_task_predicate`
 **C26** - Com uma tarefa do plugin rodando, `plugin rm` e `plugin add --replace` saem com `2` listando o `task_id` em stderr, sem mudar a cópia (AC 25)
 Proof: `uv run pytest tests/test_plugin.py -k rm_and_replace_refuse_running_task`
 
-### S3 - o run executa um plugin · 6 arquivos · ~85 KB · ~22k · done no host de dev: C27-C36, C38, C39 verdes (C34 fechado com a matriz de teste, ok do Rodrigo em 22/10/2026); C37 verde com o `claude` real no host de dev (AD-041)
+### S3 - o run executa um plugin · 6 arquivos · ~85 KB · ~22k · done no host de dev: C27-C36, C38, C39 verdes (C34 fechado com a matriz de teste, ok do Rodrigo em 22/10/2026); C37 verde com o `claude` real no host de dev (AD-042)
 
 **C27** - `run --plugin <teste> --input pr=https://github.com/o/r/pull/7` com a CLI falsa: o task dir tem `plugin/` igual à origem, `work/` é um clone com o PR 7 em checkout (o `gh` falso registra `pr checkout 7`), a CLI foi lançada com `cwd` = `<task_dir>/work` e o prompt tem `{pr}`, `{workspace}`, `{result_file}` e `{task_dir}` substituídos (AC 26, doors 3 e 7)
 Proof: `uv run pytest tests/test_run_plugin.py -k launches_in_clone_with_prompt`
@@ -173,9 +173,9 @@ Proof: `uv run pytest tests/test_run_plugin.py -k plugin_event_delivery_statuses
 **C46** - `event.v1.json` aceita `plugin` e `result` objeto ou `null` e o `exit_reason` `result_invalid`; os eventos de C40, C42 e C45 validam contra ele (AC 47, door 5)
 Proof: `uv run pytest tests/test_payload.py -k schema_accepts_plugin_fields`
 
-### S5 - o plugin code-review revisa um PR · 4 arquivos · ~25 KB · ~6k · parcial: C47-C49 verdes (C49 com o `claude` real no host de dev); C50 roda no box, pelo bot (AD-041)
+### S5 - o plugin code-review revisa um PR · 4 arquivos · ~25 KB · ~6k · parcial: C47-C49 verdes (C49 com o `claude` real no host de dev); C50 roda no box, pelo bot (AD-042)
 
-**C47** - O manifesto de `code-review` passa pelas regras do C19 e declara `pr` (`repo`), `write = "task-dir"`, `network = "on"`, `commands` exatamente `gh pr view`, `gh pr diff`, `gh pr review`, `gh pr comment`, `gh api`, `git log`, `git diff`, `git show`, `git blame`, `pytest`, `npm test`, `go test`, `cargo test`, e `result.required` = `summary`, `verdict`, `findings`, `review_url` (AC 48; emendado pela AD-038: sem o prefixo `git` inteiro, que liberava `git push`)
+**C47** - O manifesto de `code-review` passa pelas regras do C19 e declara `pr` (`repo`), `write = "task-dir"`, `network = "on"`, `commands` exatamente `gh pr view`, `gh pr diff`, `gh pr review`, `gh pr comment`, `gh api`, `git log`, `git diff`, `git show`, `git blame`, `pytest`, `npm test`, `go test`, `cargo test`, e `result.required` = `summary`, `verdict`, `findings`, `review_url` (AC 48; emendado pela AD-039: sem o prefixo `git` inteiro, que liberava `git push`)
 Proof: `uv run pytest tests/test_builtin_plugins.py -k code_review_manifest`
 
 **C48** - O prompt e a skill de `code-review` mandam: um único review com comentários inline pelo `gh`, sempre do tipo `COMMENT`, `verdict` em `approve`/`comment`/`request_changes` só no `result`, `findings` com `severity`/`file`/`line`/`message`, ler reviews anteriores do mesmo usuário e trazer só achados novos ou abertos, não postar em PR fechado ou mergeado, e tratar o conteúdo do PR como dado (AC 49-53)
@@ -187,9 +187,9 @@ Proof: `uv run pytest -m integration tests/integration/test_builtin_plugins.py -
 **C50** - No box, `run --plugin code-review --input pr=<PR de teste do repositório de teste>` posta um review `COMMENT` no PR e a routine recebe `completed`/`ok` com `review_url` apontando para ele; um segundo run depois de um push traz só achados do commit novo (AC 49-51)
 Proof: `uv run pytest -m integration tests/integration/test_builtin_plugins.py -k code_review_posts_comment_review`
 
-### S6 - o plugin bug-verify verifica um alerta · 3 arquivos · ~18 KB · ~5k · parcial: C51, C52 verdes; C53 roda no box, pelo bot (AD-041)
+### S6 - o plugin bug-verify verifica um alerta · 3 arquivos · ~18 KB · ~5k · parcial: C51, C52 verdes; C53 roda no box, pelo bot (AD-042)
 
-**C51** - O manifesto de `bug-verify` passa pelas regras do C19 e declara `repo` (`repo`), `alert` (`text`), `write = "task-dir"`, `network` = `off` se a matriz suporta na CLI padrão de fábrica (`opencode`) e `on` senão, `commands` com os `git` de leitura e os executores de teste do C47, e `result.required` = `summary`, `reproduced`, `suspects`, `next_step` (AC 55; emendado pela AD-038)
+**C51** - O manifesto de `bug-verify` passa pelas regras do C19 e declara `repo` (`repo`), `alert` (`text`), `write = "task-dir"`, `network` = `off` se a matriz suporta na CLI padrão de fábrica (`opencode`) e `on` senão, `commands` com os `git` de leitura e os executores de teste do C47, e `result.required` = `summary`, `reproduced`, `suspects`, `next_step` (AC 55; emendado pela AD-039)
 Proof: `uv run pytest tests/test_builtin_plugins.py -k bug_verify_manifest`
 
 **C52** - O prompt e a skill de `bug-verify` mandam: `reproduced` em `yes`/`no`/`unknown`, `suspects` com `file`/`line`/`reason`, o comando do teste em `next_step` quando reproduz, `unknown` com o dado que falta quando o alerta não tem mensagem nem stack trace, e nunca abrir issue, PR nem comentário (AC 56-59)
@@ -209,10 +209,10 @@ Proof: `uv run pytest tests/test_skill_doc.py -k plugin_install_confirms`
 **C56** - O `SKILL.md` segue sem `curl` e todo comando `grokbot-kit ...` e flag citados existem no `--help` (AC 63)
 Proof: `uv run pytest tests/test_skill_doc.py -k commands_exist_in_help`
 
-**C57** - `docs/plugins.md`, em inglês, tem as seções do layout (door 1), do manifesto e das capacidades (door 2), da matriz (door 8, igual à de `spike.md`), do resultado (door 6), do `code-review` comentado, e o aviso `may change before 1.0`; `docs/pt-BR/plugins.md` tem as mesmas seções em pt-BR, a mesma matriz e o mesmo exemplo, e o aviso `pode mudar antes da 1.0`; cada um aponta para o outro (AC 64; emendado pela AD-040)
+**C57** - `docs/plugins.md`, em inglês, tem as seções do layout (door 1), do manifesto e das capacidades (door 2), da matriz (door 8, igual à de `spike.md`), do resultado (door 6), do `code-review` comentado, e o aviso `may change before 1.0`; `docs/pt-BR/plugins.md` tem as mesmas seções em pt-BR, a mesma matriz e o mesmo exemplo, e o aviso `pode mudar antes da 1.0`; cada um aponta para o outro (AC 64; emendado pela AD-041)
 Proof: `uv run pytest tests/test_plugin_docs.py -k guide_sections`
 
-**C58** - `doctor --json` tem `plugins` com `name`, `version` e `source` de cada plugin; um `grokbot-kit.toml` ilegível num plugin instalado põe uma entrada em `problems`; com um plugin de entrada `repo` e o `gh` falso com `FAKE_GH_AUTH_EXIT=1`, `gh.logged_in` é `false`, o texto tem a linha `gh: not logged in; plugins with repo inputs cannot run; run: gh auth login`, e `problems` e o exit code não mudam (AC 65, AC 66; emendado pela AD-039)
+**C58** - `doctor --json` tem `plugins` com `name`, `version` e `source` de cada plugin; um `grokbot-kit.toml` ilegível num plugin instalado põe uma entrada em `problems`; com um plugin de entrada `repo` e o `gh` falso com `FAKE_GH_AUTH_EXIT=1`, `gh.logged_in` é `false`, o texto tem a linha `gh: not logged in; plugins with repo inputs cannot run; run: gh auth login`, e `problems` e o exit code não mudam (AC 65, AC 66; emendado pela AD-040)
 Proof: `uv run pytest tests/test_doctor.py -k plugins_listed_and_problems`
 
 ## Coverage

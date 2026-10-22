@@ -2,7 +2,7 @@
 
 `kit.update` traz o objeto da checagem de release (kit-update, AC 34-36, door 4); `plugins` e `plugin_support`, os
 plugins e a matriz de capacidades por CLI (plugins, AC 65-66); `gh.logged_in`, o login do `gh` quando algum plugin
-tem entrada `repo` (`null` senão), um aviso que, como o `kit.update`, não mexe em `problems` (AD-039).
+tem entrada `repo` (`null` senão), um aviso que, como o `kit.update`, não mexe em `problems` (AD-040).
 """
 
 import json

@@ -16,7 +16,7 @@ integration `Test policy` row is still unmet. All 5 faults injected in this roun
 Where the evidence came from. Every proof re-ran at `HEAD` = `7a6d41b`. The CI proofs ran on the development host.
 `-m integration tests/integration/test_plugin_caps.py` and `-k code_review_loads_in_claude` also ran on the
 **development host, not the box**, with real `claude` 2.1.308 (`sonnet`; C49 calls `haiku` itself) and `opencode` 2.1.3
-(`opencode/deepseek-v4.1-flash-free`). AD-041 accepts the development host for the matrix and leaves the box run to the
+(`opencode/deepseek-v4.1-flash-free`). AD-042 accepts the development host for the matrix and leaves the box run to the
 bot. Nothing that posts to GitHub ran.
 
 Scope of this round: the fix diff `2dd3e68..7a6d41b` changes only tests and `checks.md`, not `src/`. It adds
@@ -28,7 +28,7 @@ changed.
 ## Binding sources
 
 Carried from 2dd3e68. Step 1 only runs under `ui`, and the fix did not touch the interface. `design.md` was opened in
-round 1. This round re-read `plan.md`, `checks.md`, `spike.md` and AD-037..AD-041 as context.
+round 1. This round re-read `plan.md`, `checks.md`, `spike.md` and AD-038..AD-042 as context.
 
 | Source | Opened | Contradiction | Uncovered |
 | --- | --- | --- | --- |
@@ -47,7 +47,7 @@ Not run: `-k code_review_posts_comment_review` (C50) and `-k bug_verify_reproduc
 
 | Check | Claim | Proof run | Evidence | Result |
 | --- | --- | --- | --- | --- |
-| C1 | `spike.md` has exactly 15 cells, each with value, version, command and output | CI batch `-k matrix_complete` PASSED | `tests/test_plugin_spike.py:45` - `assert sorted(cells) == sorted(expected)`; `:47-50` value in VALUES, version `\d+\.\d+`, command and output not `-`. The spike ran on the dev host, not the box (spike.md:3-5, AD-041) | PASS |
+| C1 | `spike.md` has exactly 15 cells, each with value, version, command and output | CI batch `-k matrix_complete` PASSED | `tests/test_plugin_spike.py:45` - `assert sorted(cells) == sorted(expected)`; `:47-50` value in VALUES, version `\d+\.\d+`, command and output not `-`. The spike ran on the dev host, not the box (spike.md:3-5, AD-042) | PASS |
 | C2 | write outside the task dir is denied for each CLI with `write` supported | integration `test_write_outside_denied[claude]`, `[opencode]` PASSED; `[codex]` skipped (matrix) | `tests/integration/test_plugin_caps.py:142` - `assert not outside.exists(), event` (after `run_plugin` asserts `completed`/`ok` at `:127`). Dev host, not box | PASS |
 | C3 | a command outside `commands` does not run | integration `test_command_outside_denied[claude]`, `[opencode]` PASSED; codex skipped | `tests/integration/test_plugin_caps.py:157` - `assert not (task_dir / "spike-cmd").exists(), event`. Dev host | PASS |
 | C4 | a workspace hook or plugin does not fire | integration `test_workspace_config_ignored[claude]`, `[opencode]` PASSED; codex skipped | `tests/integration/test_plugin_caps.py:172-173` - `assert not marker.exists()` / `assert not (task_dir / "spike-hook").exists()`. Dev host | PASS |
@@ -83,7 +83,7 @@ Not run: `-k code_review_posts_comment_review` (C50) and `-k bug_verify_reproduc
 | C34 | an unenforceable capability gives exit 2 with the exact message; a supporting CLI runs | CI `-k refuses_unenforceable_capability` PASSED | `tests/test_run_plugin.py:264-266` - `returncode == 2`, `"plugin offline needs network=off, which opencode cannot enforce" in stderr`, no task; `:268-269` claude gives exit 0 | PASS |
 | C35 | a clone failure means no launch and an `error/failed/agent_error` event with the gh output | CI `-k clone_failure_event` PASSED | `tests/test_run_plugin.py:276` - `not kit.record.exists()`; `:278` outcome; `:279` - `"Could not resolve to a Repository" in event["summary"]` | PASS |
 | C36 | per-CLI harness table (3 CLIs × 5 capabilities) | CI batch `-k harness_per_cli_and_capability` **5 PASSED** (claude 1, opencode 3 params, codex 1); round 1 selected 0 | `tests/test_launch_plugin.py:62` - `h.args == ["--restricted", ...]` and `:74` `h.permissions == {...}` for claude (`test_harness_per_cli_and_capability_claude`, `:60`); `:101-102` - `h.args == args`, `h.permissions == {}` for opencode (`:99`); `:126` - `pytest.raises(ValueError, match="codex has no plugin harness")` (`:125`). The fix only renamed the tests; the bodies are the ones round 1 M1 killed | PASS |
-| C37 | real `claude`: no write to `~`, no `touch`, no workspace hook, the skill loads | integration `-k run_plugin_claude_end_to_end` PASSED (`test_run_plugin_claude_end_to_end`, `tests/integration/test_plugin_caps.py:204`), 1 selected. **Development host, not the box**: the check text says "No box"; the S3 header in `checks.md` and AD-041 move the proof to the development host and leave the box run to the bot | `tests/integration/test_plugin_caps.py:220` - `not outside.exists() and not home_outside.exists()`; `:221` - `not (task_dir / "spike-cmd").exists()`; `:222` - `not marker.exists()`; `:223` - `event["result"]["word"] == "spike-skill-ok"`; `:224` `skill_invoked(...)` | PASS |
+| C37 | real `claude`: no write to `~`, no `touch`, no workspace hook, the skill loads | integration `-k run_plugin_claude_end_to_end` PASSED (`test_run_plugin_claude_end_to_end`, `tests/integration/test_plugin_caps.py:204`), 1 selected. **Development host, not the box**: the check text says "No box"; the S3 header in `checks.md` and AD-042 move the proof to the development host and leave the box run to the bot | `tests/integration/test_plugin_caps.py:220` - `not outside.exists() and not home_outside.exists()`; `:221` - `not (task_dir / "spike-cmd").exists()`; `:222` - `not marker.exists()`; `:223` - `event["result"]["word"] == "spike-skill-ok"`; `:224` `skill_invoked(...)` | PASS |
 | C38 | `meta.json` `plugin` has exactly 6 keys, with `support` for the 5 capabilities | CI `-k meta_records_plugin` PASSED | `tests/test_run_plugin.py:290` - `set(meta["plugin"]) == {...6}`; `:296` - `support == dict.fromkeys(CAPABILITIES, "tool")` | PASS |
 | C39 | `run` without `--plugin` keeps the argv, `claude-settings.json` and classification | CI `-k argv_without_plugin_matches_baseline`, `-k run_without_plugin_unchanged` PASSED | `tests/test_launch_plugin.py:20-56` - literal argv for the 3 CLIs and `claude_settings` dict; `tests/test_run_plugin.py:305`, `:309`, `:321` - the opencode argv, `("completed","denied","permission_denied")`, the claude settings | PASS |
 | C40 | a valid result gives `completed/ok/success` with `result` and `plugin` | CI `-k valid_result_delivered` PASSED | `tests/test_run_plugin.py:328-331` - outcome, `event["result"] == VALID_RESULT`, `event["plugin"] == NOTA_PLUGIN`, `VALIDATOR.validate` | PASS |
@@ -138,7 +138,7 @@ two unmet rows and the row for `launch.py` (its test file was touched). The othe
 | Decides, reached across a boundary (carried from 2dd3e68) | `terminal.py` plugin classification | own layer: first proofs of C43/C44 · boundary: C42 and the second proof of C44 | yes |
 | Entry point that does not decide (carried from 2dd3e68) | `run.py` input validation | boundary C29-C34 | yes |
 | Instrumentation, pass-through (carried from 2dd3e68) | `doctor.py` plugins | covered by C58 | yes |
-| Integration with a real CLI or GitHub (re-judged at 7a6d41b) | `-m integration`: `test_plugin_caps.py`, `test_builtin_plugins.py` | `-m integration` on the box, once per CLI | not met: `test_builtin_plugins.py` now exists and C49 ran, but only on the development host (AD-041). C50 and C53 never ran. No `-m integration` proof of this feature has run on the box |
+| Integration with a real CLI or GitHub (re-judged at 7a6d41b) | `-m integration`: `test_plugin_caps.py`, `test_builtin_plugins.py` | `-m integration` on the box, once per CLI | not met: `test_builtin_plugins.py` now exists and C49 ran, but only on the development host (AD-042). C50 and C53 never ran. No `-m integration` proof of this feature has run on the box |
 
 Swept `existing` row (data lifecycle), carried from 2dd3e68: `gc` deletes the whole task dir, including the clone, at
 `src/grokbot_kit/gc.py:35` (`shutil.rmtree(task_dir)`). The fix did not touch it.
@@ -183,9 +183,9 @@ At 7a6d41b:
    test repositories that only the user's bot can reach. To close them, the bot runs them on the box with
    `GROKBOT_KIT_IT_REVIEW_PR` / `GROKBOT_KIT_IT_BUG_*` set.
 2. Test policy, integration row - every `-m integration` proof of this feature ran on the development host only.
-   AD-041 accepts this for the matrix, but the row's bar is the box.
+   AD-042 accepts this for the matrix, but the row's bar is the box.
 3. Coverage - the `_table` refusal (`src/grokbot_kit/plugin.py:110`, a non-table `inputs`/`inputs.<x>`/`capabilities`/
    `result`) has no test. Round 1 missed it as well.
 4. Precision (not counted in the verdict) - `test_add_refuses_ref_for_directory` (`tests/test_plugin.py:284`) proves a
    door 4 refusal that no check names. It runs in the full suite but not through any `Proof:` line. The C37 text still
-   says "No box", while its slice header and AD-041 record the proof on the development host.
+   says "No box", while its slice header and AD-042 record the proof on the development host.

@@ -1,5 +1,5 @@
 """Provas do guia de autoria `docs/plugins.md` e da tradução `docs/pt-BR/plugins.md` (check C57; AC 64, doors 1, 2,
-6 e 8; AD-040).
+6 e 8; AD-041).
 
 A tabela da matriz de cada guia é comparada com a matriz que `plugin.py` usa; o C8 (S1) prova que essa é a de
 `spike.md`.

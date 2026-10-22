@@ -162,7 +162,7 @@ Schema `grokbot-kit.event/v1`, mudança aditiva: `plugin` (`object|null`: `name`
 
 **Delivers** o plugin próprio de review de PR, escrito para ser o exemplo do guia. **Status: open.**
 
-Entradas: `pr` (`repo`, URL do PR). Capacidades: `write: task-dir`, `network: on`, `commands` com leitura do PR, `gh pr review`/comentário, `git` só de leitura (`log`, `diff`, `show`, `blame`; AD-038) e os executores de teste. Resultado obrigatório: `summary`, `verdict` (`approve` | `comment` | `request_changes`), `findings` (lista com severidade, arquivo, linha, mensagem), `review_url`.
+Entradas: `pr` (`repo`, URL do PR). Capacidades: `write: task-dir`, `network: on`, `commands` com leitura do PR, `gh pr review`/comentário, `git` só de leitura (`log`, `diff`, `show`, `blame`; AD-039) e os executores de teste. Resultado obrigatório: `summary`, `verdict` (`approve` | `comment` | `request_changes`), `findings` (lista com severidade, arquivo, linha, mensagem), `review_url`.
 
 | State | What should happen | Caller sees |
 |---|---|---|
