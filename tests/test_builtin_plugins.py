@@ -8,6 +8,7 @@ import re
 
 from grokbot_kit import plugin
 
+GIT_READ = ["git log", "git diff", "git show", "git blame"]
 TEST_RUNNERS = ["pytest", "npm test", "go test", "cargo test"]
 
 
@@ -37,7 +38,7 @@ def test_code_review_manifest() -> None:
         "gh pr review",
         "gh pr comment",
         "gh api",
-        "git",
+        *GIT_READ,
         *TEST_RUNNERS,
     ]
     assert m["result"]["required"] == ["summary", "verdict", "findings", "review_url"]
@@ -70,7 +71,7 @@ def test_bug_verify_manifest() -> None:
     assert m["capabilities"]["write"] == "task-dir"
     expected_network = "on" if plugin.matrix()["opencode"]["network"] == "unsupported" else "off"
     assert m["capabilities"]["network"] == expected_network
-    assert m["capabilities"]["commands"] == ["git", *TEST_RUNNERS]
+    assert m["capabilities"]["commands"] == [*GIT_READ, *TEST_RUNNERS]
     assert m["result"]["required"] == ["summary", "reproduced", "suspects", "next_step"]
 
 

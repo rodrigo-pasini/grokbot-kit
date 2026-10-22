@@ -1,61 +1,105 @@
-"""Provas do guia de autoria `docs/plugins.md` (check C57; AC 64, doors 1, 2, 6 e 8).
+"""Provas do guia de autoria `docs/plugins.md` e da tradução `docs/pt-BR/plugins.md` (check C57; AC 64, doors 1, 2,
+6 e 8; AD-040).
 
-A tabela da matriz do guia é comparada com a matriz que `plugin.py` usa; o C8 (S1) prova que essa é a de `spike.md`.
+A tabela da matriz de cada guia é comparada com a matriz que `plugin.py` usa; o C8 (S1) prova que essa é a de
+`spike.md`.
 """
 
 import re
 from pathlib import Path
+from typing import NamedTuple
+
+import pytest
 
 from grokbot_kit import plugin
 
 ROOT = Path(__file__).resolve().parent.parent
-GUIDE = ROOT / "docs" / "plugins.md"
 
 
-def guide() -> str:
-    return GUIDE.read_text(encoding="utf-8")
+class Guide(NamedTuple):
+    path: Path
+    other: str
+    warning: str
+    layout: str
+    manifest: str
+    kinds: str
+    max_bytes: str
+    matrix: str
+    result: str
+    example: str
 
 
-def section(heading: str) -> str:
-    match = re.search(rf"^## {re.escape(heading)}\n(.*?)(?=^## |\Z)", guide(), re.DOTALL | re.MULTILINE)
+GUIDES = [
+    Guide(
+        ROOT / "docs" / "plugins.md",
+        "](pt-BR/plugins.md)",
+        "may change before 1.0",
+        "Layout",
+        "Manifest and capabilities",
+        '`"repo"`, `"text"` or `"file"`',
+        "`max_bytes` (default `16384`)",
+        "Capability matrix",
+        "Result",
+        "Annotated example: `code-review`",
+    ),
+    Guide(
+        ROOT / "docs" / "pt-BR" / "plugins.md",
+        "](../plugins.md)",
+        "pode mudar antes da 1.0",
+        "Layout",
+        "Manifesto e capacidades",
+        '`"repo"`, `"text"` ou `"file"`',
+        "`max_bytes` (padrão `16384`)",
+        "Matriz de capacidades",
+        "Resultado",
+        "Exemplo comentado: `code-review`",
+    ),
+]
+
+
+def section(text: str, heading: str) -> str:
+    match = re.search(rf"^## {re.escape(heading)}\n(.*?)(?=^## |\Z)", text, re.DOTALL | re.MULTILINE)
     assert match, f"sem a seção {heading!r}"
     return match.group(1)
 
 
 # C57 - AC 64
-def test_guide_sections() -> None:
-    text = guide()
-    assert "pode mudar antes da 1.0" in text.split("\n## ", 1)[0], "o aviso vem antes da primeira seção"
+@pytest.mark.parametrize("g", GUIDES, ids=["en", "pt-BR"])
+def test_guide_sections(g: Guide) -> None:
+    text = g.path.read_text(encoding="utf-8")
+    head = text.split("\n## ", 1)[0]
+    assert g.warning in head, "o aviso vem antes da primeira seção"
+    assert g.other in head, "o guia aponta para a outra língua antes da primeira seção"
 
-    layout = section("Layout")
+    layout = section(text, g.layout)
     for part in (".claude-plugin/plugin.json", "grokbot-kit.toml", "skills/<skill>/SKILL.md"):
         assert part in layout, part
     for refused in ("`hooks/`", "`commands/`", "`agents/`", "`.mcp.json`", "`.lsp.json`"):
         assert refused in layout, refused
 
-    manifest = section("Manifesto e capacidades")
+    manifest = section(text, g.manifest)
     for needle in (
         '`"grokbot-kit.plugin/v0"`',
         plugin.NAME_RE.pattern,
-        '`"repo"`, `"text"` ou `"file"`',
+        g.kinds,
         '`"task-dir"`, `"none"`',
         '`"on"`, `"off"`',
         "`{workspace}`",
         "`{result_file}`",
         "`{task_dir}`",
-        "`max_bytes` (padrão `16384`)",
+        g.max_bytes,
     ):
         assert needle in manifest, needle
 
-    rows = re.findall(r"^\| `(claude|opencode|codex)` \| (.*) \|$", section("Matriz de capacidades"), re.MULTILINE)
+    rows = re.findall(r"^\| `(claude|opencode|codex)` \| (.*) \|$", section(text, g.matrix), re.MULTILINE)
     table = {cli: [cell.strip(" `") for cell in cells.split("|")] for cli, cells in rows}
     assert table == {cli: [cells[c] for c in plugin.MATRIX_COLUMNS] for cli, cells in plugin.matrix().items()}
 
-    result = section("Resultado")
+    result = section(text, g.result)
     for needle in ("`<task_dir>/result.json`", "`GROKBOT_KIT_RESULT_FILE`", "`result_invalid`", "`max_bytes`"):
         assert needle in result, needle
 
-    example = section("Exemplo comentado: `code-review`")
+    example = section(text, g.example)
     builtin = next(p for p in plugin.builtins() if p.name == "code-review")
     assert f"```toml\n{(builtin.path / 'grokbot-kit.toml').read_text(encoding='utf-8')}```" in example
     assert f"```markdown\n{(builtin.path / 'prompt.md').read_text(encoding='utf-8')}```" in example

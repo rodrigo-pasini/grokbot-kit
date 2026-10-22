@@ -15,7 +15,7 @@ required = true
 [capabilities]
 write = "task-dir"
 network = "on"
-commands = ["git", "pytest", "npm test", "go test", "cargo test"]
+commands = ["git log", "git diff", "git show", "git blame", "pytest", "npm test", "go test", "cargo test"]
 
 [result]
 required = ["summary", "reproduced", "suspects", "next_step"]

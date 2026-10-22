@@ -1,7 +1,9 @@
 # Plugins do grokbot-kit
 
+> Read in English: [docs/plugins.md](../plugins.md)
+
 > **O formato do plugin (`grokbot-kit.plugin/v0`) pode mudar antes da 1.0.** Toda mudança entra no
-> [CHANGELOG](../CHANGELOG.md), como as do evento `grokbot-kit.event/v1`.
+> [CHANGELOG](../../CHANGELOG.md), como as do evento `grokbot-kit.event/v1`.
 
 Um plugin é uma tarefa pronta: um prompt, as entradas que ele pede e o que o agente pode fazer enquanto roda. O Grok
 Bot dispara um plugin com poucos parâmetros, sem escrever prompt:
@@ -63,7 +65,7 @@ Capacidades, um vocabulário fechado - o kit recusa o que não sabe impor:
 | --- | --- | --- |
 | `write` | `"task-dir"`, `"none"` | o agente só escreve no diretório da tarefa, ou em lugar nenhum |
 | `network` | `"on"`, `"off"` | com `"off"`, nenhum acesso à rede |
-| `commands` | lista de prefixos, como `"git"` ou `"gh pr view"` | só comandos que começam por um prefixo da lista |
+| `commands` | lista de prefixos, como `"git log"` ou `"gh pr view"` | só comandos que começam por um prefixo da lista |
 
 Além dessas, toda tarefa de plugin ignora a configuração do workspace (`workspace_config`: settings, hooks, plugins
 e MCP do repositório clonado não carregam; `CLAUDE.md` e `AGENTS.md` entram só como contexto) e carrega as skills do
@@ -120,7 +122,10 @@ commands = [
     "gh pr review",
     "gh pr comment",
     "gh api",
-    "git",
+    "git log",
+    "git diff",
+    "git show",
+    "git blame",
     "pytest",
     "npm test",
     "go test",
@@ -136,8 +141,9 @@ max_bytes = 16384
 - `write = "task-dir"`: o agente só escreve dentro do diretório da tarefa (o clone incluído).
 - `network = "on"`: o review é postado pelo `gh` do box.
 - `commands`: leitura do PR, `gh pr review`/`gh pr comment`, `gh api` (o review com comentários inline é um
-  `POST .../reviews`), `git` (o histórico do PR) e os executores de teste. Um prefixo libera tudo o que começa com
-  ele: escolha o mais estreito que a tarefa precisa.
+  `POST .../reviews`), `git log`, `git diff`, `git show` e `git blame` (o histórico do PR, só leitura) e os
+  executores de teste. Um prefixo libera tudo o que começa com ele: escolha o mais estreito que a tarefa precisa. O
+  prefixo `git` sozinho liberaria `git push`, e o clone fica dentro do diretório da tarefa.
 - `result.required`: o bot recebe `summary`, `verdict`, `findings` e `review_url` sem reler o PR.
 
 O prompt (`prompt.md`) só aponta para a skill e lembra as regras que valem sempre:
