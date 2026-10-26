@@ -93,9 +93,21 @@ def skill_invoked(tool: str, home: Path, task_dir: Path) -> bool:
         transcripts = home.glob(".claude/projects/*/*.jsonl")
         called = re.compile(r'"name":"Skill","input":\{"skill":"[a-z0-9-]+:spike"')
         return any(called.search(t.read_text()) for t in transcripts)
-    # o opencode 2.x chama o campo de `id`; o 1.19, de `name`
-    called = re.compile(r'"tool":"skill","state":\{"status":"completed","input":\{"(?:id|name)":"spike"')
-    return called.search((task_dir / "out.jsonl").read_text()) is not None
+    for line in (task_dir / "out.jsonl").read_text().splitlines():
+        try:
+            part = json.loads(line).get("part") or {}
+        except ValueError:
+            continue
+        state = part.get("state") or {}
+        skill = state.get("input") or {}
+        # o opencode 2.x chama o campo de `id`; o 1.19, de `name`
+        if (
+            part.get("tool") == "skill"
+            and state.get("status") == "completed"
+            and "spike" in (skill.get("id"), skill.get("name"))
+        ):
+            return True
+    return False
 
 
 def run_plugin(tmp_path: Path, tool: str, source: Path, work: Path | None = None) -> tuple[dict[str, Any], Path]:
