@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-27
+
+### Fixed
+
+- Plugin tasks: the kit appends a `## Ambiente desta tarefa` block to the plugin prompt, built from the declared
+  capabilities (allowed command prefixes, one command per call, read files with the CLI tools, where to write, no
+  network, a denied permission does not end the task). Without it, an agent that had one compound shell command
+  denied concluded it had no shell, so `code-review` did not post the review and `bug-verify` did not run the test.
+
 ## [0.4.0] - 2026-10-22
 
 ### Added
@@ -159,7 +168,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `pytest`, `pre-commit`, CI and release workflows, Dependabot, issue and pull request templates.
 - `grokbot-kit --version`. The commands described in the README are not implemented yet.
 
-[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.2...v0.3.0
