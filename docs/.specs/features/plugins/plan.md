@@ -29,7 +29,7 @@ acrescenta o que entra antes do lançamento e o que é conferido depois.
    entradas, recusa CLI que não impõe as capacidades (door 8) - tudo antes do task dir
 4. `run.py` (exists) cria o task dir, copia o plugin para ele, clona o workspace (door 7) e monta o harness da CLI a
    partir das capacidades (door 8) com `launch.py` (exists)
-5. `run.py` (exists) lança e supervisiona como hoje, com `cwd` no workspace e o prompt do plugin com as entradas
+5. `run.py` (exists) lança e supervisiona como hoje, com `cwd` no workspace e o prompt do plugin com as entradas e o bloco de ambiente das capacidades (door 9)
 6. ao sair, `run.py` (exists) lê o resultado (door 6), `terminal.py` (exists) classifica com a regra de plugin e
    `payload.py` (exists) monta o evento com `plugin` e `result` (door 5); `deliver.py` (exists) entrega à routine
 7. `doctor.py` (exists) lista os plugins e a matriz de suporte por CLI, acusa manifesto ilegível e avisa `gh` sem login
@@ -95,6 +95,7 @@ Comandos sem contrato HTTP (exit codes):
 | 7. workspace | entrada `kind = "repo"` aceita `https://github.com/<owner>/<repo>/pull/<n>` e `https://github.com/<owner>/<repo>/tree/<branch>`; o kit clona em `<task_dir>/work` com o `gh` do box e faz checkout do PR ou da branch antes de lançar; `cwd` do agente = `<task_dir>/work` | o agente clonar sozinho - o `cwd` não seria o clone, as instruções do repo não carregariam, e a CLI já teria carregado a configuração do lugar errado |
 | 8. matriz de capacidades | tabela por CLI e versão testada, com cada célula `os`, `tool` ou `unsupported` para `write`, `network: off`, `commands`, `workspace_config` (settings, hooks, plugins e MCP do workspace não carregam) e `skills` do plugin; linha acrescentada aqui com o resultado do S1, antes de qualquer código de tradução | impor no kit (sandbox próprio) - o `bwrap` não sobe no box sem root, o mesmo motivo do erro aberto do Codex |
 | 8. matriz provada (S1, `spike.md`, AD-042) | `assets/capabilities.json`: `claude` e `opencode` = `write` `tool`, `network` `unsupported`, `commands` `tool`, `workspace_config` `tool`, `skills` `tool`; `codex` = tudo `unsupported`. Harness (`launch.plugin_harness`): `claude` com `--restricted --strict-mcp-config --tools Read,Glob,Grep,Edit,Write,Skill[,Bash] --add-dir <task_dir> --plugin-dir <task_dir>/plugin --permission-mode dontAsk` e, no `claude-settings.json`, `permissions.allow` = `Edit`/`Write(//<task_dir>/**)` (com `write = "none"`, só `result.json`) + `Bash(<prefixo>)`/`Bash(<prefixo> *)`, `permissions.deny` = `Edit`/`Write(//<task_dir>/plugin/**)` (+ `WebFetch`, `WebSearch` com `network = "off"`); `opencode` com `OPENCODE_DISABLE_PROJECT_CONFIG=1`, `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1` e `OPENCODE_CONFIG_CONTENT` = `{"permission": {"edit": {"*": "allow", "<plugin>/*": "deny"}, "external_directory": {"*": "deny", "<task_dir>/*": "allow"}, "bash": {"*": "deny", "<prefixo>": "allow", "<prefixo> *": "allow"}, "skill": "allow"}, "skills": {"paths": ["<plugin>/skills"]}}`, e `--standalone` quando `opencode --version` dá 2 ou mais; toda CLI recebe `PWD` = cwd | sandbox do sistema (`os`) - o `bwrap` não sobe no box nem no host do spike; esconder o plugin do agente - skills leem os arquivos de apoio da pasta delas |
+| 9. ambiente no prompt (AD-043) | `\n\n## Ambiente desta tarefa\n\n` + uma linha por regra: `- O shell só aceita comandos que começam por um destes prefixos: <prefixos entre crases, separados por vírgula>. Qualquer outro é negado.` e `- Um comando por chamada, sem \`;\`, \`&&\`, \`\|\|\`, \`\|\` nem \`cd\`.` (com `commands = []`, só `- O shell não aceita nenhum comando.`); `- Leia, liste e procure arquivos com as ferramentas de leitura e busca da CLI, não com o shell.`; `- Você só escreve dentro de <task_dir>.` (com `write = "none"`, `- Você só escreve o arquivo de resultado, <result_file>.`); `- Sem acesso à rede.` só com `network = "off"`; `- Uma permissão negada não encerra a tarefa: siga com as ferramentas e os comandos liberados.`; acrescentado pelo kit ao fim do prompt do plugin, em pt-BR, a língua do bot | só nos prompts dos plugins próprios - plugin de terceiro cairia na mesma armadilha e a lista copiada divergiria do manifesto; nada no prompt - no box o agente teve um comando composto negado e concluiu que não tinha shell |
 
 - Nada mais aqui é difícil de reverter: textos, saída em texto, nomes de arquivos internos ao task dir além dos das doors 3, 6 e 7, e o conteúdo dos prompts dos plugins próprios mudam num refactor.
 
@@ -214,6 +215,7 @@ Cada célula da door 8 tem valor provado nas versões do box, e é isso que o ki
 64. The repositório SHALL ter um guia de autoria em `docs/plugins.md`, em inglês e com a tradução em `docs/pt-BR/plugins.md` (AD-041), com o layout da door 1, o manifesto e o vocabulário da door 2, a matriz da door 8, o contrato do resultado da door 6, o `code-review` comentado como exemplo, e o aviso de que o formato pode mudar antes da 1.0
 65. WHEN `doctor --json` roda THEN a saída SHALL ter `plugins` com nome, versão e `source` de cada plugin, e `problems` SHALL ganhar uma entrada para manifesto ilegível de plugin instalado
 66. WHEN algum plugin tem entrada `repo` e `gh auth status` falha THEN o `doctor` SHALL mostrar `gh.logged_in` `false` e a linha `gh: not logged in; plugins with repo inputs cannot run; run: gh auth login`, sem mexer em `problems` nem no exit code (AD-040)
+67. WHEN o `run --plugin` lança o agente THEN o prompt SHALL ser o do plugin, com as variáveis substituídas, seguido do bloco `## Ambiente desta tarefa` da door 9 gerado das capacidades do manifesto (AD-043)
 
 **Independent test:** `tests/test_skill_doc.py` acha `plugin list --json`, `run --plugin` e o fluxo de confirmação do `plugin add --yes`; o guia existe com as cinco partes.
 
@@ -269,6 +271,7 @@ Cada célula da door 8 tem valor provado nas versões do box, e é isso que o ki
 | comando `run --plugin` | flags e conflitos | AC 27, AC 30, AC 31 |
 | comando `run --plugin` | exit codes | AC 27-32 (`2`), demais como hoje (AC 45) |
 | comando `run --plugin` | falha no meio | AC 33 (clone), AC 43 (resultado) |
+| prompt do agente | o que o agente sabe do ambiente | AC 67 (door 9) |
 | evento | forma e versão | AC 46, AC 47 (aditivo, door 5) |
 | evento | códigos de erro | AC 43, AC 45 |
 | `doctor` | campo novo e problemas | AC 65, AC 66 |

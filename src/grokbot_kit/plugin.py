@@ -295,10 +295,33 @@ def unenforceable(plugin: Plugin, tool: str) -> str | None:
     return next((f"{cap}={value}" for cap, value in needed if cells[cap] == "unsupported"), None)
 
 
+def environment(caps: dict[str, Any], values: dict[str, str]) -> str:
+    """O bloco `## Ambiente desta tarefa` da door 9: o que as capacidades deixam o agente fazer, em pt-BR."""
+    if caps["commands"]:
+        prefixes = ", ".join(f"`{c}`" for c in caps["commands"])
+        lines = [
+            f"O shell só aceita comandos que começam por um destes prefixos: {prefixes}. Qualquer outro é negado.",
+            "Um comando por chamada, sem `;`, `&&`, `||`, `|` nem `cd`.",
+        ]
+    else:
+        lines = ["O shell não aceita nenhum comando."]
+    lines.append("Leia, liste e procure arquivos com as ferramentas de leitura e busca da CLI, não com o shell.")
+    if caps["write"] == "none":
+        lines.append(f"Você só escreve o arquivo de resultado, {values['result_file']}.")
+    else:
+        lines.append(f"Você só escreve dentro de {values['task_dir']}.")
+    if caps["network"] == "off":
+        lines.append("Sem acesso à rede.")
+    lines.append("Uma permissão negada não encerra a tarefa: siga com as ferramentas e os comandos liberados.")
+    return "## Ambiente desta tarefa\n\n" + "".join(f"- {line}\n" for line in lines)
+
+
 def render_prompt(plugin: Plugin, values: dict[str, str]) -> str:
-    """O prompt do plugin com `{<entrada>}` e as variáveis da door 2 substituídas; entrada opcional ausente vira ``."""
+    """O prompt do plugin com `{<entrada>}` e as variáveis da door 2 substituídas (entrada opcional ausente vira ``),
+    seguido do bloco de ambiente da door 9."""
     text = (plugin.path / plugin.manifest["prompt"]).read_text(encoding="utf-8")
-    return PLACEHOLDER_RE.sub(lambda m: values.get(m.group(1), ""), text)
+    text = PLACEHOLDER_RE.sub(lambda m: values.get(m.group(1), ""), text)
+    return text.rstrip("\n") + "\n\n" + environment(plugin.manifest["capabilities"], values)
 
 
 def read_result(path: Path, spec: dict[str, Any]) -> tuple[dict[str, Any] | None, str]:

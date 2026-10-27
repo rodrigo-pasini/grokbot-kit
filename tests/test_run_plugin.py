@@ -1,4 +1,4 @@
-"""Provas de `grokbot-kit run --plugin` (checks C27-C35, C38-C44, C59; AC 26-33, 39-46, doors 3, 5, 6 e 7).
+"""Provas de `grokbot-kit run --plugin` (checks C27-C35, C38-C44, C59, C60; AC 26-33, 39-46, 67, doors 3, 5-7 e 9).
 
 Tudo na fronteira: subprocesso `grokbot-kit run` com a CLI falsa, o `gh` falso (`tests/fakes/gh`) clonando um
 repositório git local, e uma matriz de capacidades de teste em `GROKBOT_KIT_CAPABILITIES` (a do pacote só muda com
@@ -119,6 +119,18 @@ def padded_result(size: int) -> str:
     return json.dumps({"summary": "s" * (size - len(base)), "verdict": "ok"})
 
 
+def environment_block(task_dir: Path) -> str:
+    """O bloco da door 9 para o plugin `teste` (`commands = ["git", "gh pr view"]`, `write = "task-dir"`)."""
+    return (
+        "## Ambiente desta tarefa\n\n"
+        "- O shell só aceita comandos que começam por um destes prefixos: `git`, `gh pr view`. Qualquer outro é negado.\n"
+        "- Um comando por chamada, sem `;`, `&&`, `||`, `|` nem `cd`.\n"
+        "- Leia, liste e procure arquivos com as ferramentas de leitura e busca da CLI, não com o shell.\n"
+        f"- Você só escreve dentro de {task_dir}.\n"
+        "- Uma permissão negada não encerra a tarefa: siga com as ferramentas e os comandos liberados.\n"
+    )
+
+
 # C27 - AC 26, doors 3 e 7
 def test_launches_in_clone_with_prompt(kit: Kit, env: dict[str, str], tmp_path: Path) -> None:
     result = run_plugin(kit, env, "teste", "--input", f"pr={PR_URL}")
@@ -134,9 +146,36 @@ def test_launches_in_clone_with_prompt(kit: Kit, env: dict[str, str], tmp_path: 
     launched = kit.launched()
     assert launched["cwd"] == str(work)
     assert launched["argv"][-1] == (
-        f"Revise {PR_URL} em {work}; grave {task_dir / 'result.json'}; task dir {task_dir}.\n"
+        f"Revise {PR_URL} em {work}; grave {task_dir / 'result.json'}; task dir {task_dir}.\n\n"
+        + environment_block(task_dir)
     )
     assert launched["env"]["GROKBOT_KIT_RESULT_FILE"] == str(task_dir / "result.json")
+
+
+# C60 - AC 67, door 9
+def test_environment_block_from_capabilities(kit: Kit, env: dict[str, str], tmp_path: Path) -> None:
+    result = run_plugin(kit, env, "teste", "--input", f"pr={PR_URL}")
+    assert result.returncode == 0, result.stderr
+    task_dir = kit.task_dir()
+    prompt = kit.launched()["argv"][-1]
+    assert prompt.endswith(".\n\n" + environment_block(task_dir)), prompt
+
+    source = tmp_path / "plugins" / "seco"
+    write_plugin(source, nota_manifest("seco", write="none", network="off", commands=[]), prompt=NOTA_PROMPT)
+    assert kit.cli("plugin", "add", str(source), "--yes").returncode == 0
+    before = set(kit.tasks())
+    result = run_plugin(kit, env, "seco", "--input", "nota=oi")
+    assert result.returncode == 0, result.stderr
+    (task_dir,) = set(kit.tasks()) - before
+    assert kit.launched()["argv"][-1] == (
+        f"Nota: oi. Grave {task_dir / 'result.json'}.\n\n"
+        "## Ambiente desta tarefa\n\n"
+        "- O shell não aceita nenhum comando.\n"
+        "- Leia, liste e procure arquivos com as ferramentas de leitura e busca da CLI, não com o shell.\n"
+        f"- Você só escreve o arquivo de resultado, {task_dir / 'result.json'}.\n"
+        "- Sem acesso à rede.\n"
+        "- Uma permissão negada não encerra a tarefa: siga com as ferramentas e os comandos liberados.\n"
+    )
 
 
 # C36 na fronteira (door 8): o opencode recebe o harness no env e o `PWD` do clone, que é por onde ele acha o projeto
@@ -229,7 +268,9 @@ def test_file_input_copied(kit: Kit, env: dict[str, str], arquivos: None, tmp_pa
     task_dir = kit.task_dir()
     copied = task_dir / "inputs" / "doc"
     assert copied.read_text(encoding="utf-8") == "ZeroDivisionError\n"
-    assert kit.launched()["argv"][-1] == f"Doc {copied} nota . Grave {task_dir / 'result.json'}.\n"
+    assert kit.launched()["argv"][-1] == (
+        f"Doc {copied} nota . Grave {task_dir / 'result.json'}.\n\n" + environment_block(task_dir)
+    )
 
 
 # C32 - AC 30

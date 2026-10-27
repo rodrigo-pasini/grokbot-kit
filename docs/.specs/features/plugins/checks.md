@@ -173,7 +173,7 @@ Proof: `uv run pytest tests/test_run_plugin.py -k plugin_event_delivery_statuses
 **C46** - `event.v1.json` aceita `plugin` e `result` objeto ou `null` e o `exit_reason` `result_invalid`; os eventos de C40, C42 e C45 validam contra ele (AC 47, door 5)
 Proof: `uv run pytest tests/test_payload.py -k schema_accepts_plugin_fields`
 
-### S5 - o plugin code-review revisa um PR · 4 arquivos · ~25 KB · ~6k · parcial: C47-C49 verdes (C49 com o `claude` real no host de dev); C50 roda no box, pelo bot (AD-042)
+### S5 - o plugin code-review revisa um PR · 4 arquivos · ~25 KB · ~6k · parcial: C47-C49 verdes (C49 com o `claude` real no host de dev); C50 verde no host de dev com o bloco da AD-043 (27/10/2026), falta a rodada do bot no box
 
 **C47** - O manifesto de `code-review` passa pelas regras do C19 e declara `pr` (`repo`), `write = "task-dir"`, `network = "on"`, `commands` exatamente `gh pr view`, `gh pr diff`, `gh pr review`, `gh pr comment`, `gh api`, `git log`, `git diff`, `git show`, `git blame`, `pytest`, `npm test`, `go test`, `cargo test`, e `result.required` = `summary`, `verdict`, `findings`, `review_url` (AC 48; emendado pela AD-039: sem o prefixo `git` inteiro, que liberava `git push`)
 Proof: `uv run pytest tests/test_builtin_plugins.py -k code_review_manifest`
@@ -184,10 +184,10 @@ Proof: `uv run pytest tests/test_builtin_plugins.py -k code_review_instructions`
 **C49** - `claude --plugin-dir <code-review>` carrega o plugin sem erro de validação (AC 54)
 Proof: `uv run pytest -m integration tests/integration/test_builtin_plugins.py -k code_review_loads_in_claude`
 
-**C50** - No box, `run --plugin code-review --input pr=<PR de teste do repositório de teste>` posta um review `COMMENT` no PR e a routine recebe `completed`/`ok` com `review_url` apontando para ele; um segundo run depois de um push traz só achados do commit novo (AC 49-51)
+**C50** - No box, `run --plugin code-review --input pr=<PR de teste do repositório de teste>` posta um review `COMMENT` no PR e a routine recebe `completed`/`ok` com `review_url` apontando para ele; um segundo run depois de um push traz um achado no arquivo do commit novo, e todo outro achado dele está num arquivo que o primeiro run já apontou, ainda aberto (AC 49-51; emendado pela AD-043)
 Proof: `uv run pytest -m integration tests/integration/test_builtin_plugins.py -k code_review_posts_comment_review`
 
-### S6 - o plugin bug-verify verifica um alerta · 3 arquivos · ~18 KB · ~5k · parcial: C51, C52 verdes; C53 roda no box, pelo bot (AD-042)
+### S6 - o plugin bug-verify verifica um alerta · 3 arquivos · ~18 KB · ~5k · parcial: C51, C52 verdes; C53 verde no host de dev com o bloco da AD-043 (27/10/2026), falta a rodada do bot no box
 
 **C51** - O manifesto de `bug-verify` passa pelas regras do C19 e declara `repo` (`repo`), `alert` (`text`), `write = "task-dir"`, `network` = `off` se a matriz suporta na CLI padrão de fábrica (`opencode`) e `on` senão, `commands` com os `git` de leitura e os executores de teste do C47, e `result.required` = `summary`, `reproduced`, `suspects`, `next_step` (AC 55; emendado pela AD-039)
 Proof: `uv run pytest tests/test_builtin_plugins.py -k bug_verify_manifest`
@@ -215,6 +215,11 @@ Proof: `uv run pytest tests/test_plugin_docs.py -k guide_sections`
 **C58** - `doctor --json` tem `plugins` com `name`, `version` e `source` de cada plugin; um `grokbot-kit.toml` ilegível num plugin instalado põe uma entrada em `problems`; com um plugin de entrada `repo` e o `gh` falso com `FAKE_GH_AUTH_EXIT=1`, `gh.logged_in` é `false`, o texto tem a linha `gh: not logged in; plugins with repo inputs cannot run; run: gh auth login`, e `problems` e o exit code não mudam (AC 65, AC 66; emendado pela AD-040)
 Proof: `uv run pytest tests/test_doctor.py -k plugins_listed_and_problems`
 
+### S8 - o agente sabe o que o ambiente permite · 4 arquivos · ~40 KB · ~10k · AD-043, depois da rodada do bot no box · done: C60 verde
+
+**C60** - `run --plugin` com a CLI falsa lança o agente com o prompt do plugin seguido, depois de uma linha em branco, do bloco `## Ambiente desta tarefa` da door 9, texto exato: com `commands = ["git", "gh pr view"]` e `write = "task-dir"`, as linhas dos prefixos `` `git`, `gh pr view` ``, do comando por chamada, da leitura, de `Você só escreve dentro de <task_dir>.` e da negação; com `commands = []`, `write = "none"` e `network = "off"`, as linhas `O shell não aceita nenhum comando.`, da leitura, de `Você só escreve o arquivo de resultado, <result_file>.`, de `Sem acesso à rede.` e da negação, sem a do comando por chamada (AC 67, door 9)
+Proof: `uv run pytest tests/test_run_plugin.py -k environment_block`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -230,12 +235,13 @@ Proof: `uv run pytest tests/test_doctor.py -k plugins_listed_and_problems`
 | regras do manifesto (15) | C19, table-driven sobre as 15 | - |
 | `kind` de entrada (3) | `repo` C27, C28 · `text` C30 · `file` C30, C31 | - |
 | URLs da door 7, 2 aceitas e 4 recusadas (6) | PR C27 · branch C28 · GitLab C29 · PR não numérico C29 · repo sem PR/branch C29 · `--input` sem `=` C29 | - |
+| bloco de ambiente: variações (2) | commands com prefixos e `write = "task-dir"` C60 · `commands = []`, `write = "none"`, `network = "off"` C60 | - |
 | variáveis do prompt (4) | `{<entrada>}` C27, C31 · `{workspace}` C27 · `{result_file}` C27 · `{task_dir}` C27 | - |
 | `source` de plugin (3) | `builtin` C9 · `dir` C9, C14 · `git` C17 | - |
 | predicado de tarefa rodando (7) | rodando C25 · terminada C25 · janela vencida C25 · outro plugin C25 · sem `plugin` C25 · `meta.json` ausente C25 · ilegível C25 | - |
 | resultado inválido (5) | ausente C42 · não objeto C42 · não JSON C42 · campo faltando C42 · acima de `max_bytes` C42 | - |
 | precedência em tarefa de plugin (7) | timeout C44 · interrompida C44 · binário ausente C44 · erro do agente C44 · exit diferente de `0` C44 · resultado inválido C42 · negação com resultado válido C43 | - |
-| doors do plano (8) | 1 layout C18, C49 · 2 manifesto C19 · 3 armazenamento C14, C17, C22, C27 · 4 comandos C9, C11 · 5 evento C40, C46 · 6 resultado C42 · 7 workspace C27, C28, C29 · 8 matriz C1, C8, C34, C36 | - |
+| doors do plano (9) | 1 layout C18, C49 · 2 manifesto C19 · 3 armazenamento C14, C17, C22, C27 · 4 comandos C9, C11 · 5 evento C40, C46 · 6 resultado C42 · 7 workspace C27, C28, C29 · 8 matriz C1, C8, C34, C36 · 9 ambiente no prompt C27, C60 | - |
 | plugins próprios (2) | `code-review` C47-C50 · `bug-verify` C51-C53 | - |
 
 - Claims que nomeiam exit code, campo de evento ou formato: C9-C26, C29-C35, C40-C46, C58 - cada um tem prova que cruza

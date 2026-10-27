@@ -71,6 +71,11 @@ Além dessas, toda tarefa de plugin ignora a configuração do workspace (`works
 e MCP do repositório clonado não carregam; `CLAUDE.md` e `AGENTS.md` entram só como contexto) e carrega as skills do
 plugin (`skills`).
 
+O kit acrescenta ao fim do prompt do plugin um bloco `## Ambiente desta tarefa`, em pt-BR como o bot, montado dessas
+capacidades: os prefixos de comando liberados (ou que o shell não aceita nenhum comando), um comando por chamada sem
+`;`, `&&`, `||`, `|` nem `cd`, a leitura de arquivos pelas ferramentas da própria CLI, onde o agente pode escrever, a
+falta de rede com `network = "off"` e que uma permissão negada não encerra a tarefa. O prompt não precisa repetir isso.
+
 ## Matriz de capacidades
 
 O que cada CLI consegue impor, provado com agentes reais (`claude` 2.1.308, `opencode` 2.1.3, `codex` 0.163.0) num
