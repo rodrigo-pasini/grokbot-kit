@@ -2,33 +2,46 @@
 
 **Verdict**: FAIL
 **Profile**: standard
-**Diff range**: d9efceb..7a6d41b (fix under re-verification: 2dd3e68..7a6d41b)
-**Round**: 2 - scoped
-**Verifier**: independent sub-agent (author != verifier); did not write the code or round 1
+**Diff range**: 7f17f2a..bf98604 (0.4.0 em `main` até a `0.4.1`; fix sob re-verificação)
+**Round**: 3 - scoped
+**Verifier**: independent sub-agent (author != verifier); não escreveu o código nem as rodadas 1 e 2
 
-57 of 59 checks PASS with located evidence at `7a6d41b`. The fix closed C36, C37 and C49: their proofs now select
-real tests, and those tests ran and passed. C50 and C53 still fail. Their tests now exist, but this round did not run
-them. On instruction: they post reviews to a real GitHub PR, push a commit, and need test repositories that only the
-user's bot can reach. Two Coverage rows still have unproven members: one refusal branch the fix did not reach
-(`_table`, `src/grokbot_kit/plugin.py:110`) and the real behaviour of the two built-in plugins (C50, C53). The
-integration `Test policy` row is still unmet. All 5 faults injected in this round were killed.
+56 de 60 checks com PASS e evidência localizada em `bf98604`. O C60 (novo) e as asserções novas do C27 e do C31
+passam, e os 5 mutantes do bloco de ambiente (`environment`/`render_prompt`) morreram. A rodada falha por três coisas:
 
-Where the evidence came from. Every proof re-ran at `HEAD` = `7a6d41b`. The CI proofs ran on the development host.
-`-m integration tests/integration/test_plugin_caps.py` and `-k code_review_loads_in_claude` also ran on the
-**development host, not the box**, with real `claude` 2.1.308 (`sonnet`; C49 calls `haiku` itself) and `opencode` 2.1.3
-(`opencode/deepseek-v4.1-flash-free`). AD-042 accepts the development host for the matrix and leaves the box run to the
-bot. Nothing that posts to GitHub ran.
+1. **C2 ficou vermelho no opencode.** Re-rodei a prova da matriz no host de dev. O agente do opencode cria um arquivo
+   fora do task dir com `git log -1 --format=x > <fora>`: o prefixo `git log` está liberado e o redirecionamento do shell
+   escreve o arquivo. Aconteceu em 2 de 3 runs. O bloco da door 9 diz ao agente quais prefixos estão liberados, e foi
+   assim que ele achou a brecha. O `write = "task-dir"` do opencode não está imposto quando há um prefixo liberado, o
+   que contradiz a célula `opencode`/`write` = `tool` da door 8. O handoff do `STATE.md` diz "11 passed, 7 skipped";
+   esta rodada não reproduz isso.
+2. **C50 e C53 passaram, mas no host de dev.** Rodaram com o `claude` 2.1.311 (`sonnet`) e o `gh` real contra o
+   `grokbot-kit-fixtures`. O texto dos dois diz "No box". `checks.md` (cabeçalhos do S5 e do S6: "falta a rodada do bot
+   no box") e o `STATE.md` ("verde, o Verifier fecha C50 e C53") deixam a rodada no box como devida. Diferente do C37, a
+   AD-043 não transfere a prova para o host de dev. Então conto como não provado e não arredondo para cima.
+3. **Um mutante sobreviveu.** O F7 tira o ramo `name` (opencode 1.19) do `skill_invoked`, e nada no host de dev o
+   mata, porque aqui o opencode é o 2.1.3. Esse ramo só se prova no box.
 
-Scope of this round: the fix diff `2dd3e68..7a6d41b` changes only tests and `checks.md`, not `src/`. It adds
-`tests/integration/test_builtin_plugins.py` and `tests/integration/__init__.py`, renames the C36 and C37 tests, adds
-`test_manifest_rules_more` (11 cases) and `test_add_refuses_ref_for_directory`, and switches two integration imports to
-`integration.test_real_cli`. It also edits the S5/S6 status lines in `checks.md`. No check text or `Proof:` line
-changed.
+De onde veio a evidência. Rodei de novo todas as provas de CI em `HEAD` = `bf98604`, no host de dev. As provas
+`-m integration` também rodaram no **host de dev, não no box**, com `claude` 2.1.311 e `opencode` 2.1.3
+(`opencode/deepseek-v4.1-flash-free`). O C50 postou dois reviews `COMMENT` no PR de teste
+(`rodrigo-pasini/grokbot-kit-fixtures#1`, reviews `5670784834` e `5670794361`, os dois `COMMENTED`) e empurrou o
+commit `7f92f65` ("test: commit novo do C50") para a branch do PR.
+
+Escopo desta rodada. O diff `7f17f2a..bf98604` acrescenta `environment()` e muda `render_prompt()` em
+`src/grokbot_kit/plugin.py:298-324` (door 9, AD-043). Muda as asserções exatas de prompt do C27 e do C31, acrescenta o
+C60 (`tests/test_run_plugin.py:122-178`), emenda o C50 (texto e teste) e torna o `skill_invoked` tolerante ao
+opencode 1.19 (`tests/integration/test_plugin_caps.py:90-110`). Corrige o `prepare_home` com `parents=True`
+(`tests/integration/test_real_cli.py:78`), acrescenta um parágrafo nos dois guias (C57) e sobe a versão para `0.4.1`.
+Também reabri o que não estava PASS na rodada 2: C50, C53, a linha de Coverage do `_table` e a linha de integração do
+`Test policy`.
 
 ## Binding sources
 
-Carried from 2dd3e68. Step 1 only runs under `ui`, and the fix did not touch the interface. `design.md` was opened in
-round 1. This round re-read `plan.md`, `checks.md`, `spike.md` and AD-038..AD-042 as context.
+Carried from 7a6d41b. O passo 1 só roda no perfil `ui`. O diff não mexe numa interface com tela, e o que mudou na
+interface de linha de comando foi só o prompt passado ao agente, que o C60 cobre. Li a door 9 (`plan.md:98`), a AC 67
+(`plan.md:218`) e a AD-043 (`docs/.specs/STATE.md:49`) e comparei com o texto do C60 e com o código. Os textos das
+seis linhas, a condição de cada uma e a ordem batem.
 
 | Source | Opened | Contradiction | Uncovered |
 | --- | --- | --- | --- |
@@ -36,156 +49,172 @@ round 1. This round re-read `plan.md`, `checks.md`, `spike.md` and AD-038..AD-04
 
 ## Checks
 
-Verified at 7a6d41b: every proof re-ran at this commit. The citations in the files the fix touched were refreshed:
-`tests/test_plugin.py` moved +8 lines from C20 on, plus `tests/test_plugin_manifest.py`, `tests/test_launch_plugin.py`
-and `tests/integration/*`. The other citations are unchanged, because their files are not in the fix diff.
+Verified at bf98604: todas as provas rodaram de novo neste commit. Atualizei as citações dos arquivos que o diff tocou:
+`tests/test_run_plugin.py` (+12 linhas antes do C27, +39 depois do C60, +41 depois do C31), `tests/integration/test_plugin_caps.py`
+(+14 depois da linha 95) e `tests/integration/test_builtin_plugins.py` (+2 depois da 125). Também atualizei
+`tests/test_plugin_manifest.py`, que ganhou uma linha (`:129`) entre `7a6d41b` e a base. As demais citações vêm da
+rodada 2, porque os arquivos delas não mudaram.
 
-Batched CI run: `uv run pytest tests/test_builtin_plugins.py tests/test_doctor.py tests/test_launch_plugin.py tests/test_payload.py tests/test_plugin_docs.py tests/test_plugin_manifest.py tests/test_plugin.py tests/test_plugin_spike.py tests/test_run_plugin.py tests/test_skill_doc.py tests/test_terminal.py -k "<the 55 CI -k names from checks.md>" -v` exited 0 with **134 passed** and 160 deselected. Each of the 55 `-k` names has at least one `PASSED` line. `harness_per_cli_and_capability` has 5 and `manifest_rules` has 28.
-Integration run 1: `GROKBOT_KIT_IT_CLAUDE_MODEL=sonnet GROKBOT_KIT_IT_OPENCODE_MODEL=opencode/deepseek-v4.1-flash-free uv run pytest -m integration tests/integration/test_plugin_caps.py -v -rs` exited 0 with **9 passed and 7 skipped**. `test_run_plugin_claude_end_to_end` was among the passes. Every skip is `needs()` at `tests/integration/test_plugin_caps.py:39`, on a matrix cell marked `unsupported`.
-Integration run 2: `uv run pytest -m integration tests/integration/test_builtin_plugins.py -k code_review_loads_in_claude -v` exited 0 with **2 passed** and 2 deselected.
-Not run: `-k code_review_posts_comment_review` (C50) and `-k bug_verify_reproduces` (C53), by instruction.
+Rodada de CI em lote: `uv run pytest <11 arquivos> -k "<os 56 nomes -k de CI do checks.md>" -v` saiu com exit 0, com
+**136 passed** e 160 deselected. Cada um dos 56 nomes teve pelo menos uma linha `PASSED`. `environment_block` teve 1,
+`launches_in_clone_with_prompt` 1, `file_input_copied` 1 e `guide_sections` 2.
+Integração 1: `GROKBOT_KIT_IT_CLAUDE_MODEL=sonnet GROKBOT_KIT_IT_REVIEW_PR=https://github.com/rodrigo-pasini/grokbot-kit-fixtures/pull/1 GROKBOT_KIT_IT_BUG_REPO=https://github.com/rodrigo-pasini/grokbot-kit-fixtures/tree/main GROKBOT_KIT_IT_BUG_FILE=calc/media.py GROKBOT_KIT_IT_BUG_ALERT=<as 3 linhas do ZeroDivisionError> uv run pytest -m integration tests/integration/test_builtin_plugins.py -k "bug_verify or posts_comment" -v`: exit 0, **2 passed** em 105 s (`test_code_review_posts_comment_review`, `test_bug_verify_reproduces`). Host de dev.
+Integração 2: `GROKBOT_KIT_IT_CLAUDE_MODEL=sonnet GROKBOT_KIT_IT_OPENCODE_MODEL=opencode/deepseek-v4.1-flash-free uv run pytest -m integration tests/integration/test_plugin_caps.py tests/integration/test_builtin_plugins.py -k "not posts_comment and not bug_verify_reproduces" -v -rs`: exit 1, **1 failed, 10 passed, 7 skipped**. A falha é `test_write_outside_denied[opencode]`. Os 7 skips são `needs()` em `tests/integration/test_plugin_caps.py:39` (células `unsupported`). Host de dev.
+Integração 3: `-k "write_outside_denied and opencode"` mais duas vezes: 1 passed, depois 1 failed. No total, 2 falhas em 3 runs.
+Integração 4: `-k "plugin_skill_loaded and opencode"` na base, antes dos mutantes F6 e F7: 1 passed.
 
 | Check | Claim | Proof run | Evidence | Result |
 | --- | --- | --- | --- | --- |
-| C1 | `spike.md` has exactly 15 cells, each with value, version, command and output | CI batch `-k matrix_complete` PASSED | `tests/test_plugin_spike.py:45` - `assert sorted(cells) == sorted(expected)`; `:47-50` value in VALUES, version `\d+\.\d+`, command and output not `-`. The spike ran on the dev host, not the box (spike.md:3-5, AD-042) | PASS |
-| C2 | write outside the task dir is denied for each CLI with `write` supported | integration `test_write_outside_denied[claude]`, `[opencode]` PASSED; `[codex]` skipped (matrix) | `tests/integration/test_plugin_caps.py:142` - `assert not outside.exists(), event` (after `run_plugin` asserts `completed`/`ok` at `:127`). Dev host, not box | PASS |
-| C3 | a command outside `commands` does not run | integration `test_command_outside_denied[claude]`, `[opencode]` PASSED; codex skipped | `tests/integration/test_plugin_caps.py:157` - `assert not (task_dir / "spike-cmd").exists(), event`. Dev host | PASS |
-| C4 | a workspace hook or plugin does not fire | integration `test_workspace_config_ignored[claude]`, `[opencode]` PASSED; codex skipped | `tests/integration/test_plugin_caps.py:172-173` - `assert not marker.exists()` / `assert not (task_dir / "spike-hook").exists()`. Dev host | PASS |
-| C5 | the plugin skill loads (`spike-skill-ok` in the result) | integration `test_plugin_skill_loaded[claude]`, `[opencode]` PASSED; codex skipped | `tests/integration/test_plugin_caps.py:183` - `(event["status"], event["result"]["word"]) == ("ok", "spike-skill-ok")`; `:184` `skill_invoked(...)`. Dev host | PASS |
-| C6 | `network = off` gets no answer, for each CLI with `network` supported | integration `test_network_off_denied[*]` all 3 SKIPPED | Holds vacuously: `src/grokbot_kit/assets/capabilities.json:4,11,18` - `"network": "unsupported"` for all 3 CLIs, so there is no cell to prove. The skip is at `tests/integration/test_plugin_caps.py:38-39`. A `network=off` plugin is refused instead (C34) | PASS |
-| C7 | `unsupported` in write or workspace_config makes the whole CLI unsupported; a host-dependent cell has a probe | CI `-k cli_excluded_when_write_or_workspace_unsupported`, `-k host_dependent_cell_has_probe` PASSED | `tests/test_plugin_spike.py:65-67` - `set(matrix["claude"].values()) == {"unsupported"}`, same for opencode, codex unchanged; `:74` - `r["probe"] not in ("", "-")` for every `os` cell. The matrix has no `os` cell, so the second assertion never fires on the real `spike.md` | PASS |
-| C8 | the package matrix equals `spike.md` cell by cell | CI `-k package_matrix_matches_spike` PASSED | `tests/test_plugin_spike.py:82` - `{(tool, cap): package[tool][cap] ...} == spike` | PASS |
-| C9 | `plugin list --json` shape, sources, ordering, exact keys | CI `-k list_json_shape` PASSED | `tests/test_plugin.py:119-123` - `[(name, source)] == [("bug-verify","builtin"),("code-review","builtin"),("teste","dir")]`; `:125` - `set(p) == DOOR_4_KEYS` | PASS |
-| C10 | text line `<name> <version> <source> - <description>`, exit 0 | CI `-k list_text_lines` PASSED | `tests/test_plugin.py:137` returncode 0; `:140` - `lines[2] == "teste 1.2.3 dir - plugin de teste"`; `:142` the same format for every line | PASS |
-| C11 | `show code-review --json` with `support` for 3 CLIs × 5 capabilities | CI `-k show_by_name` PASSED | `tests/test_plugin.py:153` - `set(shown["support"]) == CLIS`; `:155` - `set(cells) == CAPABILITIES` | PASS |
-| C12 | `show <dir>` equals what `add` writes and writes nothing; an invalid dir gives exit 2 with the same error as `add` | CI `-k show_origin_without_writing` PASSED | `tests/test_plugin.py:168` - `entries(kit) == []`; `:170` - `json.loads(shown.stdout) == listed(kit)[2]`; `:176` - `show_bad.returncode == add_bad.returncode == 2`; `:178` same message | PASS |
-| C13 | `show nao-existe` gives exit 2 and the stderr message | CI `-k show_unknown_name` PASSED | `tests/test_plugin.py:185-186` - `returncode == 2`; `"no plugin named nao-existe; run: grokbot-kit plugin list" in result.stderr` | PASS |
-| C14 | on a pty, `y` writes the copy and `origin.json` (`dir`, absolute origin, null ref and commit, RFC 3339), exit 0; `n` gives exit 2 and writes nothing | CI `-k add_dir_confirms_on_tty` PASSED | `tests/test_plugin.py:193-195` - `code == 2`, `entries == []`; `:198` `code == 0`; `:205-210` - `source == "dir"`, `is_absolute()`, `ref is None`, `commit is None`, `RFC3339.match` | PASS |
-| C15 | `--yes` with stdin closed prints the capabilities and writes | CI `-k add_yes_skips_prompt` PASSED | `tests/test_plugin.py:217-218` - capabilities printed, `"[y/N]" not in ...`; `:220` `entries == ["teste"]` | PASS |
-| C16 | no tty and no `--yes` gives exit 2 and writes nothing | CI `-k add_without_tty_refuses` PASSED | `tests/test_plugin.py:226` - `returncode == 2`; `:228` `entries(kit) == []` | PASS |
-| C17 | git `--ref <tag>` pins the 40-char sha; without `--ref` it pins the default branch commit | CI `-k add_git_pins_commit` PASSED | `tests/test_plugin.py:241-245` - `source == "git"`, `ref == "v1"`, `commit == tag_commit`, `len == 40`; `:252-253` - `ref is None`, `commit == head_commit` | PASS |
-| C18 | each of the 5 executable parts gives exit 2, names the part, writes nothing | CI `-k add_refuses_executable_parts` 5/5 PASSED | `tests/test_plugin.py:266-268` - `returncode == 2`; `part.rstrip("/") in result.stderr`; `entries == []` | PASS |
-| C19 | the 15 manifest rules give exit 2, name the error, write nothing | CI `-k add_refuses_invalid_manifest` 15/15, `-k manifest_rules` 28 PASSED | `tests/test_plugin.py:278-280` - `returncode == 2`, `message in result.stderr`, `entries == []`; `tests/test_plugin_manifest.py:158-159` - `raised.value.code == 2`, `message in str(raised.value)`; `:82` `len(INVALID) == 15`. `-k manifest_rules` now also selects the 11 `test_manifest_rules_more` cases (`:140-141`), 28 passed in all | PASS |
-| C20 | `add` of a plugin named `code-review` gives exit 2 | CI `-k add_refuses_builtin_name` PASSED | `tests/test_plugin.py:294` - `returncode == 2` | PASS |
-| C21 | an installed name needs `--replace`; with it the copy and `origin.json` are swapped | CI `-k add_existing_needs_replace` PASSED | `tests/test_plugin.py:307-309` - `returncode == 2`, version stays `1.2.3`; `:312-314` - exit 0, version `9.0.0`, `origin == str(newer)` | PASS |
-| C22 | an unreadable dir or a failed git clone gives exit 1 with nothing left behind | CI `-k add_io_failure_leaves_nothing` PASSED | `tests/test_plugin.py:326-327` - `returncode == 1`, `entries == []`; `:330-332` - the same for the clone, `"git clone" in stderr` | PASS |
-| C23 | `rm` prints `removed <name>`, exit 0 | CI `-k rm_installed` PASSED | `tests/test_plugin.py:339-341` - `returncode == 0`, `stdout == "removed teste\n"`, `entries == []` | PASS |
-| C24 | `rm code-review` and `rm nao-existe` give exit 2 | CI `-k rm_refuses_builtin_and_unknown` 2/2 PASSED | `tests/test_plugin.py:349` - `returncode == 2` | PASS |
-| C25 | running-task predicate across its 7 cases | CI `-k running_task_predicate` PASSED | `tests/test_plugin.py:370` - `plugin.running_tasks("teste", now) == ["a-rodando"]` over all 7 fixtures; `:375` window boundary | PASS |
-| C26 | `rm` and `add --replace` give exit 2 with the `task_id` while a task runs | CI `-k rm_and_replace_refuse_running_task` PASSED | `tests/test_plugin.py:390-392` - `returncode == 2`, `task in stderr`, copy kept; `:397-399` the same for `--replace` | PASS |
-| C27 | plugin copied, PR clone checked out, cwd in `work`, prompt variables substituted | CI `-k launches_in_clone_with_prompt` PASSED | `tests/test_run_plugin.py:127` - `tree(task_dir/"plugin") == tree(source)`; `:133` - `calls[1] == {"argv": ["pr","checkout","7"], ...}`; `:135` `cwd == str(work)`; `:136-138` prompt fully substituted | PASS |
-| C28 | a branch URL clones `feat/x` | CI `-k branch_url_checkout` PASSED | `tests/test_run_plugin.py:159` - `rev-parse --abbrev-ref HEAD == "feat/x"`; `:161` gh argv `--branch feat/x` | PASS |
-| C29 | 6 bad inputs give exit 2 with no task dir | CI `-k refuses_bad_inputs_before_task_dir` 6/6 PASSED | `tests/test_run_plugin.py:179-182` - `returncode == 2`, `kit.tasks() == []`, `not kit.record.exists()` | PASS |
-| C30 | size bounds: 3 refused (exit 2, no task dir), exact 1 MiB and 64 KiB accepted | CI `-k input_size_bounds` 5/5 PASSED | `tests/test_run_plugin.py:216-217` accepted gives exit 0 and 1 task; `:219-220` refused gives exit 2 and `tasks() == []` | PASS |
-| C31 | a `file` input is copied to `inputs/<name>` and substituted | CI `-k file_input_copied` PASSED | `tests/test_run_plugin.py:231-232` - copied content equal; `argv[-1] == f"Doc {copied} ..."` | PASS |
-| C32 | `--plugin nao-existe` gives exit 2 with no task dir | CI `-k unknown_plugin` PASSED | `tests/test_run_plugin.py:238-240` | PASS |
-| C33 | `--prompt-file`, `--` extras and `--cwd` with a repo input give exit 2 with no task dir | CI `-k plugin_flag_conflicts` 3/3 PASSED | `tests/test_run_plugin.py:254-255` - `returncode == 2`, `kit.tasks() == []` | PASS |
-| C34 | an unenforceable capability gives exit 2 with the exact message; a supporting CLI runs | CI `-k refuses_unenforceable_capability` PASSED | `tests/test_run_plugin.py:264-266` - `returncode == 2`, `"plugin offline needs network=off, which opencode cannot enforce" in stderr`, no task; `:268-269` claude gives exit 0 | PASS |
-| C35 | a clone failure means no launch and an `error/failed/agent_error` event with the gh output | CI `-k clone_failure_event` PASSED | `tests/test_run_plugin.py:276` - `not kit.record.exists()`; `:278` outcome; `:279` - `"Could not resolve to a Repository" in event["summary"]` | PASS |
-| C36 | per-CLI harness table (3 CLIs × 5 capabilities) | CI batch `-k harness_per_cli_and_capability` **5 PASSED** (claude 1, opencode 3 params, codex 1); round 1 selected 0 | `tests/test_launch_plugin.py:62` - `h.args == ["--restricted", ...]` and `:74` `h.permissions == {...}` for claude (`test_harness_per_cli_and_capability_claude`, `:60`); `:101-102` - `h.args == args`, `h.permissions == {}` for opencode (`:99`); `:126` - `pytest.raises(ValueError, match="codex has no plugin harness")` (`:125`). The fix only renamed the tests; the bodies are the ones round 1 M1 killed | PASS |
-| C37 | real `claude`: no write to `~`, no `touch`, no workspace hook, the skill loads | integration `-k run_plugin_claude_end_to_end` PASSED (`test_run_plugin_claude_end_to_end`, `tests/integration/test_plugin_caps.py:204`), 1 selected. **Development host, not the box**: the check text says "No box"; the S3 header in `checks.md` and AD-042 move the proof to the development host and leave the box run to the bot | `tests/integration/test_plugin_caps.py:220` - `not outside.exists() and not home_outside.exists()`; `:221` - `not (task_dir / "spike-cmd").exists()`; `:222` - `not marker.exists()`; `:223` - `event["result"]["word"] == "spike-skill-ok"`; `:224` `skill_invoked(...)` | PASS |
-| C38 | `meta.json` `plugin` has exactly 6 keys, with `support` for the 5 capabilities | CI `-k meta_records_plugin` PASSED | `tests/test_run_plugin.py:290` - `set(meta["plugin"]) == {...6}`; `:296` - `support == dict.fromkeys(CAPABILITIES, "tool")` | PASS |
-| C39 | `run` without `--plugin` keeps the argv, `claude-settings.json` and classification | CI `-k argv_without_plugin_matches_baseline`, `-k run_without_plugin_unchanged` PASSED | `tests/test_launch_plugin.py:20-56` - literal argv for the 3 CLIs and `claude_settings` dict; `tests/test_run_plugin.py:305`, `:309`, `:321` - the opencode argv, `("completed","denied","permission_denied")`, the claude settings | PASS |
-| C40 | a valid result gives `completed/ok/success` with `result` and `plugin` | CI `-k valid_result_delivered` PASSED | `tests/test_run_plugin.py:328-331` - outcome, `event["result"] == VALID_RESULT`, `event["plugin"] == NOTA_PLUGIN`, `VALIDATOR.validate` | PASS |
-| C41 | the summary comes from the result; 2001 characters arrive as 2000 | CI `-k summary_from_result` PASSED | `tests/test_run_plugin.py:339` - `event["summary"] == "r" * 2000` | PASS |
-| C42 | 5 invalid-result cases give `result_invalid` with `result` null; exactly `max_bytes` is ok | CI `-k invalid_result_cases` 6 PASSED | `tests/test_run_plugin.py:353-354` - outcome `("error","failed","result_invalid")`, `result is None`; `:364` exact max_bytes is ok | PASS |
-| C43 | in a plugin task a denial gives `completed/ok` and the denial line goes to `kit.log` | CI `-k plugin_task_never_denied`, `-k denial_logged_not_status` PASSED | `tests/test_terminal.py:228` - `classify(..., plugin=True, result_valid=True) == ("completed","ok","success")`; `tests/test_run_plugin.py:389-391` - outcome ok, `"the CLI denied a permission" in log` | PASS |
-| C44 | timeout, interrupt, missing binary, agent error and exit 3 classify as before, with `result` null and `plugin` set | CI `-k plugin_precedence_table` 7, `-k plugin_failure_paths` 5 PASSED | `tests/test_terminal.py:281` - `got == expected` per row; `tests/test_run_plugin.py:469-473` - exit code, outcome, `result is None`, `plugin == NOTA_PLUGIN` | PASS |
-| C45 | an event without a plugin has `plugin` and `result` null | CI `-k no_plugin_fields_null` PASSED | `tests/test_payload.py:418` and `:426` - `["plugin"] is None` (and `result`) for the layer and for the 3 CLIs | PASS |
-| C46 | the schema accepts `plugin`/`result` and `result_invalid`; C40/C42/C45 events validate | CI `-k schema_accepts_plugin_fields` PASSED | `tests/test_payload.py:444` - `"result_invalid" in ...enum`; `:457` `VALIDATOR.validate(ok)`; `:470-471` malformed values rejected; C40/C42/C45 call `VALIDATOR.validate` (`tests/test_run_plugin.py:331,357`, `tests/test_payload.py:428`) | PASS |
-| C47 | `code-review` manifest: input, capabilities, the exact 13 commands, required fields | CI `-k code_review_manifest` PASSED | `tests/test_builtin_plugins.py:35-44` - `commands == [gh pr view, gh pr diff, gh pr review, gh pr comment, gh api, *GIT_READ, *TEST_RUNNERS]`; `required == ["summary","verdict","findings","review_url"]` | PASS |
-| C48 | `code-review` prompt and skill instructions (AC 49-53) | CI `-k code_review_instructions` PASSED | `tests/test_builtin_plugins.py:50-64` - single review, `COMMENT` only, verdict values, finding fields, earlier reviews, closed PR, PR content as data | PASS |
-| C49 | `claude --plugin-dir <code-review>` loads without a validation error | integration `-k code_review_loads_in_claude` **2 PASSED** (`[code-review]`, `[bug-verify]`), real `claude` 2.1.308 on the development host (the check needs no box) | `tests/integration/test_builtin_plugins.py:82-83` - `validated.returncode == 0`, `"Validation passed" in validated.stdout` (`claude plugin validate`); `:94-96` - `loaded.returncode == 0`, `json.loads(loaded.stdout)["is_error"] is False`, `"plugin" not in loaded.stderr.lower()` (`claude -p --plugin-dir`). Fault F5 killed it at `:82` | PASS |
-| C50 | on the box, posts a `COMMENT` review and a re-review returns only new findings | **not run in this round, by instruction**: it posts reviews to a real GitHub PR and pushes a commit, and needs `GROKBOT_KIT_IT_REVIEW_PR` set to a test PR reachable only by the user's bot. The test now exists: `test_code_review_posts_comment_review`, `tests/integration/test_builtin_plugins.py:100` | written, never run: `:112` - `review["state"] == "COMMENTED"`; `:128` - `{f["file"] for f in findings} == {novo}`. No run, so no evidence | FAIL |
-| C51 | `bug-verify` manifest, with network following the matrix | CI `-k bug_verify_manifest` PASSED | `tests/test_builtin_plugins.py:72-75` - `network == expected_network` (`on` while opencode network is unsupported), `commands == [*GIT_READ, *TEST_RUNNERS]`, required fields | PASS |
-| C52 | `bug-verify` instructions (AC 56-59) | CI `-k bug_verify_instructions` PASSED | `tests/test_builtin_plugins.py:81-87` | PASS |
-| C53 | on the box, reproduces the known `ZeroDivisionError` | **not run in this round, by instruction**: it needs a test repository with the known bug (`GROKBOT_KIT_IT_BUG_REPO`, `_ALERT`, `_FILE`) that only the user's bot can reach. The test now exists: `test_bug_verify_reproduces`, `tests/integration/test_builtin_plugins.py:132` | written, never run: `:139` - `event["result"]["reproduced"] == "yes"`; `:140` - `bug_file in [s["file"] for s in suspects]`. No run, so no evidence | FAIL |
-| C54 | SKILL.md: `plugin list --json`, show name, description and capabilities, `run --plugin` | CI `-k plugin_list_and_run` PASSED | `tests/test_skill_doc.py:407` - the ```` ```sh grokbot-kit plugin list --json ``` ```` block; `:415` - `` `grokbot-kit run --plugin <nome>` `` | PASS |
-| C55 | install order: show, show the capabilities, ask, add `--yes` | CI `-k plugin_install_confirms` PASSED | `tests/test_skill_doc.py:435` - `positions == sorted(positions)` | PASS |
-| C56 | no `curl`; every cited plugin command and flag is in `--help` | CI `-k commands_exist_in_help` PASSED (`test_plugin_commands_exist_in_help`) | `tests/test_skill_doc.py:442` - `not command.startswith("curl")`; `:452` - `flag in result.stdout` | PASS |
-| C57 | the en and pt-BR guides: sections, matrix, warning, links to each other | CI `-k guide_sections` [en], [pt-BR] PASSED | `tests/test_plugin_docs.py:71-72` warning and the other-language link; `:96` the matrix table equals `plugin.matrix()`; `:104-105` example equals the built-in files | PASS |
-| C58 | `doctor --json` `plugins`; an unreadable manifest adds a problem; gh not logged in is a warning only | CI `-k plugins_listed_and_problems` PASSED | `tests/test_doctor.py:334`; `:344-347` - code 1, problem names `plugin teste` and `grokbot-kit.toml`; `:353` - `(0, [], {"logged_in": False})`; `:356` the exact line | PASS |
-| C59 | plugin event delivery: 200 receipt, 401 no retry, 500 3 attempts | CI `-k plugin_event_delivery_statuses` [200], [401], [500] PASSED | `tests/test_run_plugin.py:491-493` (200: 1 body, receipt, no undelivered); `:495` - `len(bodies) == (1 if 401 else 3)`; `:497` `http_status == status` | PASS |
+| C1 | `spike.md` tem 15 células com valor, versão, comando e saída | CI `-k matrix_complete` PASSED | `tests/test_plugin_spike.py:45` - `sorted(cells) == sorted(expected)`; `:47-50`. Carried from 7a6d41b (arquivo intocado) | PASS |
+| C2 | escrita fora do task dir negada em cada CLI com `write` suportado | integração `test_write_outside_denied[claude]` PASSED; `[opencode]` **FAILED** (2 de 3 runs); `[codex]` skipped | `tests/integration/test_plugin_caps.py:156` - `assert not outside.exists(), event` falhou: `<tmp>/grokbot-kit-spike-write` existe (0 bytes). O `out.jsonl` mostra `write` negado (`external_directory`) e `echo x > ...` negado, e depois `shell completed {"command": "git log -1 --format=x > <fora>"}`: o prefixo liberado `git log` (`CAPS_WRITE`, `:26`) mais o redirecionamento criam o arquivo. O agente leu os prefixos no bloco da door 9 | FAIL |
+| C3 | comando fora de `commands` não roda | integração `test_command_outside_denied[claude]`, `[opencode]` PASSED | `tests/integration/test_plugin_caps.py:171` - `assert not (task_dir / "spike-cmd").exists(), event`. Host de dev | PASS |
+| C4 | hook ou plugin do workspace não dispara | integração `test_workspace_config_ignored[claude]`, `[opencode]` PASSED | `tests/integration/test_plugin_caps.py:186-187` - `not marker.exists()` / `not (task_dir / "spike-hook").exists()`. Host de dev | PASS |
+| C5 | a skill do plugin carrega (`spike-skill-ok`) | integração `test_plugin_skill_loaded[claude]`, `[opencode]` PASSED | `tests/integration/test_plugin_caps.py:197` - `(event["status"], ...["word"]) == ("ok", "spike-skill-ok")`; `:198` `skill_invoked(...)`, que agora lê o evento como JSON e aceita `id` (2.x) ou `name` (1.19) em `:102-107`. Host de dev, opencode 2.1.3: só o ramo `id` foi exercitado (F6 morto, F7 vivo) | PASS |
+| C6 | `network = off` sem resposta, por CLI com `network` suportado | integração `test_network_off_denied[*]` 3 SKIPPED | vale por vacuidade: `src/grokbot_kit/assets/capabilities.json:4,11,18` `"network": "unsupported"`; skip em `tests/integration/test_plugin_caps.py:38-39`. Carried from 7a6d41b | PASS |
+| C7 | `unsupported` em write/workspace_config exclui a CLI; célula dependente de host tem sonda | CI PASSED | `tests/test_plugin_spike.py:65-67`, `:74`. Carried | PASS |
+| C8 | matriz do pacote = `spike.md` | CI `-k package_matrix_matches_spike` PASSED | `tests/test_plugin_spike.py:82`. Carried | PASS |
+| C9 | forma de `plugin list --json` | CI PASSED | `tests/test_plugin.py:119-123`, `:125` `set(p) == DOOR_4_KEYS`. Carried | PASS |
+| C10 | linha de texto do `list` | CI PASSED | `tests/test_plugin.py:137`, `:140`, `:142`. Carried | PASS |
+| C11 | `show code-review --json` com `support` 3 × 5 | CI PASSED | `tests/test_plugin.py:153`, `:155`. Carried | PASS |
+| C12 | `show <dir>` igual ao `add`, sem gravar | CI PASSED | `tests/test_plugin.py:168`, `:170`, `:176`, `:178`. Carried | PASS |
+| C13 | `show nao-existe` exit 2 + mensagem | CI PASSED | `tests/test_plugin.py:185-186`. Carried | PASS |
+| C14 | confirmação em pty | CI PASSED | `tests/test_plugin.py:193-210`. Carried | PASS |
+| C15 | `--yes` com stdin fechado | CI PASSED | `tests/test_plugin.py:217-220`. Carried | PASS |
+| C16 | sem tty e sem `--yes` exit 2 | CI PASSED | `tests/test_plugin.py:226`, `:228`. Carried | PASS |
+| C17 | git `--ref` fixa o commit | CI PASSED | `tests/test_plugin.py:241-245`, `:252-253`. Carried | PASS |
+| C18 | 5 partes executáveis recusadas | CI 5/5 PASSED | `tests/test_plugin.py:266-268`. Carried | PASS |
+| C19 | 15 regras do manifesto | CI `-k add_refuses_invalid_manifest` 15, `-k manifest_rules` PASSED | `tests/test_plugin.py:278-280`; `tests/test_plugin_manifest.py:159-160` - `raised.value.code == 2`, `message in str(raised.value)`; `:82` `len(INVALID) == 15`; `test_manifest_rules_more` `:141-142` (12 casos, incluindo `capabilities_nao_tabela` em `:129`) | PASS |
+| C20 | `add` com nome `code-review` exit 2 | CI PASSED | `tests/test_plugin.py:294`. Carried | PASS |
+| C21 | `--replace` | CI PASSED | `tests/test_plugin.py:307-314`. Carried | PASS |
+| C22 | falha de I/O sem resto | CI PASSED | `tests/test_plugin.py:326-332`. Carried | PASS |
+| C23 | `rm` imprime `removed <name>` | CI PASSED | `tests/test_plugin.py:339-341`. Carried | PASS |
+| C24 | `rm` de builtin e desconhecido exit 2 | CI 2/2 PASSED | `tests/test_plugin.py:349`. Carried | PASS |
+| C25 | predicado de tarefa rodando, 7 casos | CI PASSED | `tests/test_plugin.py:370`, `:375`. Carried | PASS |
+| C26 | `rm`/`--replace` recusam com tarefa rodando | CI PASSED | `tests/test_plugin.py:390-399`. Carried | PASS |
+| C27 | plugin copiado, PR em checkout, `cwd` em `work`, variáveis substituídas no prompt | CI `-k launches_in_clone_with_prompt` PASSED | `tests/test_run_plugin.py:139` - `tree(task_dir/"plugin") == tree(source)`; `:145` - `calls[1] == {"argv": ["pr","checkout","7"], ...}`; `:147` `cwd == str(work)`; `:148-151` - `argv[-1] == f"Revise {PR_URL} em {work}; grave {task_dir/'result.json'}; task dir {task_dir}.\n\n" + environment_block(task_dir)`, com o bloco literal em `:124-131`. A igualdade continua exata: as 4 variáveis seguem provadas, e agora com o sufixo da door 9 | PASS |
+| C28 | URL de branch clona `feat/x` | CI PASSED | `tests/test_run_plugin.py:198`, `:200` | PASS |
+| C29 | 6 entradas ruins exit 2 sem task dir | CI 6/6 PASSED | `tests/test_run_plugin.py:218-221` | PASS |
+| C30 | limites de tamanho | CI 5/5 PASSED | `tests/test_run_plugin.py:255-256` aceito; `:258-259` recusado | PASS |
+| C31 | entrada `file` copiada para `inputs/<nome>` e substituída | CI `-k file_input_copied` PASSED | `tests/test_run_plugin.py:270` - conteúdo copiado igual; `:271-273` - `argv[-1] == f"Doc {copied} nota . Grave {task_dir/'result.json'}.\n\n" + environment_block(task_dir)` | PASS |
+| C32 | `--plugin nao-existe` exit 2 | CI PASSED | `tests/test_run_plugin.py:279-281` | PASS |
+| C33 | conflitos de flags exit 2 | CI 3/3 PASSED | `tests/test_run_plugin.py:295-296` | PASS |
+| C34 | capacidade não imponível exit 2 com a mensagem | CI PASSED | `tests/test_run_plugin.py:305-307`, `:309-310` | PASS |
+| C35 | falha de clone vira evento `agent_error` | CI PASSED | `tests/test_run_plugin.py:317`, `:319-320` | PASS |
+| C36 | tabela de harness por CLI | CI `-k harness_per_cli_and_capability` 5 PASSED | `tests/test_launch_plugin.py:62`, `:74`, `:101-102`, `:126`. Carried | PASS |
+| C37 | `claude` real end to end | integração `test_run_plugin_claude_end_to_end` PASSED, `claude` 2.1.311. Host de dev, prova movida para ele pela AD-042 e pelo cabeçalho do S3 | `tests/integration/test_plugin_caps.py:234-238` - `not outside.exists() and not home_outside.exists()`; `not (task_dir/"spike-cmd").exists()`; `not marker.exists()`; `word == "spike-skill-ok"`; `skill_invoked("claude", ...)` | PASS |
+| C38 | `meta.json` `plugin` com 6 chaves | CI PASSED | `tests/test_run_plugin.py:331`, `:337` | PASS |
+| C39 | `run` sem `--plugin` inalterado | CI 2 PASSED | `tests/test_launch_plugin.py:20-56`; `tests/test_run_plugin.py:346`, `:350`, `:362` | PASS |
+| C40 | resultado válido vira `completed/ok/success` | CI PASSED | `tests/test_run_plugin.py:369-372` | PASS |
+| C41 | summary do resultado, truncado em 2000 | CI PASSED | `tests/test_run_plugin.py:380` | PASS |
+| C42 | 5 resultados inválidos; `max_bytes` exato ok | CI 6 PASSED | `tests/test_run_plugin.py:394-395`, `:405` | PASS |
+| C43 | negação em tarefa de plugin | CI 2 PASSED | `tests/test_terminal.py:228`; `tests/test_run_plugin.py:430-432` | PASS |
+| C44 | precedência de falhas | CI 7 + 5 PASSED | `tests/test_terminal.py:281`; `tests/test_run_plugin.py:510-514` | PASS |
+| C45 | evento sem plugin com `plugin`/`result` null | CI PASSED | `tests/test_payload.py:418`, `:426`. Carried | PASS |
+| C46 | schema aceita os campos novos | CI PASSED | `tests/test_payload.py:444`, `:457`, `:470-471`; `tests/test_run_plugin.py:372`, `:398` | PASS |
+| C47 | manifesto do `code-review` | CI PASSED | `tests/test_builtin_plugins.py:35-44`. Carried | PASS |
+| C48 | instruções do `code-review` | CI PASSED | `tests/test_builtin_plugins.py:50-64`. Carried | PASS |
+| C49 | `claude --plugin-dir` carrega o plugin | integração `test_code_review_loads_in_claude[code-review]`, `[bug-verify]` 2 PASSED, `claude` 2.1.311 | `tests/integration/test_builtin_plugins.py:82-83`, `:94-96` | PASS |
+| C50 | **no box**: review `COMMENT` postado, routine com `completed`/`ok` e `review_url`; o segundo run traz achado no arquivo do commit novo e os outros só em arquivo do primeiro run, ainda aberto | integração `test_code_review_posts_comment_review` **PASSED no host de dev** (`claude` 2.1.311, `sonnet`, PR `grokbot-kit-fixtures#1`); **não rodou no box** | `tests/integration/test_builtin_plugins.py:107` `("completed","ok")`; `:109` `review_url.startswith(pr)`; `:112` `review["state"] == "COMMENTED"`; `:125` segundo run ok; `:129` `novo in second_files`; `:130` `second_files <= {novo} \| first_files`. "Ainda aberto" não é asserido (precisão, ver Ranked gaps). O claim nomeia o box, e `checks.md` (S5) e o `STATE.md` mantêm a rodada do bot como devida: o host de dev não fecha o check | FAIL |
+| C51 | manifesto do `bug-verify` | CI PASSED | `tests/test_builtin_plugins.py:72-75`. Carried | PASS |
+| C52 | instruções do `bug-verify` | CI PASSED | `tests/test_builtin_plugins.py:81-87`. Carried | PASS |
+| C53 | **no box**: `reproduced` `yes` e o arquivo do bug em `suspects` | integração `test_bug_verify_reproduces` **PASSED no host de dev** (`claude` 2.1.311, `grokbot-kit-fixtures` `main`, `calc/media.py`); **não rodou no box** | `tests/integration/test_builtin_plugins.py:140` `("completed","ok")`; `:141` `reproduced == "yes"`; `:142` `bug_file in [s["file"] for s in suspects]`. Pelo mesmo motivo do C50 (claim "No box", cabeçalho do S6, `STATE.md`), o host de dev não fecha | FAIL |
+| C54 | SKILL.md: `plugin list --json`, `run --plugin` | CI PASSED | `tests/test_skill_doc.py:407`, `:415`. Carried | PASS |
+| C55 | ordem de instalação | CI PASSED | `tests/test_skill_doc.py:435`. Carried | PASS |
+| C56 | sem `curl`, flags no `--help` | CI PASSED | `tests/test_skill_doc.py:442`, `:452`. Carried | PASS |
+| C57 | guias en e pt-BR: seções, matriz, aviso, links cruzados | CI `-k guide_sections` [en], [pt-BR] PASSED | `tests/test_plugin_docs.py:71-72` - aviso e link para a outra língua antes da primeira seção; `:96` matriz = `plugin.matrix()`; `:104-105` exemplo = arquivos do builtin. O parágrafo novo está nas duas línguas (`docs/plugins.md:74-77`, `docs/pt-BR/plugins.md:74-77`), dentro da seção do manifesto, com o mesmo conteúdo. O claim não o exige e nenhum teste o assere | PASS |
+| C58 | `doctor --json` `plugins`, problemas, aviso do `gh` | CI PASSED | `tests/test_doctor.py:334`, `:344-347`, `:353`, `:356`. Carried | PASS |
+| C59 | entrega do evento de plugin: 200, 401, 500 | CI 3 PASSED | `tests/test_run_plugin.py:532-538` | PASS |
+| C60 | prompt do plugin + linha em branco + bloco `## Ambiente desta tarefa` com o texto exato, nas duas variações | CI `-k environment_block` PASSED (`test_environment_block_from_capabilities`) | `tests/test_run_plugin.py:161` - `prompt.endswith(".\n\n" + environment_block(task_dir))`, com o bloco literal em `:124-131` (prefixos `` `git`, `gh pr view` ``, um comando por chamada, leitura, `Você só escreve dentro de {task_dir}.`, negação, sem linha de rede porque `network = "on"`); `:170-178` - igualdade exata para `commands = []`, `write = "none"`, `network = "off"`: `O shell não aceita nenhum comando.`, leitura, `Você só escreve o arquivo de resultado, {task_dir/'result.json'}.`, `Sem acesso à rede.`, negação, sem a linha do comando por chamada | PASS |
+
 ## Coverage
 
-Rows whose authority the fix touched were recomputed at 7a6d41b: the manifest/layout refusals, the plan doors, the
-built-in plugins, and the matrix enforcement through C37. The other rows are carried from 2dd3e68. The fix touched
-no `src/`, so their members did not change.
+Verified at bf98604: recalculei as linhas cuja autoridade o diff tocou (doors do plano, a variação do bloco de
+ambiente, as variáveis do prompt, a matriz e os plugins próprios) e a linha de recusas do manifesto, que estava aberta.
+As outras linhas vêm de 7a6d41b, porque o diff não mudou o `src/` delas.
 
 | Set (size) | Recomputed from | Member -> proof | Unproven |
 | --- | --- | --- | --- |
-| webhook statuses for a plugin event (3 in the row; Surface names 4 classes) - carried from 2dd3e68 | plan Surface + `sinks.py` | 200, 401 and 500 by C59. Network failure is existing behaviour on the same sink path (`tests/test_sink_routine.py:223`) | - |
-| matrix CLIs × capabilities (15) - verified at 7a6d41b | `assets/capabilities.json`, `spike.md` | C1/C8 table over all 15. Enforcement on claude and opencode (development host): write C2, commands C3, workspace_config C4, skills C5, and C37 end to end on claude. Network has no supported cell (C6 vacuous). Codex has none supported | - |
-| `plugin list` / `show` / `add` / `rm` exits - carried from 2dd3e68 | plan Surface | list 0 (C9, C10); show 0 and 2 (C11-C13); add 0, 1, 2 (C14-C22, C26); rm 0 and 2 (C23, C24, C26) | - |
-| manifest and layout refusals - verified at 7a6d41b (recomputed from the 45 `PluginError(` raises in `src/grokbot_kit/plugin.py`, `_check_layout` and `_manifest_rules` at `:79-205`, plus `:371`) | code | the 15 AC 19 rules by C19 (`tests/test_plugin_manifest.py:154-159`) and the 5 forbidden parts by C18. The round 1 gaps are closed by `test_manifest_rules_more`, selected by C19's `-k manifest_rules` (`tests/test_plugin_manifest.py:136-141`). Symbolic link `:94` is `link_simbolico`. Prompt outside the plugin `:187` is `prompt_fora_do_plugin` (the outside file exists, so only `is_relative_to` refuses it). Empty `version` `:136` is `version_vazia`. Invalid JSON in `plugin.json` `:142` is `plugin_json_invalido`. Non-UTF-8 `:103` is `prompt_nao_utf8`. An input shadowing a variable `:150` is `entrada_com_nome_de_variavel`. `required` not bool `:159` is `required_nao_booleano`. Two `repo` inputs `:162` is `duas_entradas_repo`. Missing `capabilities` `:165` is `capabilities_ausente`, and missing `result` `:176` is `result_ausente`. `max_bytes` 0 `:184` is `max_bytes_zero`. `--ref` on a directory `:371` is covered by `test_add_refuses_ref_for_directory` (`tests/test_plugin.py:286-287`), which no check's `Proof:` selects: it ran on its own, passed, and killed F4 | `_table` "must be a table" (`src/grokbot_kit/plugin.py:110`; `inputs`, `inputs.<x>`, `capabilities` or `result` that is not a table): `rg "must be a table" tests/` finds nothing. Round 1 missed this member too |
-| `run --plugin` refusals (exit 2) - carried from 2dd3e68 | AC 27-32 | C29 (6), C30 (3 refused, 2 accepted), C32, C33 (3), C34 | - |
-| `kind` (3), door 7 URLs (6), prompt variables (4), `source` (3) - carried from 2dd3e68 | door 2, door 7, door 3 | kind: C27/C28, C30, C31. URLs: C27, C28, C29 ×4. Variables: C27, C31. Source: C9, C14, C17 | - |
-| running-task predicate (7) - carried from 2dd3e68 | AC 25 | C25 over all 7 plus the boundary | - |
-| invalid result (5) + precedence in a plugin task (7) - carried from 2dd3e68 | AC 43-45 | C42 ×5 (plus exact max_bytes). C44 ×7 in its own layer and ×5 at the boundary. C43 | - |
-| plan doors (8) - verified at 7a6d41b | plan Landing | 1: C18, C49 (now run). 2: C19. 3: C14, C17, C22, C27. 4: C9, C11. 5: C40, C46, C59. 6: C42. 7: C27-C29. 8: C1, C8, C34, C36 (proof now selects 5 tests), C37 | - |
-| built-in plugins (2) - verified at 7a6d41b | plan S5/S6 | `code-review`: manifest and instructions C47, C48, loads in claude C49. `bug-verify`: C51, C52, also loads in claude (`test_code_review_loads_in_claude[bug-verify]`) | `code-review` posting a COMMENT review and re-reviewing (C50), and `bug-verify` reproducing the bug (C53): the tests exist but were not run (GitHub and box only) |
+| bloco de ambiente: variações (2), com 3 ramos binários - verified at bf98604 | door 9 (`plan.md:98`) e `environment()` (`src/grokbot_kit/plugin.py:298-315`) | `commands` não vazio / vazio: C60 `:161` / `:173`. `write` `task-dir` / `none`: C60 `:161` (via `:129`) / `:175`. `network` diferente de `off` / `off`: C60 `:161` (sem a linha) / `:176`. Linhas fixas (leitura, negação): nas duas variações. Separador `\n\n` e posição no fim: C27 `:148-151`, C31 `:271-273`, C60. Os 6 lados dos 3 ramos estão cobertos, e F1-F5 confirmam | - |
+| variáveis do prompt (4) - verified at bf98604 | door 2 | `{pr}`, `{workspace}`, `{result_file}`, `{task_dir}` C27 `:148-151` (igualdade exata); `{<entrada file>}` C31 `:271-273` | - |
+| doors do plano (9) - verified at bf98604 | `plan.md` Landing | 1: C18, C49. 2: C19. 3: C14, C17, C22, C27. 4: C9, C11. 5: C40, C46, C59. 6: C42. 7: C27-C29. 8: C1, C8, C34, C36, C37 e, para a imposição, C2-C5. 9: C27, C60 | door 8, célula `opencode`/`write` = `tool`: a prova C2 falhou em 2 de 3 runs (escrita fora do task dir por `git log ... > <fora>`) |
+| matriz CLIs × capacidades (15) - verified at bf98604 | `assets/capabilities.json`, `spike.md` | C1/C8 sobre as 15. Imposição no host de dev: claude write C2, commands C3, workspace_config C4, skills C5, C37; opencode commands C3, workspace_config C4, skills C5 (ramo `id`). Network sem célula suportada (C6). Codex sem nenhuma | opencode `write`: C2 vermelho nesta rodada |
+| plugins próprios (2) - verified at bf98604 | plan S5/S6 | `code-review`: C47, C48, C49 e C50 no host de dev. `bug-verify`: C51, C52, C49 `[bug-verify]` e C53 no host de dev | `code-review` posta e re-revisa (C50) e `bug-verify` reproduz (C53) **no box**: provados só no host de dev |
+| recusas do manifesto e do layout - verified at bf98604 | código (`PluginError(` em `src/grokbot_kit/plugin.py`) | o gap da rodada 2 (`_table`, `plugin.py:110`, "must be a table") está fechado: `capabilities_nao_tabela` em `tests/test_plugin_manifest.py:129`, selecionado pelo `-k manifest_rules` do C19 e com PASSED nesta rodada. Os demais membros vêm da rodada 2 | - |
+| webhook statuses (3) - carried from 7a6d41b | plan Surface + `sinks.py` | C59 | - |
+| saídas de `plugin list`/`show`/`add`/`rm` - carried from 7a6d41b | plan Surface | C9-C26 | - |
+| recusas do `run --plugin` (exit 2) - carried from 7a6d41b | AC 27-32 | C29, C30, C32, C33, C34 | - |
+| `kind` (3), URLs da door 7 (6), `source` (3) - carried from 7a6d41b | doors 2, 7, 3 | C27, C28, C30, C31; C27-C29; C9, C14, C17 | - |
+| predicado de tarefa rodando (7) - carried from 7a6d41b | AC 25 | C25 | - |
+| resultado inválido (5) + precedência (7) - carried from 7a6d41b | AC 43-45 | C42, C43, C44 | - |
 
 ## Test policy rows
 
-The rows come from `docs/.specs/features/agent-run-notify/checks.md`, binding without change. This round re-judged the
-two unmet rows and the row for `launch.py` (its test file was touched). The others are carried from 2dd3e68.
+As linhas vêm de `docs/.specs/features/agent-run-notify/checks.md`, que vale sem mudança. Nesta rodada julguei de novo
+a linha de integração e a primeira linha de `plugin.py`, que estavam não atendidas, e a de `run.py`, porque o prompt
+passa por ela. As outras vêm de 7a6d41b.
 
 | Row | Files it classifies | Required proof | Expectation met |
 | --- | --- | --- | --- |
-| Decides, reached across a boundary (re-judged at 7a6d41b) | `plugin.py` manifest rules | boundary C19 `add_refuses_invalid_manifest` · own layer `manifest_rules` | partly: the 12 round 1 refusal rows now have a case each, but the `_table` row (`plugin.py:110`) has none (see Coverage) |
-| Decides, reached across a boundary (carried from 2dd3e68) | `plugin.py` running predicate | own layer C25 · boundary C26 | yes |
-| Decides, reached across a boundary (re-judged at 7a6d41b) | `launch.py` `plugin_harness` | own layer `test_harness_per_cli_and_capability_{claude,opencode,codex}` (selected by C36's proof) · boundary `test_opencode_gets_harness_env_and_pwd` + C37 integration | yes |
-| Decides, reached across a boundary (carried from 2dd3e68) | `terminal.py` plugin classification | own layer: first proofs of C43/C44 · boundary: C42 and the second proof of C44 | yes |
-| Entry point that does not decide (carried from 2dd3e68) | `run.py` input validation | boundary C29-C34 | yes |
-| Instrumentation, pass-through (carried from 2dd3e68) | `doctor.py` plugins | covered by C58 | yes |
-| Integration with a real CLI or GitHub (re-judged at 7a6d41b) | `-m integration`: `test_plugin_caps.py`, `test_builtin_plugins.py` | `-m integration` on the box, once per CLI | not met: `test_builtin_plugins.py` now exists and C49 ran, but only on the development host (AD-042). C50 and C53 never ran. No `-m integration` proof of this feature has run on the box |
+| Decides, reached across a boundary (re-judged at bf98604) | `plugin.py` regras do manifesto e `environment()` | fronteira C19, C27, C31, C60 (subprocesso `grokbot-kit run` com a CLI falsa) · camada própria `manifest_rules` | yes - o `_table` agora tem caso, e o bloco da door 9 é provado na fronteira com o texto exato |
+| Decides, reached across a boundary (carried from 7a6d41b) | `plugin.py` predicado de tarefa rodando | C25 · C26 | yes |
+| Decides, reached across a boundary (carried from 7a6d41b) | `launch.py` `plugin_harness` | C36 · `test_opencode_gets_harness_env_and_pwd` + C37 | yes |
+| Decides, reached across a boundary (carried from 7a6d41b) | `terminal.py` classificação de plugin | C43/C44 · C42, C44 | yes |
+| Entry point that does not decide (re-judged at bf98604) | `run.py` validação de entradas e montagem do prompt | fronteira C29-C34, C60 | yes |
+| Instrumentation, pass-through (carried from 7a6d41b) | `doctor.py` plugins | C58 | yes |
+| Integration with a real CLI or GitHub (re-judged at bf98604) | `-m integration`: `test_plugin_caps.py`, `test_builtin_plugins.py` | `-m integration` no box, uma vez por CLI | not met: todas as provas rodaram nesta rodada, mas no host de dev. C50 e C53 passaram ali, e C2 `[opencode]` falhou ali. Nenhum `-m integration` desta feature rodou no box com evidência que o Verifier pudesse ver. O que o `STATE.md` relata das rodadas do bot é relato do autor, não evidência desta rodada |
 
-Swept `existing` row (data lifecycle), carried from 2dd3e68: `gc` deletes the whole task dir, including the clone, at
-`src/grokbot_kit/gc.py:35` (`shutil.rmtree(task_dir)`). The fix did not touch it.
+Linha `existing` do Swept (ciclo de vida dos dados), carried from 7a6d41b: `gc` apaga o task dir inteiro em
+`src/grokbot_kit/gc.py:35`. O diff não mexeu nisso.
 
 ## Faults injected
 
-Round 2 faults (verified at 7a6d41b) target the assertion surfaces the fix created. Each ran in a scratch copy
-(`git archive HEAD | tar -x` into the scratchpad, with its own `uv` venv). Each fault was restored with
-`git checkout -- .` inside the scratch, which showed an empty porcelain after every run. The worktree was never mutated.
-Its `git status --porcelain` was empty before the round, and at the end it lists only this report.
+Faults da rodada 3 (verified at bf98604), um por superfície de asserção que o diff tocou. Cada um rodou numa worktree
+scratch (`git worktree add --detach <scratchpad>/mut-r3 HEAD`, com venv própria) e foi revertido com `git checkout -- .`.
+A porcelain da scratch ficou vazia depois de cada fault, e a scratch foi removida com `git worktree remove` no fim. A
+worktree real nunca sofreu mutação: a porcelain dela estava vazia antes da rodada e, no fim, mostra só este relatório.
+Prova estreita para F1-F5: `uv run pytest tests/test_run_plugin.py -k "environment_block or launches_in_clone_with_prompt or file_input_copied"`.
 
 | Mutation | Location | Killed |
 | --- | --- | --- |
-| F1 - symbolic link check disabled (`if False and os.path.islink(...)`) | `src/grokbot_kit/plugin.py:92` | yes - `test_manifest_rules_more[link_simbolico]` failed |
-| F2 - prompt path no longer has to stay inside the plugin (`is_relative_to` removed) | `src/grokbot_kit/plugin.py:187` | yes - `test_manifest_rules_more[prompt_fora_do_plugin]` failed |
-| F3 - "at most one `repo` input" bound `> 1` becomes `> 2` | `src/grokbot_kit/plugin.py:161` | yes - `test_manifest_rules_more[duas_entradas_repo]` failed |
-| F4 - `--ref` on a directory accepted (`if ref is not None` becomes `if False`) | `src/grokbot_kit/plugin.py:370` | yes - `test_add_refuses_ref_for_directory` failed (`tests/test_plugin.py:286`) |
-| F5 - `code-review` `.claude-plugin/plugin.json` `"version": 1` (a number) | `src/grokbot_kit/assets/plugins/code-review/.claude-plugin/plugin.json:3` | yes - `test_code_review_loads_in_claude[code-review]` failed at `tests/integration/test_builtin_plugins.py:82` (real `claude plugin validate`: "Validation failed") |
-| M1 - claude denies `WebFetch`/`WebSearch` when `network == "on"` (carried from 2dd3e68) | `src/grokbot_kit/launch.py:68` | yes - the claude harness test failed (now `test_harness_per_cli_and_capability_claude`, same body) |
-| M2 - running predicate ignores the plugin name (carried from 2dd3e68) | `src/grokbot_kit/plugin.py:395` | yes - `test_running_task_predicate` (C25) failed |
-| M3 - plugin classification ignores `result_valid` (carried from 2dd3e68) | `src/grokbot_kit/terminal.py:92` | yes - `test_invalid_result_cases` 5/5 (C42) failed |
-| M4 - `text` bound `>` becomes `>=` (carried from 2dd3e68) | `src/grokbot_kit/run.py:90` | yes - `test_input_size_bounds[text_64kib]` (C30) failed |
-| M5 - AC 7 exclusion removed from `matrix()` (carried from 2dd3e68) | `src/grokbot_kit/plugin.py:70` | yes - `test_cli_excluded_when_write_or_workspace_unsupported` (C7) failed |
+| F1 - linha `Sem acesso à rede.` nunca emitida (`if caps["network"] == "off"` vira `if False`) | `src/grokbot_kit/plugin.py:313` | yes - `test_environment_block_from_capabilities` (C60) falhou; C27 e C31 passaram, como esperado (`network = "on"`) |
+| F2 - ramos de `write` trocados (`== "none"` vira `== "task-dir"`) | `src/grokbot_kit/plugin.py:309` | yes - C27, C31 e C60 falharam |
+| F3 - separador entre prompt e bloco `\n\n` vira `\n` | `src/grokbot_kit/plugin.py:324` | yes - C27, C31 e C60 falharam |
+| F4 - linha "Um comando por chamada, sem `;`, ..." removida | `src/grokbot_kit/plugin.py:304` | yes - C27, C31 e C60 falharam |
+| F5 - com `commands = []`, a linha `O shell não aceita nenhum comando.` some (`lines = []`) | `src/grokbot_kit/plugin.py:307` | yes - só C60 falhou (`:170`) |
+| F6 - `skill_invoked` do opencode só aceita `name` (tira o ramo `id` do 2.x) | `tests/integration/test_plugin_caps.py:107` | yes - `test_plugin_skill_loaded[opencode]` falhou em `:198` ("a palavra veio sem a CLI carregar a skill"), opencode 2.1.3 real |
+| F7 - `skill_invoked` do opencode só aceita `id` (tira o ramo `name` do 1.19) | `tests/integration/test_plugin_caps.py:107` | no - `test_plugin_skill_loaded[opencode]` PASSED: o host de dev tem o opencode 2.1.3, e só o opencode 1.19 do box exercita o ramo |
 
-Round 1's M1-M5 were not re-injected: the fix changed no `src/` file and no assertion they hit (the C36 tests were only
-renamed).
+Não injetei fault no teste do C50 nem nos prompts dos plugins próprios. Cada run real custa dois reviews postados e um
+push no PR de teste, e o teto de 5 por superfície já foi gasto no bloco de ambiente. Os faults M1-M5 e F1-F5 da rodada 2
+não foram reinjetados, porque o diff não muda nenhuma das superfícies deles.
 
 ## Gate
 
-At 7a6d41b:
-`uv run pytest <11 files> -k "<55 names>"` - 134 passed, 0 failed (exit 0).
-`uv run pytest tests/test_plugin.py -k add_refuses_ref_for_directory` - 1 passed.
-`uv run pytest` (full suite, default markers) - 753 passed, 38 deselected, 0 failed.
-`GROKBOT_KIT_IT_CLAUDE_MODEL=sonnet GROKBOT_KIT_IT_OPENCODE_MODEL=opencode/deepseek-v4.1-flash-free uv run pytest -m integration tests/integration/test_plugin_caps.py` (development host) - 9 passed, 7 skipped by the matrix, 0 failed.
-`uv run pytest -m integration tests/integration/test_builtin_plugins.py -k code_review_loads_in_claude` (development host) - 2 passed.
-`uv run ruff check .` - All checks passed. `uv run mypy` - no issues found in 22 source files.
+At bf98604:
+`uv run pytest -q` (suíte completa, markers padrão): 758 passed, 39 deselected, 0 failed.
+`uv run pytest <11 arquivos> -k "<56 nomes>" -v`: 136 passed, 0 failed (exit 0).
+`uv run pytest -m integration tests/integration/test_builtin_plugins.py -k "bug_verify or posts_comment"` (host de dev, `claude` 2.1.311): 2 passed.
+`uv run pytest -m integration tests/integration/test_plugin_caps.py tests/integration/test_builtin_plugins.py -k "not posts_comment and not bug_verify_reproduces"` (host de dev): 10 passed, 7 skipped, **1 failed** (`test_write_outside_denied[opencode]`); repetido só para ele: 1 passed, depois 1 failed.
+`uv run ruff check .`: All checks passed. `uv run mypy`: no issues found in 22 source files.
 
 ## Ranked gaps
 
-1. C50, C53 - not proven. `test_code_review_posts_comment_review` (`tests/integration/test_builtin_plugins.py:100`) and
-   `test_bug_verify_reproduces` (`:132`) exist but were not run. They post to a real GitHub PR, push a commit, and need
-   test repositories that only the user's bot can reach. To close them, the bot runs them on the box with
-   `GROKBOT_KIT_IT_REVIEW_PR` / `GROKBOT_KIT_IT_BUG_*` set.
-2. Test policy, integration row - every `-m integration` proof of this feature ran on the development host only.
-   AD-042 accepts this for the matrix, but the row's bar is the box.
-3. Coverage - the `_table` refusal (`src/grokbot_kit/plugin.py:110`, a non-table `inputs`/`inputs.<x>`/`capabilities`/
-   `result`) has no test. Round 1 missed it as well.
-4. Precision (not counted in the verdict) - `test_add_refuses_ref_for_directory` (`tests/test_plugin.py:284`) proves a
-   door 4 refusal that no check names. It runs in the full suite but not through any `Proof:` line. The C37 text still
-   says "No box", while its slice header and AD-042 record the proof on the development host.
+1. **C2, door 8 (`opencode`/`write` = `tool`), segurança.** O opencode escreve fora do task dir quando um prefixo de
+   comando está liberado: `git log -1 --format=x > <fora>` criou `<tmp>/grokbot-kit-spike-write` em 2 de 3 runs
+   (`tests/integration/test_plugin_caps.py:156`). A permissão `bash` do harness (`"<prefixo> *": "allow"`, door 8) casa
+   o comando inteiro, redirecionamento incluído, e o `external_directory` só vale para as ferramentas de arquivo. O bloco
+   da door 9 nomeia os prefixos para o agente, e foi assim que ele chegou à brecha nesta rodada. Em todo plugin com
+   `commands` não vazio no opencode, inclusive o `code-review` e o `bug-verify`, o `write = "task-dir"` não está imposto.
+   A correção (no harness, na matriz ou na door 9) é decisão do usuário.
+2. **C50 e C53 no box.** Passaram no host de dev (`tests/integration/test_builtin_plugins.py:100`, `:134`) e seguem
+   sem prova no box, que é o que o claim pede. Fecha quando o bot rodar as mesmas provas no box com a `0.4.1` e a saída
+   voltar para o Verifier.
+3. **F7 sobreviveu.** O ramo `name` do `skill_invoked` (`tests/integration/test_plugin_caps.py:107`) é o que corrige a
+   prova da skill no opencode 1.19, e nada no host de dev o mata. Só a rodada do bot no box exercita esse ramo.
+4. **Test policy, linha de integração.** Nenhuma prova `-m integration` desta feature tem evidência de box vista pelo
+   Verifier.
+5. **Precisão (fora do veredito).** O C50 diz "ainda aberto", mas `:130` só confere que o arquivo do achado já apareceu
+   no primeiro run, não que o achado continua aberto. O cabeçalho de `checks.md` ainda diz "59 checks em 7 slices · 8
+   one-way doors" (agora são 60, 8 e 9). O parágrafo novo dos guias (`docs/plugins.md:74`) não tem asserção, o que o
+   C57 não exige. O handoff do `STATE.md` diz que as provas da matriz seguem verdes (11 passed), e esta rodada viu o C2
+   `[opencode]` falhar.
