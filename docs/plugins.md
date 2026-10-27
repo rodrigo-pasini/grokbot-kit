@@ -92,12 +92,13 @@ capability. `plugin show` and `doctor` show the same table.
 A CLI without `write` or without `workspace_config` runs no plugin at all. Codex confines writes and network only
 with its `bwrap` sandbox, which does not start on such a host (`codex sandbox -- true` fails), so it runs no plugin.
 
-`tool` stops the agent's own tools, not what an allowed command runs: `pytest` or `npm test` run the repository's
-code with the box user's permissions. Allow a test runner only in a plugin whose repository you trust as much as a
-local `pytest` run.
-
-In `opencode`, the kit also denies any shell command that contains `>`, even one that starts with an allowed prefix:
-`opencode` lets an allowed command redirect its output, so `git log > <file>` would write outside the task directory.
+`tool` stops the agent's own file tools and the shell itself: output redirection, chaining with `;`, `&&` or `||`,
+pipes and command substitution are denied, so only an allowed command runs, alone. An allowed command writes wherever
+its options and the code it runs allow. The kit denies two known paths: in `opencode`, any shell command that contains
+`>` (`opencode` lets an allowed command redirect its output), and, in both CLIs, any shell command with `--output`
+(`git log`, `git diff` and `git show` write a file with it). Other options of an allowed command are not filtered, and
+`pytest` or `npm test` run the repository's code with the box user's permissions. Allow a command only in a plugin
+whose repository you trust as much as a local run of that command.
 
 ## Result
 

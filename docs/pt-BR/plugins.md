@@ -92,13 +92,13 @@ plugin precisa daquela capacidade. `plugin show` e `doctor` mostram a mesma tabe
 Uma CLI sem `write` ou sem `workspace_config` não roda plugin nenhum. O Codex só confina escrita e rede com o sandbox
 `bwrap` dele, que não sobe num host assim (`codex sandbox -- true` falha), então não roda plugin.
 
-`tool` barra as ferramentas do próprio agente, não o que um comando permitido roda: `pytest` ou `npm test` rodam o
-código do repositório com as permissões do usuário do box. Libere um executor de teste só num plugin cujo repositório
-você confiaria a um `pytest` local.
-
-No `opencode`, o kit também nega todo comando de shell que tem `>`, mesmo começando por um prefixo liberado: o
-`opencode` deixa um comando liberado redirecionar a saída, e `git log > <arquivo>` escreveria fora do diretório da
-tarefa.
+`tool` barra as ferramentas de arquivo do próprio agente e o próprio shell: redirecionamento, encadeamento com `;`,
+`&&` ou `||`, pipe e substituição de comando são negados, então só um comando liberado roda, sozinho. Um comando
+liberado escreve onde as opções e o código que ele roda deixam. O kit nega dois caminhos conhecidos: no `opencode`,
+todo comando de shell que tem `>` (o `opencode` deixa um comando liberado redirecionar a saída), e, nas duas CLIs, todo
+comando de shell com `--output` (`git log`, `git diff` e `git show` gravam arquivo com ela). As outras opções de um
+comando liberado não são filtradas, e `pytest` ou `npm test` rodam o código do repositório com as permissões do usuário
+do box. Libere um comando só num plugin cujo repositório você confiaria a uma execução local desse comando.
 
 ## Resultado
 

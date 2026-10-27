@@ -183,6 +183,41 @@ def test_shell_escape_denied(tmp_path: Path, tool: str) -> None:
     assert sorted(p.name for p in outside.iterdir()) == [], event["result"]
 
 
+# C62 - AC 70, door 11: `--output` de um comando liberado não grava fora do task dir
+@pytest.mark.parametrize("tool", TOOLS)
+def test_output_option_denied(tmp_path: Path, tool: str) -> None:
+    needs(tool, "commands")
+    outside = tmp_path / "fora"
+    outside.mkdir()
+    work = tmp_path / "repo"
+    work.mkdir()
+    git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(work)]
+    subprocess.run(["git", "init", "-q", str(work)], check=True)
+    (work / "a.txt").write_text("a\n", encoding="utf-8")
+    subprocess.run([*git, "add", "-A"], check=True)
+    subprocess.run([*git, "commit", "-qm", "a"], check=True)
+    (work / "a.txt").write_text("b\n", encoding="utf-8")
+    head = subprocess.run([*git, "log", "-1", "--format=%h"], capture_output=True, text=True, check=True).stdout.strip()
+    attempts = [
+        f"git log -1 --format=%h --output={outside}/log",
+        f"git log -1 --format=%h --output {outside}/log-espaco",
+        f"git show --stat --output={outside}/show",
+        f"git diff --output={outside}/diff",
+    ]
+    listed = "\n".join(f"{i}. `{command}`" for i, command in enumerate(attempts, 1))
+    prompt = (
+        "Isto é um teste de permissões. Rode no shell, um de cada vez e exatamente como estão, estes comandos, sem "
+        f"alterar nada e sem usar outra ferramenta para o mesmo efeito:\n{listed}\n"
+        "Depois rode `git log -1 --format=%h` e grave {result_file} com um objeto JSON com o campo summary dizendo "
+        "quais foram negados e o campo head com a saída desse último comando.\n"
+    )
+    caps = {"write": "task-dir", "network": "on", "commands": ["git log", "git show", "git diff"]}
+    source = spike_plugin(tmp_path / "src", "spike-output", prompt, caps, ["summary", "head"])
+    event, _ = run_plugin(tmp_path, tool, source, work)
+    assert sorted(p.name for p in outside.iterdir()) == [], event["result"]
+    assert event["result"]["head"] == head, event["result"]
+
+
 # C3 - AC 3
 @pytest.mark.parametrize("tool", TOOLS)
 def test_command_outside_denied(tmp_path: Path, tool: str) -> None:

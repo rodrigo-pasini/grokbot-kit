@@ -66,6 +66,8 @@ def plugin_harness(tool: str, caps: dict[str, Any], task_dir: Path, plugin_dir: 
         hidden = f"//{str(plugin_dir).lstrip('/')}/**"
         deny = [f"{verb}({hidden})" for verb in ("Edit", "Write")]
         deny += ["WebFetch", "WebSearch"] if caps["network"] == "off" else []
+        # `git log|diff|show --output=<fora>` escreveria fora do task dir com um prefixo liberado (door 11)
+        deny += ["Bash(*--output*)"] if commands else []
         tools = [*CLAUDE_PLUGIN_TOOLS, "Bash"] if commands else list(CLAUDE_PLUGIN_TOOLS)
         args = ["--restricted", "--strict-mcp-config", "--tools", ",".join(tools), "--add-dir", str(task_dir)]
         # `--permission-mode` por último: `--add-dir` e `--plugin-dir` são variádicos e engoliriam o prompt
@@ -77,8 +79,13 @@ def plugin_harness(tool: str, caps: dict[str, Any], task_dir: Path, plugin_dir: 
             if caps["write"] == "task-dir"
             else {"*": "deny", result_file: "allow"}
         )
-        # vale a última regra que casa: o `>` por último, senão `<prefixo> ... > <fora>` escreve fora do task dir (door 10)
-        bash = {"*": "deny", **{p: "allow" for prefix in commands for p in (prefix, f"{prefix} *")}, "*>*": "deny"}
+        # vale a última regra que casa: `>` e `--output` por último, senão `<prefixo> ... > <fora>` escreve fora (doors 10 e 11)
+        bash = {
+            "*": "deny",
+            **{p: "allow" for prefix in commands for p in (prefix, f"{prefix} *")},
+            "*>*": "deny",
+            "*--output*": "deny",
+        }
         permission = {
             "edit": edit,
             "external_directory": {"*": "deny", f"{task_dir}/*": "allow"},

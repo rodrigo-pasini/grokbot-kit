@@ -12,10 +12,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Security
 
-- Plugin tasks in `opencode`: a shell command that starts with an allowed prefix could redirect its output with `>`
-  and write outside the task directory (for example `git log > <file>`), so `write = "task-dir"` was not enforced
-  for plugins with `commands`. The `opencode` harness now denies any shell command that contains `>`. `claude` was
-  not affected.
+- Plugin tasks with `commands`: an allowed command could write outside the task directory, so `write = "task-dir"`
+  did not hold for it. In `opencode`, a command that starts with an allowed prefix could redirect its output with
+  `>`; in both `opencode` and `claude`, `git log`, `git diff` and `git show` write a file with `--output`. The harness
+  now denies any shell command with `>` in `opencode` and any shell command with `--output` in both CLIs.
+- The `tool` cell of `write` now says what it enforces: the agent's file tools and the shell (redirection, chaining,
+  pipes, command substitution). An allowed command still writes wherever its other options and the code it runs
+  allow, like a test runner does; [docs/plugins.md](docs/plugins.md) says so.
 
 ### Fixed
 
