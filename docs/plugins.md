@@ -52,7 +52,8 @@ kit (`claude --plugin-dir my-plugin`).
 
 Inputs: `repo` is the URL of a GitHub PR (`https://github.com/<owner>/<repo>/pull/<n>`) or branch
 (`https://github.com/<owner>/<repo>/tree/<branch>`), which the kit clones with the box's `gh` into
-`<task_dir>/work`, the agent's working directory; `text` goes up to 64 KiB; `file` is a file of up to 1 MiB that the
+`<task_dir>/work`, the agent's working directory (a clone with a symbolic link that points outside it ends the task
+with `error` before the agent runs); `text` goes up to 64 KiB; `file` is a file of up to 1 MiB that the
 kit copies to `<task_dir>/inputs/<name>`.
 
 The prompt uses `{<input>}` and the variables `{workspace}` (the clone), `{result_file}` (where to write the result)
@@ -96,7 +97,8 @@ with its `bwrap` sandbox, which does not start on such a host (`codex sandbox --
 pipes and command substitution are denied, so only an allowed command runs, alone. An allowed command writes wherever
 its options and the code it runs allow. The kit denies two known paths: in `opencode`, any shell command that contains
 `>` (`opencode` lets an allowed command redirect its output), and, in both CLIs, any shell command with `--output`
-(`git log`, `git diff` and `git show` write a file with it). Other options of an allowed command are not filtered, and
+(`git log`, `git diff` and `git show` write a file with it). Both rules match the literal text: Another spelling, such as
+quotes, gets around it. Other options of an allowed command are not filtered, and
 `pytest` or `npm test` run the repository's code with the box user's permissions. Allow a command only in a plugin
 whose repository you trust as much as a local run of that command.
 
@@ -154,7 +156,7 @@ max_bytes = 16384
 ```
 
 - One `repo` input, `pr`: the kit clones the PR and checks it out before launching the agent.
-- `write = "task-dir"`: the agent writes only inside the task directory (the clone included).
+- `write = "task-dir"`: the agent's file tools write only inside the task directory (the clone included).
 - `network = "on"`: the review is posted with the box's `gh`.
 - `commands`: reading the PR, `gh pr review`/`gh pr comment`, `gh api` (the review with inline comments is a
   `POST .../reviews`), `git log`, `git diff`, `git show` and `git blame` (the PR history, read only) and the test

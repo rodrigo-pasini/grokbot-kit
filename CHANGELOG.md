@@ -15,7 +15,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Plugin tasks with `commands`: an allowed command could write outside the task directory, so `write = "task-dir"`
   did not hold for it. In `opencode`, a command that starts with an allowed prefix could redirect its output with
   `>`; in both `opencode` and `claude`, `git log`, `git diff` and `git show` write a file with `--output`. The harness
-  now denies any shell command with `>` in `opencode` and any shell command with `--output` in both CLIs.
+  now denies any shell command with `>` in `opencode` and any shell command whose text has `--output` in both CLIs.
+  Both rules match the literal text; another spelling, such as quotes, gets around them.
+- Plugin tasks with a `repo` input: the `opencode` write tool followed a symbolic link committed in the clone and
+  wrote outside the task directory. A clone with a symbolic link that points outside it now ends the task with
+  `error` before the agent runs, in every CLI.
 - The `tool` cell of `write` now says what it enforces: the agent's file tools and the shell (redirection, chaining,
   pipes, command substitution). An allowed command still writes wherever its other options and the code it runs
   allow, like a test runner does; [docs/plugins.md](docs/plugins.md) says so.

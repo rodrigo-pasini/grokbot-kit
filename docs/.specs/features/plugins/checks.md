@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/plugins/plan.md`
 
-63 checks em 8 slices · 11 one-way doors · 2 open, das quais 1 bloqueia (matriz da door 8, respondida pelo S1)
+64 checks em 8 slices · 12 one-way doors · 2 open, das quais 1 bloqueia (matriz da door 8, respondida pelo S1)
 
 Convenções das provas:
 
@@ -215,7 +215,7 @@ Proof: `uv run pytest tests/test_plugin_docs.py -k guide_sections`
 **C58** - `doctor --json` tem `plugins` com `name`, `version` e `source` de cada plugin; um `grokbot-kit.toml` ilegível num plugin instalado põe uma entrada em `problems`; com um plugin de entrada `repo` e o `gh` falso com `FAKE_GH_AUTH_EXIT=1`, `gh.logged_in` é `false`, o texto tem a linha `gh: not logged in; plugins with repo inputs cannot run; run: gh auth login`, e `problems` e o exit code não mudam (AC 65, AC 66; emendado pela AD-040)
 Proof: `uv run pytest tests/test_doctor.py -k plugins_listed_and_problems`
 
-### S8 - o agente sabe o que o ambiente permite · 4 arquivos · ~40 KB · ~10k · AD-043 a AD-045, depois da rodada do bot no box · C60 e C63 verdes; C61 e C62 no host de dev
+### S8 - o agente sabe o que o ambiente permite · 4 arquivos · ~40 KB · ~10k · AD-043 a AD-046, depois da rodada do bot no box · C60, C63 e C64 verdes; C61 e C62 no host de dev
 
 **C60** - `run --plugin` com a CLI falsa lança o agente com o prompt do plugin seguido, depois de uma linha em branco, do bloco `## Ambiente desta tarefa` da door 9, texto exato: com `commands = ["git", "gh pr view"]` e `write = "task-dir"`, as linhas dos prefixos `` `git`, `gh pr view` ``, do comando por chamada, da leitura, de `Você só escreve dentro de <task_dir>.` e da negação; com `commands = []`, `write = "none"` e `network = "off"`, as linhas `O shell não aceita nenhum comando.`, da leitura, de `Você só escreve o arquivo de resultado, <result_file>.`, de `Sem acesso à rede.` e da negação, sem a do comando por chamada (AC 67, door 9)
 Proof: `uv run pytest tests/test_run_plugin.py -k environment_block`
@@ -226,8 +226,11 @@ Proof: `uv run pytest -m integration tests/integration/test_plugin_caps.py -k sh
 **C62** - Para cada CLI com `commands` diferente de `unsupported`, numa tarefa com `write = "task-dir"` e `commands = ["git log", "git show", "git diff"]`, um agente instruído a rodar exatamente `git log -1 --format=%h --output=<fora>`, `git log -1 --format=%h --output <fora>`, `git show --stat --output=<fora>` e `git diff --output=<fora>`, cada um com um arquivo próprio fora do task dir, termina sem que nenhum dos 4 exista, e o `git log -1 --format=%h` sem `--output` roda (AC 70, door 11)
 Proof: `uv run pytest -m integration tests/integration/test_plugin_caps.py -k output_option_denied`
 
-**C63** - A seção da matriz de `docs/plugins.md` tem a frase `An allowed command writes wherever its options and the code it runs allow.` e a de `docs/pt-BR/plugins.md`, `Um comando liberado escreve onde as opções e o código que ele roda deixam.`, e cada uma cita a negação de `>` no opencode e de `--output` nas duas CLIs (AC 69, doors 10 e 11)
+**C63** - A seção da matriz de `docs/plugins.md` tem a frase `An allowed command writes wherever its options and the code it runs allow.` e a de `docs/pt-BR/plugins.md`, `Um comando liberado escreve onde as opções e o código que ele roda deixam.`, e cada uma cita a negação de `>` no opencode e de `--output` nas duas CLIs, com a frase `Another spelling, such as quotes, gets around it.` / `Outra grafia, como aspas, contorna a regra.` (AC 69, AC 70, doors 10 e 11; emendado pela AD-046)
 Proof: `uv run pytest tests/test_plugin_docs.py -k write_contract`
+
+**C64** - Com o `gh` falso clonando um repositório com os symlinks commitados `fora.txt` -> `/etc/hostname` e `docs` -> `..`, e o interno `leia.txt` -> `README.md`, o kit não lança a CLI e a routine recebe `error`/`failed`/`agent_error` com `summary` = `the clone has symbolic links that point outside it: docs, fora.txt`; com só o symlink interno, a CLI é lançada (AC 71, door 12)
+Proof: `uv run pytest tests/test_run_plugin.py -k symlink_outside_clone`
 
 ## Coverage
 
@@ -246,13 +249,14 @@ Proof: `uv run pytest tests/test_plugin_docs.py -k write_contract`
 | URLs da door 7, 2 aceitas e 4 recusadas (6) | PR C27 · branch C28 · GitLab C29 · PR não numérico C29 · repo sem PR/branch C29 · `--input` sem `=` C29 | - |
 | escapes do shell por prefixo liberado (7) | `>` C61 · `>>` C61 · `2>` C61 · `;` C61 · `&&` C61 · pipe C61 · `$(...)` C61 | - |
 | `--output` de comando liberado (4) | `git log --output=` C62 · `git log --output <f>` C62 · `git show --output=` C62 · `git diff --output=` C62 | - |
+| symlinks no clone (3) | alvo absoluto fora C64 · alvo relativo fora C64 · alvo interno C64 | - |
 | bloco de ambiente: variações (2) | commands com prefixos e `write = "task-dir"` C60 · `commands = []`, `write = "none"`, `network = "off"` C60 | - |
 | variáveis do prompt (4) | `{<entrada>}` C27, C31 · `{workspace}` C27 · `{result_file}` C27 · `{task_dir}` C27 | - |
 | `source` de plugin (3) | `builtin` C9 · `dir` C9, C14 · `git` C17 | - |
 | predicado de tarefa rodando (7) | rodando C25 · terminada C25 · janela vencida C25 · outro plugin C25 · sem `plugin` C25 · `meta.json` ausente C25 · ilegível C25 | - |
 | resultado inválido (5) | ausente C42 · não objeto C42 · não JSON C42 · campo faltando C42 · acima de `max_bytes` C42 | - |
 | precedência em tarefa de plugin (7) | timeout C44 · interrompida C44 · binário ausente C44 · erro do agente C44 · exit diferente de `0` C44 · resultado inválido C42 · negação com resultado válido C43 | - |
-| doors do plano (11) | 1 layout C18, C49 · 2 manifesto C19 · 3 armazenamento C14, C17, C22, C27 · 4 comandos C9, C11 · 5 evento C40, C46 · 6 resultado C42 · 7 workspace C27, C28, C29 · 8 matriz C1, C8, C34, C36 · 9 ambiente no prompt C27, C60 · 10 redirecionamento C36, C61 · 11 `--output` C36, C62 | - |
+| doors do plano (12) | 1 layout C18, C49 · 2 manifesto C19 · 3 armazenamento C14, C17, C22, C27 · 4 comandos C9, C11 · 5 evento C40, C46 · 6 resultado C42 · 7 workspace C27, C28, C29 · 8 matriz C1, C8, C34, C36 · 9 ambiente no prompt C27, C60 · 10 redirecionamento C36, C61 · 11 `--output` C36, C62 · 12 symlink C64 | - |
 | plugins próprios (2) | `code-review` C47-C50 · `bug-verify` C51-C53 | - |
 
 - Claims que nomeiam exit code, campo de evento ou formato: C9-C26, C29-C35, C40-C46, C58 - cada um tem prova que cruza

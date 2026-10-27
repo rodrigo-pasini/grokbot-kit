@@ -300,7 +300,24 @@ def _clone(target: tuple[str, str | None, str | None], workspace: Path, timeout:
         if proc.returncode != 0:
             output = (proc.stderr.strip() + "\n" + proc.stdout.strip()).strip()
             return f"{' '.join(argv)} failed with exit {proc.returncode}: {output}"
-    return None
+    return _links_outside(workspace)
+
+
+def _links_outside(workspace: Path) -> str | None:
+    """Recusa o clone com symlink cujo alvo sai dele (door 12): a ferramenta de escrita do opencode segue o link."""
+    root = workspace.resolve()
+    found = []
+    for dirpath, dirnames, filenames in os.walk(workspace):
+        dirnames[:] = [d for d in dirnames if not (dirpath == str(workspace) and d == ".git")]
+        for name in [*dirnames, *filenames]:
+            path = Path(dirpath, name)
+            if path.is_symlink() and not Path(os.path.realpath(path)).is_relative_to(root):
+                found.append(path.relative_to(workspace).as_posix())
+    if not found:
+        return None
+    found.sort()
+    more = f" (+{len(found) - 5} more)" if len(found) > 5 else ""
+    return f"the clone has symbolic links that point outside it: {', '.join(found[:5])}{more}"
 
 
 def run(args: argparse.Namespace) -> int:

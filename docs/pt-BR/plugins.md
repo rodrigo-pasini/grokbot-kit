@@ -52,7 +52,8 @@ sem o kit (`claude --plugin-dir meu-plugin`).
 
 Entradas: `repo` é a URL de um PR (`https://github.com/<owner>/<repo>/pull/<n>`) ou de uma branch
 (`https://github.com/<owner>/<repo>/tree/<branch>`) do GitHub, que o kit clona com o `gh` do box em
-`<task_dir>/work`, o diretório de trabalho do agente; `text` vai até 64 KiB; `file` é um arquivo de até 1 MiB que o
+`<task_dir>/work`, o diretório de trabalho do agente (um clone com link simbólico que aponta para fora dele encerra a tarefa
+com `error` antes do agente); `text` vai até 64 KiB; `file` é um arquivo de até 1 MiB que o
 kit copia para `<task_dir>/inputs/<nome>`.
 
 O prompt usa `{<entrada>}` e as variáveis `{workspace}` (o clone), `{result_file}` (onde gravar o resultado) e
@@ -96,7 +97,8 @@ Uma CLI sem `write` ou sem `workspace_config` não roda plugin nenhum. O Codex s
 `&&` ou `||`, pipe e substituição de comando são negados, então só um comando liberado roda, sozinho. Um comando
 liberado escreve onde as opções e o código que ele roda deixam. O kit nega dois caminhos conhecidos: no `opencode`,
 todo comando de shell que tem `>` (o `opencode` deixa um comando liberado redirecionar a saída), e, nas duas CLIs, todo
-comando de shell com `--output` (`git log`, `git diff` e `git show` gravam arquivo com ela). As outras opções de um
+comando de shell com `--output` (`git log`, `git diff` e `git show` gravam arquivo com ela). As duas regras casam o texto literal: Outra grafia, como aspas,
+contorna a regra. As outras opções de um
 comando liberado não são filtradas, e `pytest` ou `npm test` rodam o código do repositório com as permissões do usuário
 do box. Libere um comando só num plugin cujo repositório você confiaria a uma execução local desse comando.
 
@@ -153,7 +155,7 @@ max_bytes = 16384
 ```
 
 - Uma entrada `repo`, `pr`: o kit clona o PR e faz checkout dele antes de lançar o agente.
-- `write = "task-dir"`: o agente só escreve dentro do diretório da tarefa (o clone incluído).
+- `write = "task-dir"`: as ferramentas de arquivo do agente só escrevem dentro do diretório da tarefa (o clone incluído).
 - `network = "on"`: o review é postado pelo `gh` do box.
 - `commands`: leitura do PR, `gh pr review`/`gh pr comment`, `gh api` (o review com comentários inline é um
   `POST .../reviews`), `git log`, `git diff`, `git show` e `git blame` (o histórico do PR, só leitura) e os

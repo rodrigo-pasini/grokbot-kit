@@ -1,4 +1,4 @@
-"""Provas de `grokbot-kit run --plugin` (checks C27-C35, C38-C44, C59, C60; AC 26-33, 39-46, 67, doors 3, 5-7 e 9).
+"""Provas de `grokbot-kit run --plugin` (checks C27-C35, C38-C44, C59, C60, C64; AC 26-33, 39-46, 67, 71, doors 3, 5-7, 9 e 12).
 
 Tudo na fronteira: subprocesso `grokbot-kit run` com a CLI falsa, o `gh` falso (`tests/fakes/gh`) clonando um
 repositório git local, e uma matriz de capacidades de teste em `GROKBOT_KIT_CAPABILITIES` (a do pacote só muda com
@@ -321,6 +321,31 @@ def test_clone_failure_event(kit: Kit, env: dict[str, str]) -> None:
     assert event["task_id"] == kit.task_dir().name
     assert event["result"] is None
     assert event["plugin"]["name"] == "teste"
+
+
+# C64 - AC 71, door 12
+def test_symlink_outside_clone(kit: Kit, env: dict[str, str], tmp_path: Path) -> None:
+    origin = Path(env["FAKE_GH_REPO"])
+    (origin / "leia.txt").symlink_to("README.md")
+    git(origin, "add", "-A")
+    git(origin, "commit", "-q", "-m", "link interno")
+    result = run_plugin(kit, env, "teste", "--input", f"pr={PR_URL}")
+    assert result.returncode == 0, result.stderr
+    assert kit.record.exists()
+    kit.record.unlink()
+
+    (origin / "fora.txt").symlink_to("/etc/hostname")
+    (origin / "docs").symlink_to("..")
+    git(origin, "add", "-A")
+    git(origin, "commit", "-q", "-m", "links para fora")
+    before = set(kit.tasks())
+    result = run_plugin(kit, env, "teste", "--input", f"pr={PR_URL}")
+    assert result.returncode == 1
+    assert not kit.record.exists(), "a CLI não pode ser lançada com symlink para fora do clone"
+    (task_dir,) = set(kit.tasks()) - before
+    (event,) = [e for e in kit.sink_events() if e["task_id"] == task_dir.name]
+    assert outcome(event) == ("error", "failed", "agent_error")
+    assert event["summary"] == "the clone has symbolic links that point outside it: docs, fora.txt"
 
 
 # C38 - AC 39
