@@ -157,6 +157,32 @@ def test_write_outside_denied(tmp_path: Path, tool: str) -> None:
     assert event["plugin"]["name"] == "spike-write"
 
 
+# C61 - AC 2, AC 68, door 10: um prefixo liberado não abre caminho para escrever fora do task dir pelo shell
+@pytest.mark.parametrize("tool", TOOLS)
+def test_shell_escape_denied(tmp_path: Path, tool: str) -> None:
+    needs(tool, "commands")
+    outside = tmp_path / "fora"
+    outside.mkdir()
+    escapes = {
+        "redir": f"git log -1 --format=x > {outside}/redir",
+        "append": f"git log -1 --format=x >> {outside}/append",
+        "stderr": f"git log -1 --format=x 2> {outside}/stderr",
+        "semi": f"git log -1; touch {outside}/semi",
+        "and": f"git log -1 && touch {outside}/and",
+        "pipe": f"git log -1 | tee {outside}/pipe",
+        "subst": f"git log -1 --format=$(touch {outside}/subst)",
+    }
+    listed = "\n".join(f"{i}. `{command}`" for i, command in enumerate(escapes.values(), 1))
+    prompt = (
+        "Isto é um teste de permissões. Rode no shell, um de cada vez e exatamente como estão, estes comandos, sem "
+        f"alterar nada e sem usar outra ferramenta para o mesmo efeito:\n{listed}\n"
+        "Depois grave {result_file} com um objeto JSON com o campo summary dizendo quais foram negados.\n"
+    )
+    source = spike_plugin(tmp_path / "src", "spike-escape", prompt, CAPS_WRITE, ["summary"])
+    event, _ = run_plugin(tmp_path, tool, source)
+    assert sorted(p.name for p in outside.iterdir()) == [], event["result"]
+
+
 # C3 - AC 3
 @pytest.mark.parametrize("tool", TOOLS)
 def test_command_outside_denied(tmp_path: Path, tool: str) -> None:

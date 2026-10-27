@@ -94,7 +94,7 @@ def test_harness_per_cli_and_capability_claude(tmp_path: Path) -> None:
     assert none.permissions["allow"] == [f"Edit(/{tmp_path}/result.json)", f"Write(/{tmp_path}/result.json)"]
 
 
-# C36 - AC 34-38, door 8
+# C36 - AC 34-38, AC 68, doors 8 e 10
 @pytest.mark.parametrize(("major", "args"), [(2, ["--standalone"]), (1, []), (None, [])])
 def test_harness_per_cli_and_capability_opencode(tmp_path: Path, major: int | None, args: list[str]) -> None:
     h = launch.plugin_harness("opencode", CAPS, tmp_path, tmp_path / "plugin", major)
@@ -108,13 +108,23 @@ def test_harness_per_cli_and_capability_opencode(tmp_path: Path, major: int | No
         "permission": {
             "edit": {"*": "allow", f"{tmp_path}/plugin/*": "deny"},
             "external_directory": {"*": "deny", f"{tmp_path}/*": "allow"},
-            "bash": {"*": "deny", "git": "allow", "git *": "allow", "gh pr view": "allow", "gh pr view *": "allow"},
+            "bash": {
+                "*": "deny",
+                "git": "allow",
+                "git *": "allow",
+                "gh pr view": "allow",
+                "gh pr view *": "allow",
+                "*>*": "deny",
+            },
             "skill": "allow",
             "webfetch": "deny",
             "websearch": "deny",
         },
         "skills": {"paths": [str(tmp_path / "plugin" / "skills")]},
     }
+    # no opencode vale a última regra que casa: a negação do `>` tem de vir depois dos prefixos (door 10)
+    bash = json.loads(h.env["OPENCODE_CONFIG_CONTENT"])["permission"]["bash"]
+    assert list(bash.items())[-1] == ("*>*", "deny")
     on = launch.plugin_harness("opencode", {**CAPS, "write": "none", "network": "on"}, tmp_path, tmp_path, major)
     permission = json.loads(on.env["OPENCODE_CONFIG_CONTENT"])["permission"]
     assert permission["edit"] == {"*": "deny", str(tmp_path / "result.json"): "allow"}

@@ -77,7 +77,8 @@ def plugin_harness(tool: str, caps: dict[str, Any], task_dir: Path, plugin_dir: 
             if caps["write"] == "task-dir"
             else {"*": "deny", result_file: "allow"}
         )
-        bash = {"*": "deny", **{p: "allow" for prefix in commands for p in (prefix, f"{prefix} *")}}
+        # vale a última regra que casa: o `>` por último, senão `<prefixo> ... > <fora>` escreve fora do task dir (door 10)
+        bash = {"*": "deny", **{p: "allow" for prefix in commands for p in (prefix, f"{prefix} *")}, "*>*": "deny"}
         permission = {
             "edit": edit,
             "external_directory": {"*": "deny", f"{task_dir}/*": "allow"},

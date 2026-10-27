@@ -96,6 +96,10 @@ Uma CLI sem `write` ou sem `workspace_config` não roda plugin nenhum. O Codex s
 código do repositório com as permissões do usuário do box. Libere um executor de teste só num plugin cujo repositório
 você confiaria a um `pytest` local.
 
+No `opencode`, o kit também nega todo comando de shell que tem `>`, mesmo começando por um prefixo liberado: o
+`opencode` deixa um comando liberado redirecionar a saída, e `git log > <arquivo>` escreveria fora do diretório da
+tarefa.
+
 ## Resultado
 
 O agente grava um objeto JSON em `<task_dir>/result.json` (o caminho também chega em `GROKBOT_KIT_RESULT_FILE` e em

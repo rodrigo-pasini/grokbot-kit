@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [0.4.1] - 2026-10-27
 
+### Security
+
+- Plugin tasks in `opencode`: a shell command that starts with an allowed prefix could redirect its output with `>`
+  and write outside the task directory (for example `git log > <file>`), so `write = "task-dir"` was not enforced
+  for plugins with `commands`. The `opencode` harness now denies any shell command that contains `>`. `claude` was
+  not affected.
+
 ### Fixed
 
 - Plugin tasks: the kit appends a `## Ambiente desta tarefa` block to the plugin prompt, built from the declared

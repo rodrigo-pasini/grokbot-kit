@@ -96,6 +96,9 @@ with its `bwrap` sandbox, which does not start on such a host (`codex sandbox --
 code with the box user's permissions. Allow a test runner only in a plugin whose repository you trust as much as a
 local `pytest` run.
 
+In `opencode`, the kit also denies any shell command that contains `>`, even one that starts with an allowed prefix:
+`opencode` lets an allowed command redirect its output, so `git log > <file>` would write outside the task directory.
+
 ## Result
 
 The agent writes a JSON object to `<task_dir>/result.json` (the path also arrives in `GROKBOT_KIT_RESULT_FILE` and in
