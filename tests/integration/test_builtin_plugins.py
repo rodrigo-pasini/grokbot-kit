@@ -123,9 +123,11 @@ def test_code_review_posts_comment_review(tmp_path: Path) -> None:
 
     second = run_builtin(tmp_path / "dois", "claude", "code-review", f"pr={pr}")
     assert (second["event"], second["status"]) == ("completed", "ok"), second
-    findings = second["result"]["findings"]
-    assert findings, second["result"]
-    assert {f["file"] for f in findings} == {novo}, findings
+    # AC 51: só achados novos ou ainda abertos; um achado novo fora do commit novo reprova
+    first_files = {f["file"] for f in event["result"]["findings"]}
+    second_files = {f["file"] for f in second["result"]["findings"]}
+    assert novo in second_files, second["result"]
+    assert second_files <= {novo} | first_files, (first_files, second["result"])
 
 
 # C53 - AC 56, AC 57

@@ -52,10 +52,12 @@ kit (`claude --plugin-dir my-plugin`).
 
 Inputs: `repo` is the URL of a GitHub PR (`https://github.com/<owner>/<repo>/pull/<n>`) or branch
 (`https://github.com/<owner>/<repo>/tree/<branch>`), which the kit clones with the box's `gh` into
-`<task_dir>/work`, the agent's working directory; `text` goes up to 64 KiB; `file` is a file of up to 1 MiB that the
-kit copies to `<task_dir>/inputs/<name>`.
+`<task_dir>/work`, the agent's working directory (a clone with a symbolic link that points outside it ends the task
+with `error` before the agent runs); `text` goes up to 64 KiB; `file` is a file of up to 1 MiB that the
+kit copies to `<task_dir>/inputs/<name>`. The agent of a plugin task always runs in `<task_dir>/work`: without a `repo`
+input, the directory starts empty, and `--cwd` is ignored (`kit.log` says so).
 
-The prompt uses `{<input>}` and the variables `{workspace}` (the clone), `{result_file}` (where to write the result)
+The prompt uses `{<input>}` and the variables `{workspace}` (`<task_dir>/work`), `{result_file}` (where to write the result)
 and `{task_dir}`. Any other `{name}` refuses the install; braces with other content, such as a JSON example, stay as
 they are.
 
@@ -70,6 +72,11 @@ Capabilities, a closed vocabulary - the kit refuses what it cannot enforce:
 Besides these, every plugin task ignores the workspace configuration (`workspace_config`: settings, hooks, plugins and
 MCP of the cloned repository do not load; `CLAUDE.md` and `AGENTS.md` come in only as context) and loads the plugin
 skills (`skills`).
+
+The kit appends to the end of the plugin prompt a `## Ambiente desta tarefa` block, in Portuguese like the bot, built
+from these capabilities: the allowed command prefixes (or that the shell accepts no command), one command per call
+with no `;`, `&&`, `||`, `|` or `cd`, reading files with the CLI's own tools, where the agent may write, no network
+with `network = "off"`, and that a denied permission does not end the task. The prompt does not need to repeat it.
 
 ## Capability matrix
 
@@ -87,9 +94,14 @@ capability. `plugin show` and `doctor` show the same table.
 A CLI without `write` or without `workspace_config` runs no plugin at all. Codex confines writes and network only
 with its `bwrap` sandbox, which does not start on such a host (`codex sandbox -- true` fails), so it runs no plugin.
 
-`tool` stops the agent's own tools, not what an allowed command runs: `pytest` or `npm test` run the repository's
-code with the box user's permissions. Allow a test runner only in a plugin whose repository you trust as much as a
-local `pytest` run.
+`tool` stops the agent's own file tools and the shell itself: output redirection, chaining with `;`, `&&` or `||`, pipes
+and command substitution are denied, so only an allowed command runs, alone. An allowed command writes wherever its
+options and the code it runs allow. The kit denies two known paths: in `opencode`, any shell command that contains `>`
+(`opencode` lets an allowed command redirect its output), and, in both CLIs, any shell command with `--output`
+(`git log`, `git diff` and `git show` write a file with it). Both rules match the literal text. Another spelling, such as
+quotes, gets around them. Other options of an allowed command are not filtered, and `pytest` or `npm test` run the
+repository's code with the box user's permissions. Allow a command only in a plugin whose repository you trust as much
+as a local run of that command.
 
 ## Result
 
@@ -145,7 +157,7 @@ max_bytes = 16384
 ```
 
 - One `repo` input, `pr`: the kit clones the PR and checks it out before launching the agent.
-- `write = "task-dir"`: the agent writes only inside the task directory (the clone included).
+- `write = "task-dir"`: the agent's file tools write only inside the task directory (the clone included).
 - `network = "on"`: the review is posted with the box's `gh`.
 - `commands`: reading the PR, `gh pr review`/`gh pr comment`, `gh api` (the review with inline comments is a
   `POST .../reviews`), `git log`, `git diff`, `git show` and `git blame` (the PR history, read only) and the test

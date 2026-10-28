@@ -243,7 +243,7 @@ def _write_meta(task_dir: Path, meta: dict[str, Any]) -> None:
     (task_dir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def _prepare_plugin(task: dict[str, Any], task_dir: Path, cwd: Path) -> tuple[dict[str, Any], Path, str]:
+def _prepare_plugin(task: dict[str, Any], task_dir: Path) -> tuple[dict[str, Any], Path, str]:
     """Copia o plugin e as entradas `file` para o task dir (door 3) e devolve `(meta["plugin"], cwd, prompt)`."""
     source: plugins.Plugin = task["plugin"]
     copy = task_dir / "plugin"
@@ -254,7 +254,10 @@ def _prepare_plugin(task: dict[str, Any], task_dir: Path, cwd: Path) -> tuple[di
     )
     plugin = plugins.Plugin(copy, source.manifest, source.source, source.origin, source.commit)
     declared = plugin.manifest["inputs"]
-    workspace = task_dir / "work" if task["target"] else cwd
+    # door 13: o agente de plugin roda sempre no task dir; sem `repo`, num `work/` vazio, nunca no cwd de quem chamou
+    workspace = task_dir / "work"
+    if not task["target"]:
+        workspace.mkdir(mode=0o700)
     values = {"workspace": str(workspace), "result_file": str(task_dir / "result.json"), "task_dir": str(task_dir)}
     for key, value in task["values"].items():
         if declared[key]["kind"] == "file":
@@ -300,7 +303,24 @@ def _clone(target: tuple[str, str | None, str | None], workspace: Path, timeout:
         if proc.returncode != 0:
             output = (proc.stderr.strip() + "\n" + proc.stdout.strip()).strip()
             return f"{' '.join(argv)} failed with exit {proc.returncode}: {output}"
-    return None
+    return _links_outside(workspace)
+
+
+def _links_outside(workspace: Path) -> str | None:
+    """Recusa o clone com symlink cujo alvo sai dele (door 12): a ferramenta de escrita do opencode segue o link."""
+    root = workspace.resolve()
+    found = []
+    for dirpath, dirnames, filenames in os.walk(workspace):
+        dirnames[:] = [d for d in dirnames if not (dirpath == str(workspace) and d == ".git")]
+        for name in [*dirnames, *filenames]:
+            path = Path(dirpath, name)
+            if path.is_symlink() and not Path(os.path.realpath(path)).is_relative_to(root):
+                found.append(path.relative_to(workspace).as_posix())
+    if not found:
+        return None
+    found.sort()
+    more = f" (+{len(found) - 5} more)" if len(found) > 5 else ""
+    return f"the clone has symbolic links that point outside it: {', '.join(found[:5])}{more}"
 
 
 def run(args: argparse.Namespace) -> int:
@@ -323,7 +343,7 @@ def run(args: argparse.Namespace) -> int:
     extras: list[str] = r["extras"]
     plugin_meta = None
     if task:
-        plugin_meta, cwd, prompt = _prepare_plugin({**task, "tool": tool}, task_dir, cwd)
+        plugin_meta, cwd, prompt = _prepare_plugin({**task, "tool": tool}, task_dir)
         extras = [prompt]
 
     kit_exe = launch.kit_executable()
@@ -375,6 +395,8 @@ def run(args: argparse.Namespace) -> int:
         meta["plugin"] = plugin_meta
     _write_meta(task_dir, meta)
 
+    if task and not task["target"] and args.cwd:
+        _log(task_dir, f"--cwd ignored: a plugin task runs in {cwd}")
     if task and task["target"]:
         _log(task_dir, f"clone {task['target'][0]} into {cwd}")
         failure = _clone(task["target"], cwd, r["timeout_seconds"])

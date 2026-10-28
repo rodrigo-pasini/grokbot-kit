@@ -75,7 +75,7 @@ def install_plugin(home: Path) -> None:
 def prepare_home(tmp_path: Path, tool: str, case: str) -> tuple[Path, Path, str]:
     home = tmp_path / "home"
     work = tmp_path / "work"
-    work.mkdir()
+    work.mkdir(parents=True)
     # o `codex exec` só roda dentro de um repositório git (ou com `--skip-git-repo-check`), como uma task real
     subprocess.run(["git", "init", "-q", str(work)], check=True)
     link(REAL_HOME / ".claude" / ".credentials.json", home / ".claude" / ".credentials.json")
