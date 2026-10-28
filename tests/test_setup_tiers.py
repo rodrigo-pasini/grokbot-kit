@@ -68,3 +68,37 @@ def test_setup_tiers_usage_errors(kit: Kit, args: tuple[str, ...]) -> None:
     before = kit.config_text()
     assert kit.cli("setup", "tiers", *args).returncode == 2
     assert kit.config_text() == before
+
+
+# model-setup-docs: a restrição de provedor (door 3)
+PROVIDER_MODELS = ["opencode/a-free", "opencode-go/b"]
+
+
+def with_providers(kit: Kit, providers: list[str] | None) -> None:
+    text = default_config(kit.sink).replace(
+        'models = ["opencode/free-model"]', f"models = {json.dumps(PROVIDER_MODELS)}"
+    )
+    text = text.replace('standard = ["opencode/free-model"]', 'standard = ["opencode-go/b"]')
+    if providers is not None:
+        text = text.replace("[cli.opencode.tiers]", f"providers = {json.dumps(providers)}\n[cli.opencode.tiers]", 1)
+    kit.write_config(text)
+
+
+# C7 - AC 8, door 3
+def test_tiers_provider_outside(kit: Kit) -> None:
+    with_providers(kit, ["opencode-go"])
+    assert kit.config()["cli"]["opencode"]["providers"] == ["opencode-go"]
+    before = kit.config_text()
+    result = kit.cli("setup", "tiers", "opencode", "standard", "opencode-go/b", "opencode/a-free")
+    assert result.returncode == 2
+    assert "opencode/a-free" in result.stderr
+    assert "grokbot-kit setup providers opencode" in result.stderr
+    assert kit.config_text() == before
+
+
+# C8 - AC 9
+def test_tiers_no_providers(kit: Kit) -> None:
+    with_providers(kit, None)
+    result = kit.cli("setup", "tiers", "opencode", "standard", "opencode/a-free", "opencode-go/b")
+    assert result.returncode == 0, result.stderr
+    assert kit.config()["cli"]["opencode"]["tiers"]["standard"] == ["opencode/a-free", "opencode-go/b"]

@@ -195,3 +195,91 @@ def test_codex_accepted_ids_only_no_tool_refreshes_installed(kit: Kit, tmp_path:
     result = refresh(kit, tmp_path, FAKE_ACCEPT_MODELS=json.dumps(["gpt-test"]))
     assert result.returncode == 0, result.stderr
     assert {c["tool"] for c in calls(tmp_path / "calls.jsonl")} == {"codex"}
+
+
+# model-setup-docs: `--json` com o `provider` de cada id (door 1)
+def opencode_and_claude(kit: Kit) -> None:
+    kit.write_config(
+        kit.config_text().replace('installed = ["opencode", "claude", "codex"]', 'installed = ["opencode", "claude"]')
+    )
+
+
+def json_items(stdout: str) -> list[dict[str, Any]]:
+    out = json.loads(stdout)
+    assert list(out) == ["models"]
+    items: list[dict[str, Any]] = out["models"]
+    return items
+
+
+# C1 - AC 1, door 1
+def test_refresh_json_shape(kit: Kit, tmp_path: Path) -> None:
+    opencode_and_claude(kit)
+    result = refresh(
+        kit,
+        tmp_path,
+        "--json",
+        FAKE_OPENCODE_MODELS="opencode/a-free\nopencode-go/b\n",
+        FAKE_ACCEPT_MODELS=json.dumps(["sonnet"]),
+    )
+    assert result.returncode == 0, result.stderr
+    assert not any("\t" in line for line in result.stdout.splitlines())
+    items = json_items(result.stdout)
+    assert items == [
+        {"tool": "opencode", "id": "opencode/a-free", "provider": "opencode"},
+        {"tool": "opencode", "id": "opencode-go/b", "provider": "opencode-go"},
+        {"tool": "claude", "id": "haiku", "provider": None},
+        {"tool": "claude", "id": "sonnet", "provider": None},
+        {"tool": "claude", "id": "opus", "provider": None},
+    ]
+    assert all(list(item) == ["tool", "id", "provider"] for item in items)
+
+
+# C2 - AC 2
+def test_refresh_json_provider(kit: Kit, tmp_path: Path) -> None:
+    result = refresh(
+        kit,
+        tmp_path,
+        "--json",
+        FAKE_OPENCODE_MODELS="opencode/a-free\nopencode-go/b\nollama/x/y\n",
+        FAKE_ACCEPT_MODELS=json.dumps(["gpt-test"]),
+    )
+    assert result.returncode == 0, result.stderr
+    provider = {(i["tool"], i["id"]): i["provider"] for i in json_items(result.stdout)}
+    assert provider[("opencode", "opencode/a-free")] == "opencode"
+    assert provider[("opencode", "opencode-go/b")] == "opencode-go"
+    assert provider[("opencode", "ollama/x/y")] == "ollama"
+    assert provider[("claude", "sonnet")] is None
+    assert provider[("codex", "gpt-test")] is None
+
+
+def test_refresh_json_provider_layer() -> None:
+    assert models.provider("opencode", "ollama/x/y") == "ollama"
+    assert models.provider("opencode", "opencode-go/glm-5.3") == "opencode-go"
+    assert models.provider("claude", "sonnet") is None
+    assert models.provider("codex", "openai/gpt") is None
+
+
+# C3 - AC 1, Observable
+def test_refresh_json_partial_failure(kit: Kit, tmp_path: Path) -> None:
+    opencode_and_claude(kit)
+    result = refresh(
+        kit,
+        tmp_path,
+        "--json",
+        FAKE_OPENCODE_MODELS="opencode/a-free\n",
+        FAKE_MODELS_EXIT="1",
+        FAKE_ACCEPT_MODELS=json.dumps(["sonnet"]),
+    )
+    assert result.returncode == 1
+    items = json_items(result.stdout)
+    assert [i["tool"] for i in items] == ["claude", "claude", "claude"]
+    assert "opencode" in result.stderr
+    assert "exited 1" in result.stderr
+
+
+# C4 - AC 3
+def test_refresh_text_unchanged(kit: Kit, tmp_path: Path) -> None:
+    result = refresh(kit, tmp_path, "opencode", FAKE_OPENCODE_MODELS="opencode/a-free\nopencode-go/b\n")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == ["opencode\topencode/a-free", "opencode\topencode-go/b"]
+    assert not any(line.startswith("{") for line in result.stdout.splitlines())

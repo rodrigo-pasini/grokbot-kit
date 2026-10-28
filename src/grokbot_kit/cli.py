@@ -69,6 +69,11 @@ def build_parser() -> "argparse.ArgumentParser":
     tiers.add_argument("tool", choices=TOOLS)
     tiers.add_argument("tier", choices=("trivial", "standard", "complex"))
     tiers.add_argument("ids", nargs="+", metavar="ID")
+    providers = setup_sub.add_parser(
+        "providers", help="opencode: set the providers whose model ids the tiers may use, in order"
+    )
+    providers.add_argument("tool", choices=TOOLS)
+    providers.add_argument("providers", nargs="+", metavar="PROVIDER", help="the text before the first / of an id")
     models = setup_sub.add_parser("models", help="model ids discovered for each CLI")
     models_sub = models.add_subparsers(dest="models_command", required=True)
     refresh = models_sub.add_parser("refresh", help="discover the model ids of a CLI (or of every installed one)")
@@ -76,6 +81,7 @@ def build_parser() -> "argparse.ArgumentParser":
     refresh.add_argument(
         "--add", action="append", default=[], metavar="ID", help="claude/codex: also test and record this model id"
     )
+    refresh.add_argument("--json", action="store_true", help="machine-readable output, with the provider of each id")
 
     login = sub.add_parser("login", help="log a CLI in with its official command")
     login.add_argument("tool", choices=TOOLS)
@@ -156,9 +162,11 @@ def main(argv: list[str] | None = None) -> int:
             return setup.set_default(args.tool)
         if args.setup_command == "tiers":
             return setup.set_tiers(args.tool, args.tier, args.ids)
+        if args.setup_command == "providers":
+            return setup.set_providers(args.tool, args.providers)
         from grokbot_kit.models import refresh
 
-        return refresh(args.tool, args.add)
+        return refresh(args.tool, args.add, args.json)
     if args.command == "login":
         from grokbot_kit.login import login
 

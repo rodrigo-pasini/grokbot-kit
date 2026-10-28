@@ -139,3 +139,14 @@ def test_constraints_default_cli_and_discovered_ids_run_exit_2(kit: Kit, case: s
     assert key in result.stderr
     assert not kit.record.exists(), "o agente foi lançado"
     assert kit.tasks() == []
+
+
+# C12 - AC 13: `providers` não entra nas constraints do `load()`
+def test_load_ignores_providers(kit: Kit, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HOME", str(kit.home))
+    cfg = door_3_config()
+    cfg["cli"]["opencode"]["models"] = ["opencode/a-free", "opencode-go/b"]
+    cfg["cli"]["opencode"]["providers"] = ["opencode-go"]
+    cfg["cli"]["opencode"]["tiers"] = {"standard": ["opencode/a-free"]}
+    write(kit, cfg)
+    assert config.load() == cfg

@@ -1,4 +1,5 @@
-"""`grokbot-kit setup cli add <tool>`, `setup default <tool>` e `setup tiers` (AC 91, doors 3, 7, 19 e 22)."""
+"""`grokbot-kit setup cli add <tool>`, `setup default <tool>`, `setup tiers` (AC 91, doors 3, 7, 19 e 22) e
+`setup providers` (doors 2 e 3 da model-setup-docs)."""
 
 import os
 import subprocess
@@ -8,6 +9,7 @@ from typing import Any, NamedTuple
 
 from grokbot_kit import config
 from grokbot_kit.launch import DEFAULT_CODEX_HOME
+from grokbot_kit.models import provider
 
 INSTALL_TIMEOUT = 900
 VERSION_TIMEOUT = 60
@@ -133,7 +135,48 @@ def set_tiers(tool: str, tier: str, ids: list[str]) -> int:
     if unknown:
         _err(f"not discovered for {tool}: {', '.join(unknown)}; run: grokbot-kit setup models refresh {tool}")
         return 2
+    allowed = cli.get("providers")
+    if allowed is not None:
+        outside = [model for model in ids if provider(tool, model) not in allowed]
+        if outside:
+            _err(
+                f"provider not in cli.{tool}.providers ({', '.join(allowed)}): {', '.join(outside)}; "
+                f"run: grokbot-kit setup providers {tool} <provider>..."
+            )
+            return 2
     cli.setdefault("tiers", {})[tier] = list(ids)
     config.save(cfg)
     print(f"{tool} {tier}: {', '.join(ids)}")
+    return 0
+
+
+def set_providers(tool: str, providers: list[str]) -> int:
+    """Grava `[cli.opencode] providers` na ordem dada (door 2); só avisa dos ids de tier fora da lista (door 3)."""
+    if tool != "opencode":
+        _err("providers apply only to opencode")
+        return 2
+    try:
+        cfg = _load()
+    except config.ConfigError as e:
+        _err(str(e))
+        return 2
+    if tool not in cfg.get("setup", {}).get("installed", []):
+        _err(f"{tool} is not in setup.installed; run: grokbot-kit setup cli add {tool}")
+        return 2
+    cli = cfg.setdefault("cli", {}).setdefault(tool, {})
+    known = {provider(tool, model) for model in cli.get("models", [])}
+    unknown = [p for p in providers if p not in known]
+    if unknown:
+        _err(
+            f"no discovered {tool} model id has provider {', '.join(unknown)}; "
+            f"run: grokbot-kit setup models refresh {tool}"
+        )
+        return 2
+    cli["providers"] = list(providers)
+    config.save(cfg)
+    for tier, ids in cli.get("tiers", {}).items():
+        for model in ids:
+            if provider(tool, model) not in providers:
+                _err(f"cli.{tool}.tiers.{tier} has {model!r}, whose provider is not in cli.{tool}.providers")
+    print(f"{tool} providers: {', '.join(providers)}")
     return 0

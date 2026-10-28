@@ -356,3 +356,40 @@ def test_plugins_listed_and_problems(kit: Kit, tmp_path: Path) -> None:
     assert "gh: not logged in; plugins with repo inputs cannot run; run: gh auth login" in text.stdout.splitlines()
     assert "problem:" not in text.stdout
     assert "plugin code-review " in text.stdout
+
+
+# model-setup-docs: `cli.opencode.providers` e o problema da door 3
+def with_providers(kit: Kit, providers: list[str] | None, standard: str) -> None:
+    text = default_config(kit.sink).replace(
+        'models = ["opencode/free-model"]', 'models = ["opencode/a-free", "opencode-go/b"]'
+    )
+    text = text.replace('standard = ["opencode/free-model"]', f'standard = ["{standard}"]')
+    if providers is not None:
+        text = text.replace("[cli.opencode.tiers]", f"providers = {json.dumps(providers)}\n[cli.opencode.tiers]", 1)
+    kit.write_config(text)
+
+
+PROVIDER_PROBLEM = "cli.opencode.tiers.standard has 'opencode/a-free', whose provider is not in cli.opencode.providers"
+
+
+# C10 - AC 11
+def test_opencode_providers_field(kit: Kit) -> None:
+    with_providers(kit, ["opencode-go"], "opencode-go/b")
+    _, out = report(kit)
+    assert out["cli"]["opencode"]["providers"] == ["opencode-go"]
+    with_providers(kit, None, "opencode-go/b")
+    _, out = report(kit)
+    assert out["cli"]["opencode"]["providers"] is None
+
+
+# C11 - AC 12, door 3
+def test_opencode_tier_provider_problem(kit: Kit) -> None:
+    with_providers(kit, ["opencode-go"], "opencode/a-free")
+    code, out = report(kit)
+    assert code == 1
+    found = [p for p in out["problems"] if p.startswith(PROVIDER_PROBLEM)]
+    assert len(found) == 1, out["problems"]
+    assert "grokbot-kit setup tiers opencode standard" in found[0]
+    with_providers(kit, ["opencode-go"], "opencode-go/b")
+    _, out = report(kit)
+    assert not any("whose provider" in p for p in out["problems"])

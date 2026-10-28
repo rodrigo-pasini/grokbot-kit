@@ -34,3 +34,19 @@ def test_emit_through_cli_skips_heavy_imports_without_task_id() -> None:
     assert "grokbot_kit.emit" in imported
     for heavy in ("argparse", "importlib.metadata", "urllib.request", "tomllib", "grokbot_kit.config"):
         assert heavy not in imported
+
+
+# C19 - AC 21: os comandos que a skill cita estão no `--help`
+def test_setup_providers_in_help() -> None:
+    exe = shutil.which("grokbot-kit")
+    assert exe is not None
+    setup_help = subprocess.run([exe, "setup", "--help"], capture_output=True, text=True, check=True).stdout
+    assert "providers" in setup_help
+    refresh_help = subprocess.run(
+        [exe, "setup", "models", "refresh", "--help"], capture_output=True, text=True, check=True
+    ).stdout
+    assert "--json" in refresh_help
+    providers_help = subprocess.run(
+        [exe, "setup", "providers", "--help"], capture_output=True, text=True, check=True
+    ).stdout
+    assert "provider" in providers_help
