@@ -1,4 +1,5 @@
-"""Provas de `grokbot-kit run --plugin` (checks C27-C35, C38-C44, C59, C60, C64; AC 26-33, 39-46, 67, 71, doors 3, 5-7, 9 e 12).
+"""Provas de `grokbot-kit run --plugin` (checks C27-C35, C38-C44, C59, C60, C64-C66; AC 26-33, 39-46, 67, 71, 72,
+doors 3, 5-7, 9, 12 e 13).
 
 Tudo na fronteira: subprocesso `grokbot-kit run` com a CLI falsa, o `gh` falso (`tests/fakes/gh`) clonando um
 repositório git local, e uma matriz de capacidades de teste em `GROKBOT_KIT_CAPABILITIES` (a do pacote só muda com
@@ -346,6 +347,50 @@ def test_symlink_outside_clone(kit: Kit, env: dict[str, str], tmp_path: Path) ->
     (event,) = [e for e in kit.sink_events() if e["task_id"] == task_dir.name]
     assert outcome(event) == ("error", "failed", "agent_error")
     assert event["summary"] == "the clone has symbolic links that point outside it: docs, fora.txt"
+
+
+# C65 - AC 71, door 12
+def test_symlink_summary_shape(kit: Kit, env: dict[str, str]) -> None:
+    origin = Path(env["FAKE_GH_REPO"])
+    for name in "gbfaecd":
+        (origin / name).symlink_to("/etc/hostname")
+    git(origin, "add", "-A")
+    git(origin, "commit", "-q", "-m", "sete links para fora")
+    result = run_plugin(kit, env, "teste", "--input", f"pr={PR_URL}")
+    assert result.returncode == 1
+    assert not kit.record.exists()
+    (event,) = kit.sink_events()
+    assert event["summary"] == "the clone has symbolic links that point outside it: a, b, c, d, e (+2 more)"
+
+
+# C66 - AC 72, door 13
+def test_plugin_without_repo_runs_in_task_dir(kit: Kit, env: dict[str, str], tmp_path: Path) -> None:
+    source = tmp_path / "plugins" / "area"
+    write_plugin(source, nota_manifest("area"), prompt="Área {workspace}; nota {nota}.\n")
+    assert kit.cli("plugin", "add", str(source), "--yes").returncode == 0
+    caller = tmp_path / "chamador"
+    caller.mkdir()
+    result = run_plugin(kit, env, "area", "--input", "nota=oi", "--cwd", str(caller))
+    assert result.returncode == 0, result.stderr
+    task_dir = kit.task_dir()
+    work = task_dir / "work"
+    launched = kit.launched()
+    assert launched["cwd"] == launched["env"]["PWD"] == str(work)
+    assert work.is_dir()
+    assert list(work.iterdir()) == []
+    assert launched["argv"][-1].startswith(f"Área {work}; nota oi.\n\n"), launched["argv"][-1]
+    assert json.loads((task_dir / "meta.json").read_text(encoding="utf-8"))["cwd"] == str(work)
+    assert list(caller.iterdir()) == []
+    log = (task_dir / "kit.log").read_text(encoding="utf-8")
+    assert f"--cwd ignored: a plugin task runs in {work}" in log
+
+    kit.record.unlink()
+    before = set(kit.tasks())
+    result = run_plugin(kit, env, "area", "--input", "nota=oi")
+    assert result.returncode == 0, result.stderr
+    (task_dir,) = set(kit.tasks()) - before
+    assert kit.launched()["cwd"] == str(task_dir / "work")
+    assert "--cwd ignored" not in (task_dir / "kit.log").read_text(encoding="utf-8")
 
 
 # C38 - AC 39

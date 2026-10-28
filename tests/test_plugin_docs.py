@@ -112,7 +112,7 @@ def test_guide_sections(g: Guide) -> None:
         (
             GUIDES[0],
             "An allowed command writes wherever its options and the code it runs allow.",
-            "Another spelling, such as quotes, gets around it.",
+            "Another spelling, such as quotes, gets around them.",
         ),
         (
             GUIDES[1],

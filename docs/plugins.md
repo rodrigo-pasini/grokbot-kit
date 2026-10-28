@@ -54,9 +54,10 @@ Inputs: `repo` is the URL of a GitHub PR (`https://github.com/<owner>/<repo>/pul
 (`https://github.com/<owner>/<repo>/tree/<branch>`), which the kit clones with the box's `gh` into
 `<task_dir>/work`, the agent's working directory (a clone with a symbolic link that points outside it ends the task
 with `error` before the agent runs); `text` goes up to 64 KiB; `file` is a file of up to 1 MiB that the
-kit copies to `<task_dir>/inputs/<name>`.
+kit copies to `<task_dir>/inputs/<name>`. The agent of a plugin task always runs in `<task_dir>/work`: without a `repo`
+input, the directory starts empty, and `--cwd` is ignored (`kit.log` says so).
 
-The prompt uses `{<input>}` and the variables `{workspace}` (the clone), `{result_file}` (where to write the result)
+The prompt uses `{<input>}` and the variables `{workspace}` (`<task_dir>/work`), `{result_file}` (where to write the result)
 and `{task_dir}`. Any other `{name}` refuses the install; braces with other content, such as a JSON example, stay as
 they are.
 
@@ -93,14 +94,14 @@ capability. `plugin show` and `doctor` show the same table.
 A CLI without `write` or without `workspace_config` runs no plugin at all. Codex confines writes and network only
 with its `bwrap` sandbox, which does not start on such a host (`codex sandbox -- true` fails), so it runs no plugin.
 
-`tool` stops the agent's own file tools and the shell itself: output redirection, chaining with `;`, `&&` or `||`,
-pipes and command substitution are denied, so only an allowed command runs, alone. An allowed command writes wherever
-its options and the code it runs allow. The kit denies two known paths: in `opencode`, any shell command that contains
-`>` (`opencode` lets an allowed command redirect its output), and, in both CLIs, any shell command with `--output`
-(`git log`, `git diff` and `git show` write a file with it). Both rules match the literal text: Another spelling, such as
-quotes, gets around it. Other options of an allowed command are not filtered, and
-`pytest` or `npm test` run the repository's code with the box user's permissions. Allow a command only in a plugin
-whose repository you trust as much as a local run of that command.
+`tool` stops the agent's own file tools and the shell itself: output redirection, chaining with `;`, `&&` or `||`, pipes
+and command substitution are denied, so only an allowed command runs, alone. An allowed command writes wherever its
+options and the code it runs allow. The kit denies two known paths: in `opencode`, any shell command that contains `>`
+(`opencode` lets an allowed command redirect its output), and, in both CLIs, any shell command with `--output`
+(`git log`, `git diff` and `git show` write a file with it). Both rules match the literal text. Another spelling, such as
+quotes, gets around them. Other options of an allowed command are not filtered, and `pytest` or `npm test` run the
+repository's code with the box user's permissions. Allow a command only in a plugin whose repository you trust as much
+as a local run of that command.
 
 ## Result
 

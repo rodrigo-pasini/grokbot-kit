@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Plugin tasks with a `repo` input: the `opencode` write tool followed a symbolic link committed in the clone and
   wrote outside the task directory. A clone with a symbolic link that points outside it now ends the task with
   `error` before the agent runs, in every CLI.
+- Plugin tasks without a `repo` input: the agent ran in the directory of the caller (or `--cwd`), and the `opencode`
+  write tool could write there. The agent of a plugin task now always runs in `<task_dir>/work`, empty when there is
+  no `repo` input, and `--cwd` is ignored for such plugins.
 - The `tool` cell of `write` now says what it enforces: the agent's file tools and the shell (redirection, chaining,
   pipes, command substitution). An allowed command still writes wherever its other options and the code it runs
   allow, like a test runner does; [docs/plugins.md](docs/plugins.md) says so.
