@@ -118,7 +118,9 @@ def test_code_review_posts_comment_review(tmp_path: Path) -> None:
     novo = f"c50_{os.getpid()}.py"
     (clone / novo).write_text("def media(xs):\n    return sum(xs) / 0\n", encoding="utf-8")
     subprocess.run(["git", "-C", str(clone), "add", novo], check=True)
-    subprocess.run(["git", "-C", str(clone), "commit", "-q", "-m", "test: commit novo do C50"], check=True)
+    # identidade própria: o box não tem `user.name` nem `user.email` no git
+    ident = ["-c", "user.name=grokbot-kit-it", "-c", "user.email=it@grokbot-kit.invalid"]
+    subprocess.run(["git", "-C", str(clone), *ident, "commit", "-q", "-m", "test: commit novo do C50"], check=True)
     subprocess.run(["git", "-C", str(clone), "push", "-q", "origin", head], check=True)
 
     second = run_builtin(tmp_path / "dois", "claude", "code-review", f"pr={pr}")
