@@ -4,6 +4,7 @@ Saídas que o bot devolveu das provas `-m integration` no box. O host de dev nã
 são a evidência que o Verifier lê. Copiados sem edição do que o bot mandou.
 
 - `0.4.1-doctor.txt` (27-28/10/2026): `grokbot-kit` 0.4.1 instalado por `update apply`; `opencode` 1.19.3.
+  O `claude` rodou com `sonnet` (`launch claude model=sonnet` no `kit.log` do C50); a versão dele não veio nos logs.
 - `0.4.1-pytest.log` (28/10/2026): `tests/integration/test_plugin_caps.py` e `tests/integration/test_builtin_plugins.py`
   a partir da tag `v0.4.1`, com `GROKBOT_KIT_IT_OPENCODE_MODEL=opencode/glm-5.3-flash-free`: 18 passed, 10 skipped,
   1 failed. A falha é o `git commit` do próprio teste do C50 (`test_builtin_plugins.py:121`), sem identidade git no
