@@ -8,6 +8,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-27
+
+### Security
+
+- Plugin tasks with `commands`: an allowed command could write outside the task directory, so `write = "task-dir"`
+  did not hold for it. In `opencode`, a command that starts with an allowed prefix could redirect its output with
+  `>`; in both `opencode` and `claude`, `git log`, `git diff` and `git show` write a file with `--output`. The harness
+  now denies any shell command with `>` in `opencode` and any shell command whose text has `--output` in both CLIs.
+  Both rules match the literal text; another spelling, such as quotes, gets around them.
+- Plugin tasks with a `repo` input: the `opencode` write tool followed a symbolic link committed in the clone and
+  wrote outside the task directory. A clone with a symbolic link that points outside it now ends the task with
+  `error` before the agent runs, in every CLI.
+- Plugin tasks without a `repo` input: the agent ran in the directory of the caller (or `--cwd`), and the `opencode`
+  write tool could write there. The agent of a plugin task now always runs in `<task_dir>/work`, empty when there is
+  no `repo` input, and `--cwd` is ignored for such plugins.
+- The `tool` cell of `write` now says what it enforces: the agent's file tools and the shell (redirection, chaining,
+  pipes, command substitution). An allowed command still writes wherever its other options and the code it runs
+  allow, like a test runner does; [docs/plugins.md](docs/plugins.md) says so.
+
+### Fixed
+
+- Plugin tasks: the kit appends a `## Ambiente desta tarefa` block to the plugin prompt, built from the declared
+  capabilities (allowed command prefixes, one command per call, read files with the CLI tools, where to write, no
+  network, a denied permission does not end the task). Without it, an agent that had one compound shell command
+  denied concluded it had no shell, so `code-review` did not post the review and `bug-verify` did not run the test.
+
 ## [0.4.0] - 2026-10-22
 
 ### Added
@@ -159,7 +185,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `pytest`, `pre-commit`, CI and release workflows, Dependabot, issue and pull request templates.
 - `grokbot-kit --version`. The commands described in the README are not implemented yet.
 
-[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.2.2...v0.3.0

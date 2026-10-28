@@ -202,7 +202,7 @@ Mostre ao usuário o `name`, a `description` e as `capabilities` de cada plugin.
 Quando o pedido casa com um plugin listado, não escreva prompt: rode `grokbot-kit run --plugin <nome>` com uma
 `--input <entrada>=<valor>` para cada entrada de `inputs` (as `required` são obrigatórias). Uma entrada `repo` é a URL
 de um PR (`https://github.com/<owner>/<repo>/pull/<n>`) ou de uma branch (`https://github.com/<owner>/<repo>/tree/<branch>`)
-do GitHub; o kit clona o repositório, então não passe `--cwd`.
+do GitHub, que o kit clona. Não passe `--cwd`: o agente de um plugin roda sempre no diretório da tarefa.
 
 ```sh
 grokbot-kit run --plugin <nome> --input <entrada>=<valor> --target <este bot> --label <rótulo>

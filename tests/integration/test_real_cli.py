@@ -7,6 +7,8 @@ por symlink, as credenciais do Claude (`~/.claude/.credentials.json`) e do openc
 
 Modelos: `GROKBOT_KIT_IT_CLAUDE_MODEL` ou `haiku` no Claude (alias documentado); no opencode, `GROKBOT_KIT_IT_OPENCODE_MODEL` ou o primeiro modelo
 `-free` impresso por `opencode models`; e o id de `GROKBOT_KIT_IT_CODEX_MODEL` no Codex.
+O primeiro `-free` listado pode estar indisponível (`opencode-go/beam-free` respondeu `Model unavailable`) e o `haiku`
+recusou a skill do spike no C37: as provas da 0.4.1 rodaram com `sonnet` e `opencode/glm-5.3-flash-free`.
 """
 
 import json
@@ -75,7 +77,7 @@ def install_plugin(home: Path) -> None:
 def prepare_home(tmp_path: Path, tool: str, case: str) -> tuple[Path, Path, str]:
     home = tmp_path / "home"
     work = tmp_path / "work"
-    work.mkdir()
+    work.mkdir(parents=True)
     # o `codex exec` só roda dentro de um repositório git (ou com `--skip-git-repo-check`), como uma task real
     subprocess.run(["git", "init", "-q", str(work)], check=True)
     link(REAL_HOME / ".claude" / ".credentials.json", home / ".claude" / ".credentials.json")

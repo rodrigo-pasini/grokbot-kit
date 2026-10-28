@@ -52,10 +52,12 @@ sem o kit (`claude --plugin-dir meu-plugin`).
 
 Entradas: `repo` é a URL de um PR (`https://github.com/<owner>/<repo>/pull/<n>`) ou de uma branch
 (`https://github.com/<owner>/<repo>/tree/<branch>`) do GitHub, que o kit clona com o `gh` do box em
-`<task_dir>/work`, o diretório de trabalho do agente; `text` vai até 64 KiB; `file` é um arquivo de até 1 MiB que o
-kit copia para `<task_dir>/inputs/<nome>`.
+`<task_dir>/work`, o diretório de trabalho do agente (um clone com link simbólico que aponta para fora dele encerra a tarefa
+com `error` antes do agente); `text` vai até 64 KiB; `file` é um arquivo de até 1 MiB que o
+kit copia para `<task_dir>/inputs/<nome>`. O agente de uma tarefa de plugin roda sempre em `<task_dir>/work`: sem
+entrada `repo`, o diretório começa vazio, e o `--cwd` é ignorado (o `kit.log` registra).
 
-O prompt usa `{<entrada>}` e as variáveis `{workspace}` (o clone), `{result_file}` (onde gravar o resultado) e
+O prompt usa `{<entrada>}` e as variáveis `{workspace}` (`<task_dir>/work`), `{result_file}` (onde gravar o resultado) e
 `{task_dir}`. Qualquer outro `{nome}` recusa a instalação; chaves com outro conteúdo, como um exemplo JSON, ficam
 como estão.
 
@@ -71,10 +73,15 @@ Além dessas, toda tarefa de plugin ignora a configuração do workspace (`works
 e MCP do repositório clonado não carregam; `CLAUDE.md` e `AGENTS.md` entram só como contexto) e carrega as skills do
 plugin (`skills`).
 
+O kit acrescenta ao fim do prompt do plugin um bloco `## Ambiente desta tarefa`, em pt-BR como o bot, montado dessas
+capacidades: os prefixos de comando liberados (ou que o shell não aceita nenhum comando), um comando por chamada sem
+`;`, `&&`, `||`, `|` nem `cd`, a leitura de arquivos pelas ferramentas da própria CLI, onde o agente pode escrever, a
+falta de rede com `network = "off"` e que uma permissão negada não encerra a tarefa. O prompt não precisa repetir isso.
+
 ## Matriz de capacidades
 
-O que cada CLI consegue impor, provado com agentes reais (`claude` 2.1.308, `opencode` 2.1.3, `codex` 0.163.0) num
-host Linux que restringe user namespaces sem privilégio, como o Ubuntu faz por padrão. `os` é sandbox do sistema;
+O que cada CLI consegue impor, provado com agentes reais (`claude` 2.1.308, `opencode` 2.1.3 e 1.19.3, `codex` 0.163.0)
+num host Linux que restringe user namespaces sem privilégio, como o Ubuntu faz por padrão. `os` é sandbox do sistema;
 `tool` é permissão da própria CLI; `unsupported` faz o `run --plugin` sair com `2` antes de criar a tarefa, quando o
 plugin precisa daquela capacidade. `plugin show` e `doctor` mostram a mesma tabela.
 
@@ -87,9 +94,14 @@ plugin precisa daquela capacidade. `plugin show` e `doctor` mostram a mesma tabe
 Uma CLI sem `write` ou sem `workspace_config` não roda plugin nenhum. O Codex só confina escrita e rede com o sandbox
 `bwrap` dele, que não sobe num host assim (`codex sandbox -- true` falha), então não roda plugin.
 
-`tool` barra as ferramentas do próprio agente, não o que um comando permitido roda: `pytest` ou `npm test` rodam o
-código do repositório com as permissões do usuário do box. Libere um executor de teste só num plugin cujo repositório
-você confiaria a um `pytest` local.
+`tool` barra as ferramentas de arquivo do próprio agente e o próprio shell: redirecionamento, encadeamento com `;`, `&&`
+ou `||`, pipe e substituição de comando são negados, então só um comando liberado roda, sozinho. Um comando liberado
+escreve onde as opções e o código que ele roda deixam. O kit nega dois caminhos conhecidos: no `opencode`, todo comando
+de shell que tem `>` (o `opencode` deixa um comando liberado redirecionar a saída), e, nas duas CLIs, todo comando de
+shell com `--output` (`git log`, `git diff` e `git show` gravam arquivo com ela). As duas regras casam o texto literal.
+Outra grafia, como aspas, contorna a regra. As outras opções de um comando liberado não são filtradas, e `pytest` ou
+`npm test` rodam o código do repositório com as permissões do usuário do box. Libere um comando só num plugin cujo
+repositório você confiaria a uma execução local desse comando.
 
 ## Resultado
 
@@ -144,7 +156,7 @@ max_bytes = 16384
 ```
 
 - Uma entrada `repo`, `pr`: o kit clona o PR e faz checkout dele antes de lançar o agente.
-- `write = "task-dir"`: o agente só escreve dentro do diretório da tarefa (o clone incluído).
+- `write = "task-dir"`: as ferramentas de arquivo do agente só escrevem dentro do diretório da tarefa (o clone incluído).
 - `network = "on"`: o review é postado pelo `gh` do box.
 - `commands`: leitura do PR, `gh pr review`/`gh pr comment`, `gh api` (o review com comentários inline é um
   `POST .../reviews`), `git log`, `git diff`, `git show` e `git blame` (o histórico do PR, só leitura) e os

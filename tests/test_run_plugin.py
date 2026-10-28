@@ -1,4 +1,5 @@
-"""Provas de `grokbot-kit run --plugin` (checks C27-C35, C38-C44, C59; AC 26-33, 39-46, doors 3, 5, 6 e 7).
+"""Provas de `grokbot-kit run --plugin` (checks C27-C35, C38-C44, C59, C60, C64-C66; AC 26-33, 39-46, 67, 71, 72,
+doors 3, 5-7, 9, 12 e 13).
 
 Tudo na fronteira: subprocesso `grokbot-kit run` com a CLI falsa, o `gh` falso (`tests/fakes/gh`) clonando um
 repositório git local, e uma matriz de capacidades de teste em `GROKBOT_KIT_CAPABILITIES` (a do pacote só muda com
@@ -119,6 +120,18 @@ def padded_result(size: int) -> str:
     return json.dumps({"summary": "s" * (size - len(base)), "verdict": "ok"})
 
 
+def environment_block(task_dir: Path) -> str:
+    """O bloco da door 9 para o plugin `teste` (`commands = ["git", "gh pr view"]`, `write = "task-dir"`)."""
+    return (
+        "## Ambiente desta tarefa\n\n"
+        "- O shell só aceita comandos que começam por um destes prefixos: `git`, `gh pr view`. Qualquer outro é negado.\n"
+        "- Um comando por chamada, sem `;`, `&&`, `||`, `|` nem `cd`.\n"
+        "- Leia, liste e procure arquivos com as ferramentas de leitura e busca da CLI, não com o shell.\n"
+        f"- Você só escreve dentro de {task_dir}.\n"
+        "- Uma permissão negada não encerra a tarefa: siga com as ferramentas e os comandos liberados.\n"
+    )
+
+
 # C27 - AC 26, doors 3 e 7
 def test_launches_in_clone_with_prompt(kit: Kit, env: dict[str, str], tmp_path: Path) -> None:
     result = run_plugin(kit, env, "teste", "--input", f"pr={PR_URL}")
@@ -134,9 +147,36 @@ def test_launches_in_clone_with_prompt(kit: Kit, env: dict[str, str], tmp_path: 
     launched = kit.launched()
     assert launched["cwd"] == str(work)
     assert launched["argv"][-1] == (
-        f"Revise {PR_URL} em {work}; grave {task_dir / 'result.json'}; task dir {task_dir}.\n"
+        f"Revise {PR_URL} em {work}; grave {task_dir / 'result.json'}; task dir {task_dir}.\n\n"
+        + environment_block(task_dir)
     )
     assert launched["env"]["GROKBOT_KIT_RESULT_FILE"] == str(task_dir / "result.json")
+
+
+# C60 - AC 67, door 9
+def test_environment_block_from_capabilities(kit: Kit, env: dict[str, str], tmp_path: Path) -> None:
+    result = run_plugin(kit, env, "teste", "--input", f"pr={PR_URL}")
+    assert result.returncode == 0, result.stderr
+    task_dir = kit.task_dir()
+    prompt = kit.launched()["argv"][-1]
+    assert prompt.endswith(".\n\n" + environment_block(task_dir)), prompt
+
+    source = tmp_path / "plugins" / "seco"
+    write_plugin(source, nota_manifest("seco", write="none", network="off", commands=[]), prompt=NOTA_PROMPT)
+    assert kit.cli("plugin", "add", str(source), "--yes").returncode == 0
+    before = set(kit.tasks())
+    result = run_plugin(kit, env, "seco", "--input", "nota=oi")
+    assert result.returncode == 0, result.stderr
+    (task_dir,) = set(kit.tasks()) - before
+    assert kit.launched()["argv"][-1] == (
+        f"Nota: oi. Grave {task_dir / 'result.json'}.\n\n"
+        "## Ambiente desta tarefa\n\n"
+        "- O shell não aceita nenhum comando.\n"
+        "- Leia, liste e procure arquivos com as ferramentas de leitura e busca da CLI, não com o shell.\n"
+        f"- Você só escreve o arquivo de resultado, {task_dir / 'result.json'}.\n"
+        "- Sem acesso à rede.\n"
+        "- Uma permissão negada não encerra a tarefa: siga com as ferramentas e os comandos liberados.\n"
+    )
 
 
 # C36 na fronteira (door 8): o opencode recebe o harness no env e o `PWD` do clone, que é por onde ele acha o projeto
@@ -229,7 +269,9 @@ def test_file_input_copied(kit: Kit, env: dict[str, str], arquivos: None, tmp_pa
     task_dir = kit.task_dir()
     copied = task_dir / "inputs" / "doc"
     assert copied.read_text(encoding="utf-8") == "ZeroDivisionError\n"
-    assert kit.launched()["argv"][-1] == f"Doc {copied} nota . Grave {task_dir / 'result.json'}.\n"
+    assert kit.launched()["argv"][-1] == (
+        f"Doc {copied} nota . Grave {task_dir / 'result.json'}.\n\n" + environment_block(task_dir)
+    )
 
 
 # C32 - AC 30
@@ -280,6 +322,75 @@ def test_clone_failure_event(kit: Kit, env: dict[str, str]) -> None:
     assert event["task_id"] == kit.task_dir().name
     assert event["result"] is None
     assert event["plugin"]["name"] == "teste"
+
+
+# C64 - AC 71, door 12
+def test_symlink_outside_clone(kit: Kit, env: dict[str, str], tmp_path: Path) -> None:
+    origin = Path(env["FAKE_GH_REPO"])
+    (origin / "leia.txt").symlink_to("README.md")
+    git(origin, "add", "-A")
+    git(origin, "commit", "-q", "-m", "link interno")
+    result = run_plugin(kit, env, "teste", "--input", f"pr={PR_URL}")
+    assert result.returncode == 0, result.stderr
+    assert kit.record.exists()
+    kit.record.unlink()
+
+    (origin / "fora.txt").symlink_to("/etc/hostname")
+    (origin / "docs").symlink_to("..")
+    git(origin, "add", "-A")
+    git(origin, "commit", "-q", "-m", "links para fora")
+    before = set(kit.tasks())
+    result = run_plugin(kit, env, "teste", "--input", f"pr={PR_URL}")
+    assert result.returncode == 1
+    assert not kit.record.exists(), "a CLI não pode ser lançada com symlink para fora do clone"
+    (task_dir,) = set(kit.tasks()) - before
+    (event,) = [e for e in kit.sink_events() if e["task_id"] == task_dir.name]
+    assert outcome(event) == ("error", "failed", "agent_error")
+    assert event["summary"] == "the clone has symbolic links that point outside it: docs, fora.txt"
+
+
+# C65 - AC 71, door 12
+def test_symlink_summary_shape(kit: Kit, env: dict[str, str]) -> None:
+    origin = Path(env["FAKE_GH_REPO"])
+    for name in "gbfaecd":
+        (origin / name).symlink_to("/etc/hostname")
+    git(origin, "add", "-A")
+    git(origin, "commit", "-q", "-m", "sete links para fora")
+    result = run_plugin(kit, env, "teste", "--input", f"pr={PR_URL}")
+    assert result.returncode == 1
+    assert not kit.record.exists()
+    (event,) = kit.sink_events()
+    assert event["summary"] == "the clone has symbolic links that point outside it: a, b, c, d, e (+2 more)"
+
+
+# C66 - AC 72, door 13
+def test_plugin_without_repo_runs_in_task_dir(kit: Kit, env: dict[str, str], tmp_path: Path) -> None:
+    source = tmp_path / "plugins" / "area"
+    write_plugin(source, nota_manifest("area"), prompt="Área {workspace}; nota {nota}.\n")
+    assert kit.cli("plugin", "add", str(source), "--yes").returncode == 0
+    caller = tmp_path / "chamador"
+    caller.mkdir()
+    result = run_plugin(kit, env, "area", "--input", "nota=oi", "--cwd", str(caller))
+    assert result.returncode == 0, result.stderr
+    task_dir = kit.task_dir()
+    work = task_dir / "work"
+    launched = kit.launched()
+    assert launched["cwd"] == launched["env"]["PWD"] == str(work)
+    assert work.is_dir()
+    assert list(work.iterdir()) == []
+    assert launched["argv"][-1].startswith(f"Área {work}; nota oi.\n\n"), launched["argv"][-1]
+    assert json.loads((task_dir / "meta.json").read_text(encoding="utf-8"))["cwd"] == str(work)
+    assert list(caller.iterdir()) == []
+    log = (task_dir / "kit.log").read_text(encoding="utf-8")
+    assert f"--cwd ignored: a plugin task runs in {work}" in log
+
+    kit.record.unlink()
+    before = set(kit.tasks())
+    result = run_plugin(kit, env, "area", "--input", "nota=oi")
+    assert result.returncode == 0, result.stderr
+    (task_dir,) = set(kit.tasks()) - before
+    assert kit.launched()["cwd"] == str(task_dir / "work")
+    assert "--cwd ignored" not in (task_dir / "kit.log").read_text(encoding="utf-8")
 
 
 # C38 - AC 39

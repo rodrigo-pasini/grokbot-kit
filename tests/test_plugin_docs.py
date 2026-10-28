@@ -1,5 +1,5 @@
-"""Provas do guia de autoria `docs/plugins.md` e da tradução `docs/pt-BR/plugins.md` (check C57; AC 64, doors 1, 2,
-6 e 8; AD-041).
+"""Provas do guia de autoria `docs/plugins.md` e da tradução `docs/pt-BR/plugins.md` (checks C57 e C63; AC 64 e 69,
+doors 1, 2, 6, 8, 10 e 11; AD-041 e AD-045).
 
 A tabela da matriz de cada guia é comparada com a matriz que `plugin.py` usa; o C8 (S1) prova que essa é a de
 `spike.md`.
@@ -103,3 +103,28 @@ def test_guide_sections(g: Guide) -> None:
     builtin = next(p for p in plugin.builtins() if p.name == "code-review")
     assert f"```toml\n{(builtin.path / 'grokbot-kit.toml').read_text(encoding='utf-8')}```" in example
     assert f"```markdown\n{(builtin.path / 'prompt.md').read_text(encoding='utf-8')}```" in example
+
+
+# C63 - AC 69, AC 70, doors 10 e 11
+@pytest.mark.parametrize(
+    ("g", "contract", "spelling"),
+    [
+        (
+            GUIDES[0],
+            "An allowed command writes wherever its options and the code it runs allow.",
+            "Another spelling, such as quotes, gets around them.",
+        ),
+        (
+            GUIDES[1],
+            "Um comando liberado escreve onde as opções e o código que ele roda deixam.",
+            "Outra grafia, como aspas, contorna a regra.",
+        ),
+    ],
+    ids=["en", "pt-BR"],
+)
+def test_write_contract(g: Guide, contract: str, spelling: str) -> None:
+    matrix = " ".join(section(g.path.read_text(encoding="utf-8"), g.matrix).split())
+    assert contract in matrix
+    assert spelling in matrix
+    assert "`>`" in matrix
+    assert "`--output`" in matrix
