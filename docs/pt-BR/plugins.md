@@ -80,8 +80,8 @@ falta de rede com `network = "off"` e que uma permissão negada não encerra a t
 
 ## Matriz de capacidades
 
-O que cada CLI consegue impor, provado com agentes reais (`claude` 2.1.308, `opencode` 2.1.3, `codex` 0.163.0) num
-host Linux que restringe user namespaces sem privilégio, como o Ubuntu faz por padrão. `os` é sandbox do sistema;
+O que cada CLI consegue impor, provado com agentes reais (`claude` 2.1.308, `opencode` 2.1.3 e 1.19.3, `codex` 0.163.0)
+num host Linux que restringe user namespaces sem privilégio, como o Ubuntu faz por padrão. `os` é sandbox do sistema;
 `tool` é permissão da própria CLI; `unsupported` faz o `run --plugin` sair com `2` antes de criar a tarefa, quando o
 plugin precisa daquela capacidade. `plugin show` e `doctor` mostram a mesma tabela.
 
