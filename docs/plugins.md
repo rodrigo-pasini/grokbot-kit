@@ -80,10 +80,10 @@ with `network = "off"`, and that a denied permission does not end the task. The 
 
 ## Capability matrix
 
-What each CLI can enforce, proven with real agents (`claude` 2.1.308, `opencode` 2.1.3, `codex` 0.163.0) on a Linux
-host that restricts unprivileged user namespaces, as Ubuntu does by default. `os` is the system sandbox; `tool` is the
-CLI's own permission; `unsupported` makes `run --plugin` exit `2` before creating the task, when the plugin needs that
-capability. `plugin show` and `doctor` show the same table.
+What each CLI can enforce, proven with real agents (`claude` 2.1.308, `opencode` 2.1.3 and 1.19.3, `codex` 0.163.0) on a
+Linux host that restricts unprivileged user namespaces, as Ubuntu does by default. `os` is the system sandbox; `tool` is
+the CLI's own permission; `unsupported` makes `run --plugin` exit `2` before creating the task, when the plugin needs
+that capability. `plugin show` and `doctor` show the same table.
 
 | CLI | `write` | `network: off` | `commands` | `workspace_config` | `skills` |
 | --- | --- | --- | --- | --- | --- |
