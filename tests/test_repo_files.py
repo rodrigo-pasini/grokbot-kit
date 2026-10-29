@@ -278,7 +278,7 @@ def test_assets_in_wheel(tmp_path: Path) -> None:
         assert asset in names, f"{asset} fora do wheel"
 
 
-# C23 - door 10
+# C23 - door 10 (sdlc-gates C46, AD-052: `AGENTS.md` no lugar do `CLAUDE.md`)
 DOOR_10_FILES = [
     "LICENSE",
     "README.md",
@@ -297,7 +297,6 @@ DOOR_10_FILES = [
     "docs/.specs/DECISOES.md",
     "docs/.specs/features/agent-run-notify/plan.md",
     "NOTICE",
-    "CLAUDE.md",
     "AGENTS.md",
     ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
@@ -409,3 +408,47 @@ def test_changelog_unreleased_model_setup() -> None:
     release = text[start:end]
     for needle in ("setup providers", "--json", "model_fallbacks", "summary"):
         assert needle in release, needle
+
+
+# sdlc-gates C31, C40 - AC 24, 31
+def test_worktree_handoff_config() -> None:
+    config = json.loads(read(".claude/worktree-handoff.json"))
+    assert config["branch_pattern"] == "<tipo>/<issue>/<slug>"
+    assert config["handoff_skill"] == "tlc-spec-lean"
+    assert "CLAUDE.local.md" not in config["copy"]
+
+
+def handoff_section() -> str:
+    lines = read("docs/.specs/STATE.md").splitlines()
+    start = lines.index("## Handoff")
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
+    return "\n".join(lines[start:end])
+
+
+# sdlc-gates C33 - AC 25 (issues 32: limites do webhook; 33: sandbox do Codex no box)
+def test_state_handoff_cites_issues() -> None:
+    handoff = handoff_section()
+    for issue in ("#32", "#33"):
+        assert re.search(rf"{issue}(?!\d)", handoff), issue
+    assert "bwrap" not in handoff
+    assert "limites do webhook" not in handoff
+
+
+# sdlc-gates C38 - AC 29
+def test_state_handoff_within_limit() -> None:
+    result = subprocess.run(
+        ["python3", "tools/sdlc.py", "state"], cwd=ROOT, capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+
+
+# sdlc-gates C39 - AC 30, door 8
+def test_no_claude_md_tracked() -> None:
+    files = subprocess.run(
+        ["git", "ls-files", "CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert files.stdout == ""
