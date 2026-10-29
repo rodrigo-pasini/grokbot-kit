@@ -92,6 +92,12 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C52 / AC 39 (checks)
 - last seen: 2026-10-29T13:34:44Z
 
+### L-014 - Quando a AC enumera a lista de palavras que um classificador reconhece, o check põe um caso por palavra; casos por forma de invocação não matam a remoção de uma palavra.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `hooks` · harmful: 0
+- features: sdlc-gates
+- evidence: M12 .claude/hooks/gate-humano.sh:97 (hooks)
+- last seen: 2026-10-29T16:41:04Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

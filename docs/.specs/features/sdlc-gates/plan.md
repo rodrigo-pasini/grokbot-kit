@@ -70,6 +70,7 @@ Reusa os validadores do `tlc-spec-lean` (`.claude/skills/tlc-spec-lean/scripts/`
 | docs | flags e campos do evento hoje sem doc passam a ser documentados nesta feature (AC 36-37) |
 | hooks | o `commit-msg` do git roda também em `git merge` e `git pull` (githooks(5)): a mensagem automática de merge fica fora da door 3 (AC 46, achado no review do PR #34); o `pr` do CI já ignora merge commits (`--no-merges`) |
 | hooks | o `gate-humano.sh` lia o comando literal: aspas, prefixo de ambiente e substituição o deixavam em silêncio; passa a normalizar o comando e a falhar fechado com `ask` (AC 44-45, achado no review do PR #34) |
+| hooks | a rodada 3 do Verifier achou duas regressões do fix (o `allow` com `GIT_DIR=` e o corte do comando dentro de aspas) e brechas anteriores (`\\`, subshell, `&`): AC 47-49 |
 | tooling | `[tool.mypy] files` ganha `tools`, então `tools/sdlc.py` roda em `mypy --strict` no job `typecheck` |
 | stored data | nada a migrar; os planos já existentes não ganham `**Approved**` retroativo (a regra vale para `plan.md` adicionado ou alterado no PR) |
 
@@ -216,6 +217,10 @@ próprio git escreve num merge.
 44. IF o Bash vai rodar `git push` para `main` com o refspec entre aspas, com prefixo `VAR=valor`, por `env`, `command` ou pelo caminho do binário (`/usr/bin/git`) THEN `gate-humano.sh` SHALL devolver `permissionDecision` `deny`, como na AC 21
 45. IF um pedaço do comando cita `git` ou `gh` fora da primeira palavra junto de `push`, `tag`, `merge`, `release` ou `api`, ou um `git push` tem refspec com substituição (`$` ou crase) THEN `gate-humano.sh` SHALL devolver `permissionDecision` `ask`
 46. WHEN a primeira linha da mensagem é a que o git escreve num merge (`Merge branch '<b>'`, `Merge branches`, `Merge remote-tracking branch '<b>'`, `Merge tag '<t>'`, `Merge commit '<c>'`) THEN `tools/sdlc.py commit-msg <arquivo>` SHALL não aplicar a door 3 a ela, e ainda SHALL aplicar a AC 3; o título do PR segue a door 3 sem exceção
+
+47. IF o `git push` aponta para outro repositório (`GIT_DIR=`, `GIT_WORK_TREE=`, `git -C`, `--git-dir`, `--work-tree`) THEN `gate-humano.sh` SHALL não devolver `allow`, e ainda SHALL devolver `deny` para destino `main`
+48. WHEN `&&`, `||`, `;`, `|` ou `&` aparecem dentro de aspas THEN `gate-humano.sh` SHALL não cortar o comando nesse ponto (`git commit -m "fix: a; git push origin main"` sai sem saída)
+49. IF o push para `main` vem com barra invertida (`\git`, `ma\in`), num subshell `( ... )` ou em segundo plano (`... main&`) THEN `gate-humano.sh` SHALL devolver `deny`
 
 **Independent test:** `git push origin "main"` e `bash -c "git push origin main"` não passam sem o Rodrigo ver; `git pull` numa branch divergida faz o merge sem `--no-verify`.
 

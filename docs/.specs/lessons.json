@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 14,
+  "next_id": 15,
   "lessons": [
     {
       "id": "L-001",
@@ -238,6 +238,24 @@
       ],
       "created": "2026-10-29T13:34:44Z",
       "last_seen": "2026-10-29T13:34:44Z"
+    },
+    {
+      "id": "L-014",
+      "key": "surviving_mutant::quando a ac enumera a lista de palavras que um classificador reconhece o check poe um caso por palavra casos por forma de invocacao nao matam a remocao de uma palavra",
+      "text": "Quando a AC enumera a lista de palavras que um classificador reconhece, o check põe um caso por palavra; casos por forma de invocação não matam a remoção de uma palavra.",
+      "signal": "surviving_mutant",
+      "scope": "hooks",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "M12 .claude/hooks/gate-humano.sh:97 (hooks)"
+      ],
+      "created": "2026-10-29T16:41:04Z",
+      "last_seen": "2026-10-29T16:41:04Z"
     }
   ]
 }

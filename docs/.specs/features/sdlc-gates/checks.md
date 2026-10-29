@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/sdlc-gates/plan.md`
 
-59 checks em 8 slices · 9 one-way doors · 0 open
+63 checks em 8 slices · 9 one-way doors · 0 open
 
 Convenções das provas:
 
@@ -212,6 +212,18 @@ Proof: `uv run pytest tests/test_claude_hooks.py -k "gate_humano_ask_unparsed or
 **C59** - `tools/sdlc.py commit-msg` sai com `0` sem saída para `Merge branch 'main' into feat/31/x`, `Merge branch 'main' of github.com:o/r into feat/31/x`, `Merge branches 'a' and 'b'`, `Merge remote-tracking branch 'origin/main' into feat/31/x`, `Merge tag 'v0.6.0'` e `Merge commit 'abc123'`; sai com `1` para `Merge stuff` e para um merge com linha `Co-authored-by:`; e `tools/sdlc.py pr --title "Merge branch 'main'"` sai com `1` (AC 46, door 3)
 Proof: `uv run pytest tests/test_sdlc.py -k "commit_msg_merge or pr_title_merge"`
 
+**C60** - `gate-humano.sh` devolve `ask` para `sudo git tag v1`, `bash -c "gh release create v1"` e `xargs gh api repos/o/r/branches/main/protection` (AC 45, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_ask_unparsed_verbs`
+
+**C61** - `gate-humano.sh` não devolve `allow` para `GIT_DIR=x/.git git push origin HEAD`, `GIT_WORK_TREE=x git push origin feat/31/x`, `git -C x push origin HEAD`, `git --git-dir=x/.git push origin feat/31/x` e `git --work-tree=x push origin feat/31/x`, e devolve `deny` para `git -C x push origin main` (AC 47, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_other_repo`
+
+**C62** - `gate-humano.sh` sai com `0` e stdout vazio para `git commit -m "fix: a; git push origin main"`, `git commit -m "docs: gate | git tag"` e `git commit -m 'a && git push origin main'`, e segue devolvendo `deny` para `git status && git push origin main` (AC 48, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_quoted_separators`
+
+**C63** - `gate-humano.sh` devolve `deny` para `\git push origin main`, `git push origin ma\in`, `(git push origin main)`, `(cd x && git push origin main)` e `git push origin main&` (AC 49, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_deny_escaped`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -229,11 +241,15 @@ Proof: `uv run pytest tests/test_sdlc.py -k "commit_msg_merge or pr_title_merge"
 | comandos `ask` (6) | `gh pr merge` C27 · `git tag` C27 · push de tag C27 · `--tags` C27 · `gh release` C27 · `gh api` protection/environments C27 | - |
 | disfarces de push para `main` (6) | aspas C57 · `HEAD:main` entre aspas C57 · `VAR=valor` C57 · `env` C57 · `command` C57 · caminho do binário C57 | - |
 | comandos que o gate não lê (5) | `$(...)` C58 · crase C58 · `bash -c` C58 · `sudo` C58 · `xargs` C58 | - |
+| verbos do ramo de falha fechada (5) | `push` C58 · `merge` C58 · `tag` C60 · `release` C60 · `api` C60 | - |
+| redirecionamentos de repositório (5) | `GIT_DIR=` C61 · `GIT_WORK_TREE=` C61 · `-C` C61 · `--git-dir` C61 · `--work-tree` C61 | - |
+| separadores dentro de aspas (3) | ponto e vírgula C62 · barra vertical C62 · `&&` C62 | - |
+| escapes do comando (4) | barra invertida C63 · subshell C63 · segundo plano C63 · `cd` no subshell C63 | - |
 | mensagens de merge do git (5) | `Merge branch` C59 · `Merge branches` C59 · `Merge remote-tracking branch` C59 · `Merge tag` C59 · `Merge commit` C59 | - |
 | saídas do hook de sessão (4) | instala C41 · já instalado C41 · falha C43 · aviso `CLAUDE.md` C42 | - |
 | seções do `AGENTS.md` (5) | `## Fluxo` C34 · `## Autonomia` C34 · `## Skills` C35 · `## Ambiente` C35 · `## Documentação` C48 | - |
 | gates do `test_docs.py` novos (3) | flags C49 · campos do evento C50 · links C51 | - |
-| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4, C59 · 4 C12, C24 · 5 C22 · 6 C26-C30, C57, C58 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
+| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4, C59 · 4 C12, C24 · 5 C22 · 6 C26-C30, C57, C58, C60-C63 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
 
 - Checks que cruzam a fronteira real: C7 (push num remoto local), C25 (CI do GitHub), C32 (issues no GitHub), C45
   (sessão real do `claude`)
