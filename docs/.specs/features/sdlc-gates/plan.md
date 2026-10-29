@@ -63,6 +63,8 @@ Reusa os validadores do `tlc-spec-lean` (`.claude/skills/tlc-spec-lean/scripts/`
 | domain | termo existente: `## Handoff` do `STATE.md` era o histórico das features, passa a ser só o estado atual (até 40 linhas); o histórico fica no git, nos PRs e nos `verification.md` |
 | tests | `test_repo_settings_payloads_match_door_11` (C21 da agent-run-notify) compara o `main-protection.json` literal: ganha `process`, por decisão nova que supera a forma da door 11 |
 | tests | `test_precommit_hooks` exige o mesmo `exclude` em todo hook: os hooks locais novos levam o mesmo `exclude` |
+| tests | `test_ci_jobs_and_triggers` (C13 da agent-run-notify) lista os jobs do `ci.yml`: ganha `process`, pela door 4 (achado no build) |
+| tests | `test_mypy_strict_config` (C11 da agent-run-notify) compara `[tool.mypy] files`: passa a `["src", "tools"]`, pela linha de tooling abaixo (achado no build) |
 | instruções | o `CLAUDE.md` some: o conteúdo vai para o `AGENTS.md`. Leem o `CLAUDE.md` hoje: o Claude Code (passa a ler o `AGENTS.md` quando não há `CLAUDE.md` nem `CLAUDE.local.md`), `test_claude_md_doc_rule` (C48 da model-setup-docs), `DOOR_10_FILES` em `test_repo_files.py` (door 10 da agent-run-notify), `CONTRIBUTING.md` (EN e pt-BR) e o `copy` do `worktree-handoff.json` (`CLAUDE.local.md`); `detectar-contexto.sh` e o `gate-worktree.sh` já aceitam os dois nomes |
 | instruções | um `CLAUDE.local.md` local (gitignored) faz o Claude Code parar de ler o `AGENTS.md` para quem o tiver |
 | docs | flags e campos do evento hoje sem doc passam a ser documentados nesta feature (AC 36-37) |

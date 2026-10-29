@@ -208,6 +208,8 @@ def plan_approved(path: Path) -> bool:
 
 
 def pr_problems(title: str, branch: str, body: str, base: str) -> list[str]:
+    # o `base.sha` do evento é a ponta da `main`; o PR começa no merge-base com ela
+    base = git_ok("merge-base", base, "HEAD") or base
     problems = first_line_problems(title, "PR title")
     problems += branch_problems(branch)
     log = git("log", "--no-merges", "--format=%H%x00%B%x1e", f"{base}..HEAD")

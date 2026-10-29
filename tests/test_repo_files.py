@@ -229,6 +229,8 @@ MAIN_PROTECTION = {
             {"context": "test (3.11)", "app_id": 15368},
             {"context": "test (3.12)", "app_id": 15368},
             {"context": "test (3.13)", "app_id": 15368},
+            # sdlc-gates C24 (door 4): o 6º check obrigatório
+            {"context": "process", "app_id": 15368},
         ],
     },
     "enforce_admins": True,

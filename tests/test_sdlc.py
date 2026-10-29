@@ -532,6 +532,18 @@ def test_pr_requires_verification_not_for_release(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
 
 
+def test_pr_base_ahead_of_branch(tmp_path: Path) -> None:
+    """O `--base` do CI é a ponta da `main`, que pode ter andado depois da branch: o PR é o que veio do merge-base."""
+    pr = PR(tmp_path / "pr")
+    pr.title = "build: muda pyproject"
+    pr.change({"pyproject.toml": "[project]\nname = 'x'\n"}, "build: muda pyproject")
+    git(pr.repo, "checkout", "-q", "main")
+    pr.base = commit(pr.repo, {"src/outro.py": "y = 2\n"}, "feat(x): outro PR, já em main")
+    git(pr.repo, "checkout", "-q", "work")
+    result = pr.run()
+    assert result.returncode == 0, result.stderr
+
+
 # C22 - AC 17, door 5
 def test_pr_plan_approved(tmp_path: Path) -> None:
     pr = PR(tmp_path / "pr")
