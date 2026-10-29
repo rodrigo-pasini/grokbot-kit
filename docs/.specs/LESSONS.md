@@ -98,6 +98,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: M12 .claude/hooks/gate-humano.sh:97 (hooks)
 - last seen: 2026-10-29T16:41:04Z
 
+### L-015 - Quando o gate lê uma opção de CLI que leva valor, o check põe um caso com --opção=valor e outro com --opção valor; tratar só uma grafia deixa a outra passar.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `hooks` · harmful: 0
+- features: sdlc-gates
+- evidence: AC 47 / C61 .claude/hooks/gate-humano.sh:85 (hooks)
+- last seen: 2026-10-29T17:24:29Z
+
+### L-016 - Quando dois mecanismos tratam o mesmo caractere, o check põe um caso que só cada mecanismo decide; um caso que os dois resolvem não mata a remoção de um deles.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `hooks` · harmful: 0
+- features: sdlc-gates
+- evidence: N7 .claude/hooks/gate-humano.sh:125 (hooks)
+- last seen: 2026-10-29T17:24:29Z
+
+### L-017 - Cada exceção de um parser de comando (o trecho que ele deixa de cortar ou ler) tem um check que a derruba, ou sai; sem check, ela esconde o comando que fica dentro.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `hooks` · harmful: 0
+- features: sdlc-gates
+- evidence: N6 .claude/hooks/gate-humano.sh:128 (hooks)
+- last seen: 2026-10-29T17:24:29Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

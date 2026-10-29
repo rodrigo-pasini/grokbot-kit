@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/sdlc-gates/plan.md`
 
-63 checks em 8 slices · 9 one-way doors · 0 open
+67 checks em 8 slices · 9 one-way doors · 0 open
 
 Convenções das provas:
 
@@ -224,6 +224,18 @@ Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_quoted_separator
 **C63** - `gate-humano.sh` devolve `deny` para `\git push origin main`, `git push origin ma\in`, `(git push origin main)`, `(cd x && git push origin main)` e `git push origin main&` (AC 49, door 6)
 Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_deny_escaped`
 
+**C64** - `gate-humano.sh` devolve `deny` para `echo $(git push origin main)` e `x=$(git push origin main)`, e `ask` para ``echo `git push origin main` `` (AC 50, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_substitution`
+
+**C65** - `gate-humano.sh` sai sem saída para `git commit -m "a || git push origin main"` e `git commit -m "a & git push origin main"`, e devolve `deny` para `git commit -m \" ; git push origin main` (aspas escapadas não abrem aspas) (AC 48, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_quoted_more`
+
+**C66** - `gate-humano.sh` devolve `deny` para `git --git-dir x/.git push origin main`, `git --work-tree x push origin main` e `git --namespace n push origin main`; não devolve `allow` para `git --git-dir x/.git push origin feat/31/x`; e devolve `ask` para `git -c alias.p=push p origin main` (AC 51, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_spaced_options`
+
+**C67** - `gate-humano.sh` devolve `ask` para `git push --follow-tags origin feat/31/x`, `git push --tags origin main` não sai mais fraco que `deny`, `gh pr -R o/r merge 34`, `gh api -X PUT repos/o/r/pulls/34/merge`, `gh api repos/o/r/releases` e `gh api -X DELETE repos/o/r/git/refs/heads/x`; e não devolve `allow` para `git push -uf origin feat/31/x` (AC 52, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_more_ask`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -245,11 +257,14 @@ Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_deny_escaped`
 | redirecionamentos de repositório (5) | `GIT_DIR=` C61 · `GIT_WORK_TREE=` C61 · `-C` C61 · `--git-dir` C61 · `--work-tree` C61 | - |
 | separadores dentro de aspas (3) | ponto e vírgula C62 · barra vertical C62 · `&&` C62 | - |
 | escapes do comando (4) | barra invertida C63 · subshell C63 · segundo plano C63 · `cd` no subshell C63 | - |
+| substituições (3) | `$( )` em `echo` C64 · `$( )` em atribuição C64 · crase C64 | - |
+| opções com valor separado (4) | `--git-dir` C66 · `--work-tree` C66 · `--namespace` C66 · `-c alias.` C66 | - |
+| pedidos novos de confirmação (6) | `--follow-tags` C67 · `--tags` com `main` C67 · `gh pr -R ... merge` C67 · `gh api .../merge` C67 · `gh api .../releases` C67 · `gh api .../git/refs` C67 | - |
 | mensagens de merge do git (5) | `Merge branch` C59 · `Merge branches` C59 · `Merge remote-tracking branch` C59 · `Merge tag` C59 · `Merge commit` C59 | - |
 | saídas do hook de sessão (4) | instala C41 · já instalado C41 · falha C43 · aviso `CLAUDE.md` C42 | - |
 | seções do `AGENTS.md` (5) | `## Fluxo` C34 · `## Autonomia` C34 · `## Skills` C35 · `## Ambiente` C35 · `## Documentação` C48 | - |
 | gates do `test_docs.py` novos (3) | flags C49 · campos do evento C50 · links C51 | - |
-| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4, C59 · 4 C12, C24 · 5 C22 · 6 C26-C30, C57, C58, C60-C63 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
+| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4, C59 · 4 C12, C24 · 5 C22 · 6 C26-C30, C57, C58, C60-C67 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
 
 - Checks que cruzam a fronteira real: C7 (push num remoto local), C25 (CI do GitHub), C32 (issues no GitHub), C45
   (sessão real do `claude`)

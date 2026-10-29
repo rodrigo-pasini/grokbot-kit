@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 15,
+  "next_id": 18,
   "lessons": [
     {
       "id": "L-001",
@@ -256,6 +256,60 @@
       ],
       "created": "2026-10-29T16:41:04Z",
       "last_seen": "2026-10-29T16:41:04Z"
+    },
+    {
+      "id": "L-015",
+      "key": "ac_gap::quando o gate le uma opcao de cli que leva valor o check poe um caso com opcao valor e outro com opcao valor tratar so uma grafia deixa a outra passar",
+      "text": "Quando o gate lê uma opção de CLI que leva valor, o check põe um caso com --opção=valor e outro com --opção valor; tratar só uma grafia deixa a outra passar.",
+      "signal": "ac_gap",
+      "scope": "hooks",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "AC 47 / C61 .claude/hooks/gate-humano.sh:85 (hooks)"
+      ],
+      "created": "2026-10-29T17:24:29Z",
+      "last_seen": "2026-10-29T17:24:29Z"
+    },
+    {
+      "id": "L-016",
+      "key": "surviving_mutant::quando dois mecanismos tratam o mesmo caractere o check poe um caso que so cada mecanismo decide um caso que os dois resolvem nao mata a remocao de um deles",
+      "text": "Quando dois mecanismos tratam o mesmo caractere, o check põe um caso que só cada mecanismo decide; um caso que os dois resolvem não mata a remoção de um deles.",
+      "signal": "surviving_mutant",
+      "scope": "hooks",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "N7 .claude/hooks/gate-humano.sh:125 (hooks)"
+      ],
+      "created": "2026-10-29T17:24:29Z",
+      "last_seen": "2026-10-29T17:24:29Z"
+    },
+    {
+      "id": "L-017",
+      "key": "surviving_mutant::cada excecao de um parser de comando o trecho que ele deixa de cortar ou ler tem um check que a derruba ou sai sem check ela esconde o comando que fica dentro",
+      "text": "Cada exceção de um parser de comando (o trecho que ele deixa de cortar ou ler) tem um check que a derruba, ou sai; sem check, ela esconde o comando que fica dentro.",
+      "signal": "surviving_mutant",
+      "scope": "hooks",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "N6 .claude/hooks/gate-humano.sh:128 (hooks)"
+      ],
+      "created": "2026-10-29T17:24:29Z",
+      "last_seen": "2026-10-29T17:24:29Z"
     }
   ]
 }

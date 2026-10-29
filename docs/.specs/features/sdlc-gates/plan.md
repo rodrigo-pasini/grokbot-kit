@@ -222,9 +222,15 @@ próprio git escreve num merge.
 48. WHEN `&&`, `||`, `;`, `|` ou `&` aparecem dentro de aspas THEN `gate-humano.sh` SHALL não cortar o comando nesse ponto (`git commit -m "fix: a; git push origin main"` sai sem saída)
 49. IF o push para `main` vem com barra invertida (`\git`, `ma\in`), num subshell `( ... )` ou em segundo plano (`... main&`) THEN `gate-humano.sh` SHALL devolver `deny`
 
+50. IF o comando de `git` ou `gh` vem dentro de `$( )` ou de crase THEN `gate-humano.sh` SHALL decidir o comando de dentro, como se viesse sozinho
+51. IF `--git-dir`, `--work-tree` ou `--namespace` vêm com o valor na palavra seguinte THEN `gate-humano.sh` SHALL tratá-los como na AC 47, e IF o `git -c` define um `alias.` THEN SHALL devolver `ask`
+52. WHEN o Bash vai rodar `git push --follow-tags`, `gh pr` com flags antes de `merge`, ou `gh api` em `merge`, `releases` ou `git/refs` THEN `gate-humano.sh` SHALL devolver `ask`; e IF flags curtas combinadas trazem `f` ou `d` (`-uf`) THEN SHALL não devolver `allow`
+
 **Independent test:** `git push origin "main"` e `bash -c "git push origin main"` não passam sem o Rodrigo ver; `git pull` numa branch divergida faz o merge sem `--no-verify`.
 
 ## Out of scope
+
+- O `gate-humano.sh` não interpreta o shell: continuação de linha com `\`, aspas que atravessam linhas e `cd <outro repo> && git push` ficam no #35 (achado da rodada 4 do Verifier); a proteção da `main` no GitHub segue como a barreira final
 
 Product capabilities only. Process and harness rules live in AGENTS.md or as Observable `n/a`.
 
