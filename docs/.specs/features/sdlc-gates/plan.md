@@ -226,6 +226,9 @@ próprio git escreve num merge.
 51. IF `--git-dir`, `--work-tree` ou `--namespace` vêm com o valor na palavra seguinte THEN `gate-humano.sh` SHALL tratá-los como na AC 47, e IF o `git -c` define um `alias.` THEN SHALL devolver `ask`
 52. WHEN o Bash vai rodar `git push --follow-tags`, `gh pr` com flags antes de `merge`, ou `gh api` em `merge`, `releases` ou `git/refs` THEN `gate-humano.sh` SHALL devolver `ask`; e IF flags curtas combinadas trazem `f` ou `d` (`-uf`) THEN SHALL não devolver `allow`
 
+53. IF um `$( )` ou crase aparece nos argumentos de um `git push` para `main` (`git -C $(pwd) push origin main`, `git push $(git remote) main`) THEN `gate-humano.sh` SHALL seguir devolvendo `deny`; e o conteúdo de cada `$( )` e crase, entre aspas ou não, SHALL ser decidido como um comando à parte
+54. IF `-c` ou `--config-env` definem um alias em qualquer caixa (`alias.`, `Alias.`), ou o `gh api graphql` chama `mergePullRequest` THEN `gate-humano.sh` SHALL devolver `ask`
+
 **Independent test:** `git push origin "main"` e `bash -c "git push origin main"` não passam sem o Rodrigo ver; `git pull` numa branch divergida faz o merge sem `--no-verify`.
 
 ## Out of scope

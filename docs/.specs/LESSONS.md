@@ -116,6 +116,12 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: N6 .claude/hooks/gate-humano.sh:128 (hooks)
 - last seen: 2026-10-29T17:24:29Z
 
+### L-018 - Quando um fix faz o corte do comando separar num ponto novo, o check prova também o comando de fora com palavras depois do corte (git -C $(pwd) push origin main); o resto perde o nome do comando e sai sem decisão.
+- signal: `spec_deviation` · recurrence: 1 feature(s) · scope: `hooks` · harmful: 0
+- features: sdlc-gates
+- evidence: R5 regressão .claude/hooks/gate-humano.sh:146 (hooks)
+- last seen: 2026-10-29T17:53:22Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

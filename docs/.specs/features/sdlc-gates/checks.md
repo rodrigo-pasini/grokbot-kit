@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/sdlc-gates/plan.md`
 
-67 checks em 8 slices · 9 one-way doors · 0 open
+69 checks em 8 slices · 9 one-way doors · 0 open
 
 Convenções das provas:
 
@@ -224,7 +224,7 @@ Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_quoted_separator
 **C63** - `gate-humano.sh` devolve `deny` para `\git push origin main`, `git push origin ma\in`, `(git push origin main)`, `(cd x && git push origin main)` e `git push origin main&` (AC 49, door 6)
 Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_deny_escaped`
 
-**C64** - `gate-humano.sh` devolve `deny` para `echo $(git push origin main)` e `x=$(git push origin main)`, e `ask` para ``echo `git push origin main` `` (AC 50, door 6)
+**C64** - `gate-humano.sh` devolve `deny` para `echo $(git push origin main)`, `x=$(git push origin main)` e ``echo `git push origin main` `` (AC 50, door 6; a crase dava `ask` até a rodada 5, mais fraco que a AC 50, que decide o comando de dentro como se viesse sozinho)
 Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_substitution`
 
 **C65** - `gate-humano.sh` sai sem saída para `git commit -m "a || git push origin main"` e `git commit -m "a & git push origin main"`, e devolve `deny` para `git commit -m \" ; git push origin main` (aspas escapadas não abrem aspas) (AC 48, door 6)
@@ -235,6 +235,12 @@ Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_spaced_options`
 
 **C67** - `gate-humano.sh` devolve `ask` para `git push --follow-tags origin feat/31/x`, `git push --tags origin main` não sai mais fraco que `deny`, `gh pr -R o/r merge 34`, `gh api -X PUT repos/o/r/pulls/34/merge`, `gh api repos/o/r/releases` e `gh api -X DELETE repos/o/r/git/refs/heads/x`; e não devolve `allow` para `git push -uf origin feat/31/x` (AC 52, door 6)
 Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_more_ask`
+
+**C68** - `gate-humano.sh` devolve `deny` para `git -C $(pwd) push origin main`, `git push $(git remote) main`, `git push $(echo origin) main`, `git push origin $(true) main`, ``x=`git push origin main` ``, `git commit -m "$(git push origin main)"`, ``git commit -m "`git push origin main`"`` e `echo $(echo $(git push origin main))` (AC 53, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_substitution_args`
+
+**C69** - `gate-humano.sh` devolve `deny` para `git --config-env core.x=Y push origin main`; não devolve `allow` para `git --namespace=n push origin feat/31/x` nem para `git push -ud origin feat/31/x`; devolve `ask` para `gh pr --repo o/r merge 34`, `git -c Alias.p=push p origin main`, `git --config-env alias.p=X p origin main` e `gh api graphql -f query=mutation{mergePullRequest}` (AC 51, 52, 54, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_round5`
 
 ## Coverage
 
@@ -260,11 +266,13 @@ Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_more_ask`
 | substituições (3) | `$( )` em `echo` C64 · `$( )` em atribuição C64 · crase C64 | - |
 | opções com valor separado (4) | `--git-dir` C66 · `--work-tree` C66 · `--namespace` C66 · `-c alias.` C66 | - |
 | pedidos novos de confirmação (6) | `--follow-tags` C67 · `--tags` com `main` C67 · `gh pr -R ... merge` C67 · `gh api .../merge` C67 · `gh api .../releases` C67 · `gh api .../git/refs` C67 | - |
+| substituição nos argumentos do push (4) | `-C $(...)` C68 · remoto por `$(...)` C68 · remoto por `$(echo)` C68 · `$(true)` antes da ref C68 | - |
+| substituição em outro lugar (4) | crase em atribuição C68 · `$( )` entre aspas C68 · crase entre aspas C68 · `$( )` aninhado C68 | - |
 | mensagens de merge do git (5) | `Merge branch` C59 · `Merge branches` C59 · `Merge remote-tracking branch` C59 · `Merge tag` C59 · `Merge commit` C59 | - |
 | saídas do hook de sessão (4) | instala C41 · já instalado C41 · falha C43 · aviso `CLAUDE.md` C42 | - |
 | seções do `AGENTS.md` (5) | `## Fluxo` C34 · `## Autonomia` C34 · `## Skills` C35 · `## Ambiente` C35 · `## Documentação` C48 | - |
 | gates do `test_docs.py` novos (3) | flags C49 · campos do evento C50 · links C51 | - |
-| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4, C59 · 4 C12, C24 · 5 C22 · 6 C26-C30, C57, C58, C60-C67 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
+| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4, C59 · 4 C12, C24 · 5 C22 · 6 C26-C30, C57, C58, C60-C69 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
 
 - Checks que cruzam a fronteira real: C7 (push num remoto local), C25 (CI do GitHub), C32 (issues no GitHub), C45
   (sessão real do `claude`)

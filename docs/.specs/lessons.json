@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 18,
+  "next_id": 19,
   "lessons": [
     {
       "id": "L-001",
@@ -310,6 +310,24 @@
       ],
       "created": "2026-10-29T17:24:29Z",
       "last_seen": "2026-10-29T17:24:29Z"
+    },
+    {
+      "id": "L-018",
+      "key": "spec_deviation::quando um fix faz o corte do comando separar num ponto novo o check prova tambem o comando de fora com palavras depois do corte git c pwd push origin main o resto perde o nome do comando e sai sem decisao",
+      "text": "Quando um fix faz o corte do comando separar num ponto novo, o check prova também o comando de fora com palavras depois do corte (git -C $(pwd) push origin main); o resto perde o nome do comando e sai sem decisão.",
+      "signal": "spec_deviation",
+      "scope": "hooks",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "R5 regressão .claude/hooks/gate-humano.sh:146 (hooks)"
+      ],
+      "created": "2026-10-29T17:53:22Z",
+      "last_seen": "2026-10-29T17:53:22Z"
     }
   ]
 }
