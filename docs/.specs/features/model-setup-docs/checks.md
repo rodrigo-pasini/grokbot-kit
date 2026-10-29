@@ -121,7 +121,7 @@ Proof: `uv run pytest tests/test_run_fallback.py -k failure_after_tool_no_fallba
 **C30** - Com `standard = ["opencode/m1", "opencode/m2", "opencode/m3"]` e os três dando erro sem `tool_use`, o evento é `error`/`failed`/`agent_error` com `model` `opencode/m3`, o `summary` do erro de `m3`, `model_fallbacks` com `m1` e `m2` nessa ordem, e o task dir com `out.1.jsonl`, `out.2.jsonl` e `out.jsonl` (AC 32)
 Proof: `uv run pytest tests/test_run_fallback.py -k all_models_fail`
 
-**C31** - Com `--timeout 4s`, `m1` dormindo 3 s e saindo com erro sem `tool_use`, e `m2` dormindo 10 s: o evento é `timeout` em menos de 30 s de parede, com `model` `opencode/m2`, e não há terceira chamada; com `m1` dormindo além do prazo, o evento é `timeout` com 1 chamada (AC 33)
+**C31** - Com `--timeout 4s`, `m1` dormindo 3 s e saindo com erro sem `tool_use`, e `m2` dormindo 10 s: o evento é `timeout` em menos de 6 s de parede (emenda de 28/10/2026, decisão do Rodrigo: com 30 s, um prazo novo por tentativa passava), com `model` `opencode/m2`, e não há terceira chamada; com `m1` dormindo além do prazo, o evento é `timeout` com 1 chamada (AC 33)
 Proof: `uv run pytest tests/test_run_fallback.py -k shared_deadline`
 
 **C32** - `run --tool codex --tier standard` com dois ids e o codex falso dando `turn.failed` faz 1 chamada (AC 34)

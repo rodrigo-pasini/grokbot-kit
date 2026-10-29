@@ -200,7 +200,7 @@ def test_shared_deadline(kit: Kit, tmp_path: Path) -> None:
     fake = by_model(STDOUT={M1: jsonl(ERROR_119), M2: jsonl(ERROR_119)}, SLEEP={M1: "3", M2: "10"})
     began = time.monotonic()
     event = run_task(kit, tmp_path, "--timeout", "4s", **fake)
-    assert time.monotonic() - began < 30
+    assert time.monotonic() - began < 6, "as tentativas dividem um prazo só, não um por tentativa"
     assert outcome(event) == ("timeout", "timeout", "timeout")
     assert event["model"] == M2
     assert len(calls(tmp_path)) == 2
