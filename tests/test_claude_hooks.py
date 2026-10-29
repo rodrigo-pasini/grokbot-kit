@@ -237,7 +237,7 @@ def test_gate_humano_deny_escaped(feature_repo: Path, command: str) -> None:
     [
         ("echo $(git push origin main)", "deny"),
         ("x=$(git push origin main)", "deny"),
-        ("echo `git push origin main`", "ask"),
+        ("echo `git push origin main`", "deny"),
     ],
 )
 def test_gate_humano_substitution(feature_repo: Path, command: str, expected: str) -> None:
@@ -297,6 +297,47 @@ def test_gate_humano_more_ask(feature_repo: Path, command: str, expected: str) -
 
 def test_gate_humano_more_ask_combined_force(feature_repo: Path) -> None:
     assert decision("git push -uf origin feat/31/x", feature_repo)[0] != "allow"
+
+
+# C68 - AC 53, door 6
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git -C $(pwd) push origin main",
+        "git push $(git remote) main",
+        "git push $(echo origin) main",
+        "git push origin $(true) main",
+        "x=`git push origin main`",
+        'git commit -m "$(git push origin main)"',
+        'git commit -m "`git push origin main`"',
+        "echo $(echo $(git push origin main))",
+    ],
+)
+def test_gate_humano_substitution_args(feature_repo: Path, command: str) -> None:
+    assert decision(command, feature_repo)[0] == "deny", command
+
+
+# C69 - AC 51, 52, 54, door 6
+def test_gate_humano_round5_config_env_deny(feature_repo: Path) -> None:
+    assert decision("git --config-env core.x=Y push origin main", feature_repo)[0] == "deny"
+
+
+@pytest.mark.parametrize("command", ["git --namespace=n push origin feat/31/x", "git push -ud origin feat/31/x"])
+def test_gate_humano_round5_no_allow(feature_repo: Path, command: str) -> None:
+    assert decision(command, feature_repo)[0] != "allow", command
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "gh pr --repo o/r merge 34",
+        "git -c Alias.p=push p origin main",
+        "git --config-env alias.p=X p origin main",
+        "gh api graphql -f query=mutation{mergePullRequest}",
+    ],
+)
+def test_gate_humano_round5_ask(feature_repo: Path, command: str) -> None:
+    assert decision(command, feature_repo)[0] == "ask", command
 
 
 # C30 - AC 23

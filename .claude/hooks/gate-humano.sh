@@ -6,7 +6,8 @@
 #   ask   gh pr merge, git tag, git push de tag (v*, refs/tags/, --tags), gh release, gh api com protection/environments
 #   allow git push de branch <tipo>/<issue>/<slug> (sem --delete nem --force) e gh pr create, só num comando simples
 #         (allow vale para o comando todo)
-# O comando é cortado fora das aspas, também em ( ) de subshell e de $( ) e em & de segundo plano.
+# O comando é cortado fora das aspas, também em ( ) de subshell e em & de segundo plano; um $( ) fica inteiro na palavra
+# do comando de fora, e o conteúdo de cada $( ) e crase, entre aspas ou não, é decidido também como um comando à parte.
 # Antes de decidir, tira aspas e barras invertidas das palavras e os prefixos VAR=valor, env e command, e lê
 # /usr/bin/git como git. Push para outro repositório (GIT_DIR=, GIT_WORK_TREE=, -C, --git-dir, --work-tree) não ganha
 # allow: o HEAD e a branch atual são lidos do cwd.
@@ -83,13 +84,13 @@ segment_decision() {
       while [ "$i" -lt "${#w[@]}" ]; do
         case "${w[$i]}" in
           -C) redirect=1; i=$((i + 2)) ;;
-          -c)
-            [[ ${w[$((i + 1))]:-} == alias.* ]] && { echo unread; return; }
+          -c | --config-env)
+            x="${w[$((i + 1))]:-}"
+            [[ ${x,,} == alias.* ]] && { echo unread; return; }
             i=$((i + 2))
             ;;
           --git-dir | --work-tree | --namespace) redirect=1; i=$((i + 2)) ;;
           --git-dir=* | --work-tree=* | --namespace=*) redirect=1; i=$((i + 1)) ;;
-          --config-env) i=$((i + 2)) ;;
           -*) i=$((i + 1)) ;;
           *) sub="${w[$i]}"; break ;;
         esac
@@ -113,7 +114,7 @@ segment_decision() {
         "pr merge") echo ask ;;
         "pr create") echo allow ;;
         release\ *) echo ask ;;
-        api\ *) [[ " ${w[*]} " =~ protection|environments|/merge|releases|git/refs ]] && echo ask ;;
+        api\ *) [[ " ${w[*]} " =~ protection|environments|/merge|mergePullRequest|releases|git/refs ]] && echo ask ;;
       esac
       ;;
     *)
@@ -132,17 +133,18 @@ segment_decision() {
 simple=1
 case "$cmd" in *[\;\&\|\<\>\$\`]* | *$'\n'*) simple=0 ;; esac
 
-# Um pedaço por linha: corta em &&, ||, ;, |, &, ( e ) fora de aspas, também os de $( ), para que o comando de dentro
-# seja decidido sozinho; \ escapa o próximo caractere.
+# Um pedaço por linha: corta em &&, ||, ;, |, &, ( e ) fora de aspas; $( ) fica inteiro; \ escapa o próximo caractere.
 split_segments() {
   awk '{
-    q = ""; out = ""; n = length($0)
+    q = ""; out = ""; depth = 0; n = length($0)
     for (i = 1; i <= n; i++) {
       c = substr($0, i, 1)
       if (q == "\047") { out = out c; if (c == q) q = ""; continue }
       if (c == "\\") { out = out c substr($0, i + 1, 1); i++; continue }
       if (q == "\"") { out = out c; if (c == q) q = ""; continue }
       if (c == "\047" || c == "\"") { q = c; out = out c; continue }
+      if (c == "$" && substr($0, i + 1, 1) == "(") { depth++; out = out "$("; i++; continue }
+      if (c == ")" && depth > 0) { depth--; out = out c; continue }
       if (c == ";" || c == "|" || c == "&" || c == "(" || c == ")") {
         print out; out = ""
         nx = substr($0, i + 1, 1)
@@ -155,13 +157,22 @@ split_segments() {
   }'
 }
 
+# O conteúdo de cada $( ) sem $( ) dentro e de cada crase, um por linha, onde quer que estejam (aspas duplas não impedem
+# a substituição). Um $( ) aninhado é alcançado pelo de dentro.
+substitutions() {
+  grep -oE '\$\([^()]*\)|`[^`]*`' <<<"$cmd" | sed -E 's/^\$\(//; s/\)$//; s/^`//; s/`$//'
+}
+
 decisions=""
 while IFS= read -r segment; do
   read -ra words <<<"$segment"
   [ "${#words[@]}" = 0 ] && continue
   words=("${words[@]//[\"\'\\]/}")
   decisions+="$(segment_decision "${words[@]}") "
-done < <(split_segments <<<"$cmd")
+done < <(
+  split_segments <<<"$cmd"
+  substitutions | split_segments
+)
 
 reply() {
   jq -n --arg d "$1" --arg r "$2" \
