@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/sdlc-gates/plan.md`
 
-70 checks em 8 slices · 9 one-way doors · 0 open
+71 checks em 8 slices · 9 one-way doors · 0 open
 
 Convenções das provas:
 
@@ -245,6 +245,9 @@ Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_round5`
 **C70** - `gate-humano.sh` não devolve `deny` para ``git commit -m 'fix: `git push origin main` x'``, `rg -n '$(git push origin main)' docs` e um `git commit -F -` com heredoc `<<'EOF'` cujo texto cita `git push origin main`; e devolve `ask` para `git --config-env=alias.p=X p origin main` e `gh api graphql -f query=mutation{enablePullRequestAutoMerge}` (AC 55, door 6)
 Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_round6`
 
+**C71** - `gate-humano.sh` sai com `0` e stdout vazio para um `printf` com texto entre aspas simples que cita `git push origin main` e `gh pr merge` seguido de `git commit -q -F`, para `gh issue comment 35 --body "cita git push e gh release"`, para `cat > f.md <<'EOF'` com corpo que cita `git push origin main`, para `git push -u origin feat/31/x 2>&1 | tail -3`, para `gh pr create` com `--body "$(cat <<'EOF' ... EOF)"` cujo corpo cita `git push` e `merge`, e para `grep -rn "git push" docs`; e devolve `ask` para `bash <<'EOF'` com `git push origin main` no corpo e para `printf 'git push origin main' | sh` (AC 56, AC 53, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_autonomy`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -272,11 +275,13 @@ Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_round6`
 | substituição nos argumentos do push (4) | `-C $(...)` C68 · remoto por `$(...)` C68 · remoto por `$(echo)` C68 · `$(true)` antes da ref C68 | - |
 | substituição em outro lugar (8) | crase em atribuição C68 · `$( )` entre aspas C68 · crase entre aspas C68 · `$( )` aninhado C68 · `$( )` depois da ref C68 · `;` dentro do `$( )` C68 · `$( )` dentro de crase C68 · `$( )` entre aspas dentro de `$( )` C68 | - |
 | texto que o bash não substitui (3) | aspas simples com crase C70 · aspas simples com `$( )` C70 · heredoc `'EOF'` C70 | - |
+| texto citado sem ser executado (6) | `printf` com aspas simples C71 · `--body` com aspas duplas C71 · heredoc `'EOF'` C71 · push com redirecionamento e tail C71 · heredoc dentro de `$( )` C71 · `grep` com aspas duplas C71 | - |
+| texto passado a um shell (2) | `bash <<'EOF'` C71 · printf para sh C71 | - |
 | mensagens de merge do git (5) | `Merge branch` C59 · `Merge branches` C59 · `Merge remote-tracking branch` C59 · `Merge tag` C59 · `Merge commit` C59 | - |
 | saídas do hook de sessão (4) | instala C41 · já instalado C41 · falha C43 · aviso `CLAUDE.md` C42 | - |
 | seções do `AGENTS.md` (5) | `## Fluxo` C34 · `## Autonomia` C34 · `## Skills` C35 · `## Ambiente` C35 · `## Documentação` C48 | - |
 | gates do `test_docs.py` novos (3) | flags C49 · campos do evento C50 · links C51 | - |
-| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4, C59 · 4 C12, C24 · 5 C22 · 6 C26-C30, C57, C58, C60-C70 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
+| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4, C59 · 4 C12, C24 · 5 C22 · 6 C26-C30, C57, C58, C60-C71 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
 
 - Checks que cruzam a fronteira real: C7 (push num remoto local), C25 (CI do GitHub), C32 (issues no GitHub), C45
   (sessão real do `claude`)
