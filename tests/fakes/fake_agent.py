@@ -24,6 +24,9 @@ Sinais: com `FAKE_TRAP` (arquivo), o agente grava uma linha JSON `ready` (pid e 
 recebido (pid, sinal, `time.monotonic()`); um sinal fora de `FAKE_IGNORE` (ex. `SIGINT,SIGTERM`) o encerra com
 `128 + n`. `FAKE_CHILD=1` lança um filho no mesmo grupo com a mesma armadilha, e `FAKE_SLEEP` (segundos) segura o
 agente antes de escrever a saída.
+
+Por modelo: `FAKE_STDOUT_BY_MODEL`, `FAKE_EXIT_BY_MODEL`, `FAKE_SLEEP_BY_MODEL` e `FAKE_RESULT_BY_MODEL` (objetos JSON
+`{"<id>": <valor>}`) escolhem o valor pelo id de `-m`/`--model` do argv; sem o id, vale o `FAKE_*` sem o sufixo.
 """
 
 import json
@@ -54,6 +57,14 @@ def hold(seconds: float) -> None:
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
         time.sleep(0.05)
+
+
+def by_model(name: str, default: str | None) -> str | None:
+    """`FAKE_<name>_BY_MODEL[<id do argv>]`, ou o `FAKE_<name>` de sempre quando o id não está no objeto."""
+    table = json.loads(os.environ.get(f"FAKE_{name}_BY_MODEL", "{}"))
+    flag = "--model" if tool == "claude" else "-m"
+    model = args[args.index(flag) + 1] if flag in args[:-1] else None
+    return str(table[model]) if model in table else default
 
 
 if os.environ.get("FAKE_ROLE") == "child":
@@ -146,9 +157,10 @@ if record:
             f,
         )
 
-if "FAKE_RESULT" in os.environ:
+fake_result = by_model("RESULT", os.environ.get("FAKE_RESULT"))
+if fake_result is not None:
     with open(os.environ["GROKBOT_KIT_RESULT_FILE"], "w", encoding="utf-8") as f:
-        f.write(os.environ["FAKE_RESULT"])
+        f.write(fake_result)
 
 if "FAKE_LAST_MESSAGE" in os.environ and "-o" in args:
     with open(args[args.index("-o") + 1], "w", encoding="utf-8") as f:
@@ -170,7 +182,7 @@ if trap:
     trap_signals(trap)
     if os.environ.get("FAKE_CHILD") == "1":
         subprocess.Popen([sys.executable, os.path.realpath(__file__)], env={**os.environ, "FAKE_ROLE": "child"})
-hold(float(os.environ.get("FAKE_SLEEP", "0")))
+hold(float(by_model("SLEEP", os.environ.get("FAKE_SLEEP", "0")) or "0"))
 
-sys.stdout.write(os.environ.get("FAKE_STDOUT", ""))
-sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
+sys.stdout.write(by_model("STDOUT", os.environ.get("FAKE_STDOUT", "")) or "")
+sys.exit(int(by_model("EXIT", os.environ.get("FAKE_EXIT", "0")) or "0"))

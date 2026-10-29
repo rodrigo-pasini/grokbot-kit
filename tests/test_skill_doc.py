@@ -450,3 +450,63 @@ def test_plugin_commands_exist_in_help() -> None:
         assert result.returncode == 0, (command, result.stderr)
         for flag in re.findall(r"(?<!\S)(--[a-z][a-z-]*)", command):
             assert flag in result.stdout, (command, flag)
+
+
+# --- model-setup-docs (checks C13-C18; AC 14-20) ------------------------------------------------------------------
+
+
+# C13 - AC 14
+def test_models_refresh_json_first() -> None:
+    s = norm(section("Modelos e tiers"))
+    assert "grokbot-kit setup models refresh --json" in s
+    first = s.index("grokbot-kit setup models refresh --json")
+    assert first < s.index("grokbot-kit setup providers")
+    assert first < s.index("grokbot-kit setup tiers")
+
+
+# C14 - AC 15
+def test_providers_question() -> None:
+    p = norm(paragraph_with("provedores do opencode"))
+    assert "única pergunta de múltipla escolha" in p
+    assert "`provider`" in p
+    assert "quantos ids" in p
+    assert "grokbot-kit setup providers opencode <provider>" in norm(section("Modelos e tiers"))
+    assert "`opencode` instalado" in p
+
+
+# C15 - AC 16
+def test_paid_provider_login() -> None:
+    p = norm(paragraph_with("provedor pago"))
+    assert "login" in p
+    assert "grokbot-kit login opencode" in p
+
+
+# C16 - AC 17
+def test_tier_question_per_tier() -> None:
+    p = norm(paragraph_with("uma pergunta por tier"))
+    for tier in ("`trivial`", "`standard`", "`complex`"):
+        assert tier in p, tier
+    assert "até 4 ids" in p
+    assert "lista descoberta" in p
+    assert "recomendado primeiro" in p
+    assert "só ids dos provedores escolhidos" in p
+    assert "grokbot-kit setup tiers <tool> <tier> <id>" in norm(section("Modelos e tiers"))
+
+
+# C17 - AC 18, AC 19
+def test_free_first_only_without_paid() -> None:
+    free = norm(paragraph_with("gratuitos do opencode primeiro"))
+    assert "só o provedor `opencode`" in free
+    assert "`trivial` e `standard`" in free
+    paid = norm(paragraph_with("provedor que não é `opencode`"))
+    assert "primeiro" in paid
+    assert "todos os tiers" in paid
+
+
+# C18 - AC 20
+def test_change_models_redo_steps() -> None:
+    p = norm(paragraph_with("trocar os modelos"))
+    assert "grokbot-kit setup models refresh --json" in p
+    assert "provedores" in p and "tiers" in p
+    for absent in ("setup cli add", "login", "route add"):
+        assert absent not in p, absent

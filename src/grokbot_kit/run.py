@@ -194,9 +194,12 @@ def stop_group(proc: "subprocess.Popen[bytes]", sent_at: float, grace: float = G
     proc.wait()
 
 
-def _supervise(argv: list[str], timeout_seconds: int, task_dir: Path, **popen: Any) -> tuple[int | None, str | None]:
-    """Lança o agente num grupo próprio e espera; devolve `(returncode, stopped)`, com `returncode` `None` quando o
-    binário não existe e `stopped` `"timeout"` ou `"interrupted"` quando o kit encerrou o agente (AC 87, 88)."""
+def _supervise(
+    argv: list[str], timeout_seconds: int, deadline: float, task_dir: Path, **popen: Any
+) -> tuple[int | None, str | None]:
+    """Lança o agente num grupo próprio e espera até `deadline` (`time.monotonic()`); devolve `(returncode, stopped)`,
+    com `returncode` `None` quando o binário não existe e `stopped` `"timeout"` ou `"interrupted"` quando o kit
+    encerrou o agente (AC 87, 88)."""
     received: list[tuple[int, float]] = []
     group: list[int] = []
 
@@ -214,7 +217,6 @@ def _supervise(argv: list[str], timeout_seconds: int, task_dir: Path, **popen: A
         group.append(proc.pid)
         if received:
             _signal_group(proc.pid, received[0][0])
-        deadline = time.monotonic() + timeout_seconds
         while proc.poll() is None and not received and time.monotonic() < deadline:
             time.sleep(POLL_SECONDS)
         stopped = None
@@ -333,6 +335,7 @@ def run(args: argparse.Namespace) -> int:
 
     tool: str = r["tool"]
     started = datetime.now(UTC)
+    started_clock = time.monotonic()
     task_id = f"{started:%Y%m%dT%H%M%S}-{args.label}-{secrets.token_hex(3)}"
     task_dir = config.tasks_dir() / task_id
     task_dir.mkdir(parents=True, mode=0o700)
@@ -360,7 +363,6 @@ def run(args: argparse.Namespace) -> int:
             claude_settings["permissions"] = harness.permissions
         settings = json.dumps(claude_settings, indent=2) + "\n"
         (task_dir / "claude-settings.json").write_text(settings, encoding="utf-8")
-    argv = launch.agent_argv(tool, bin_path, r["model"], task_dir, kit_exe, extras)
     env = {
         **os.environ,
         "GROKBOT_KIT_TASK_ID": task_id,
@@ -382,6 +384,7 @@ def run(args: argparse.Namespace) -> int:
         "tool": tool,
         "model": r["model"],
         "model_source": r["model_source"],
+        "model_fallbacks": [],
         "tier": r["tier"],
         "timeout_seconds": r["timeout_seconds"],
         "cwd": str(cwd),
@@ -404,19 +407,38 @@ def run(args: argparse.Namespace) -> int:
             _log(task_dir, f"clone failed, agent not launched: {failure}")
             return _finish(task_dir, cfg, args.target, meta, "error", "failed", "agent_error", 1, failure)
 
-    _log(task_dir, f"launch {tool} model={r['model']} timeout={r['timeout_seconds']}s")
-
-    with (task_dir / "out.jsonl").open("wb") as out, (task_dir / "stderr.log").open("wb") as err:
-        returncode, stopped = _supervise(
-            argv,
-            r["timeout_seconds"],
-            task_dir,
-            stdin=subprocess.DEVNULL,
-            stdout=out,
-            stderr=err,
-            cwd=cwd,
-            env=env,
-        )
+    # door 5 da model-setup-docs: com o modelo do tier, uma tentativa que caiu no provedor antes de qualquer
+    # ferramenta passa ao próximo id; todas dividem o prazo contado do início da task
+    candidates = r["cli"].get("tiers", {}).get(r["tier"], []) if r["model_source"] == "tier" else [r["model"]]
+    deadline = started_clock + r["timeout_seconds"]
+    for attempt, model in enumerate(candidates):
+        if attempt:
+            (task_dir / "out.jsonl").rename(task_dir / f"out.{attempt}.jsonl")
+            (task_dir / "stderr.log").rename(task_dir / f"stderr.{attempt}.log")
+            meta["model"] = model
+            _write_meta(task_dir, meta)
+        argv = launch.agent_argv(tool, bin_path, model, task_dir, kit_exe, extras)
+        _log(task_dir, f"launch {tool} model={model} timeout={r['timeout_seconds']}s")
+        with (task_dir / "out.jsonl").open("wb") as out, (task_dir / "stderr.log").open("wb") as err:
+            returncode, stopped = _supervise(
+                argv,
+                r["timeout_seconds"],
+                deadline,
+                task_dir,
+                stdin=subprocess.DEVNULL,
+                stdout=out,
+                stderr=err,
+                cwd=cwd,
+                env=env,
+            )
+        if returncode is None or attempt + 1 == len(candidates):
+            break
+        if not terminal.fallback_eligible(tool, task_dir, stopped):
+            break
+        reason = terminal.read_output(tool, task_dir).summary
+        meta["model_fallbacks"].append({"model": model, "error": reason})
+        nxt = candidates[attempt + 1]
+        _log(task_dir, f"model {model} failed at the provider before any tool call ({reason}); trying {nxt}")
     if returncode is None:
         _log(task_dir, f"binary not found: {bin_path}")
         exit_code = EXIT_NOT_FOUND

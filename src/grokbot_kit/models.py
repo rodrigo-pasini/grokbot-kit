@@ -1,5 +1,8 @@
-"""`grokbot-kit setup models refresh`: a lista de modelos descobertos de cada CLI (AC 84-86, doors 12 e 16)."""
+"""`grokbot-kit setup models refresh`: a lista de modelos descobertos de cada CLI (AC 84-86, doors 12 e 16).
 
+Com `--json`, um objeto com o `provider` de cada id (door 1 da model-setup-docs)."""
+
+import json
 import os
 import subprocess
 import sys
@@ -21,6 +24,11 @@ class Discovery(NamedTuple):
     rejected: list[tuple[str, str]]
     failed: bool
     error: str = ""
+
+
+def provider(tool: str, model: str) -> str | None:
+    """O provedor de um id: o texto antes do primeiro `/` no opencode; `None` nas outras CLIs."""
+    return model.split("/", 1)[0] if tool == "opencode" and "/" in model else None
 
 
 def _bin(tool: str, cli: dict[str, Any]) -> str:
@@ -102,7 +110,7 @@ def _err(message: str) -> None:
     print(f"grokbot-kit setup: {message}", file=sys.stderr)
 
 
-def refresh(tool: str | None, add: list[str]) -> int:
+def refresh(tool: str | None, add: list[str], as_json: bool = False) -> int:
     try:
         cfg = config.load(validate=False) if config.config_path().exists() else {}
     except config.ConfigError as e:
@@ -119,6 +127,7 @@ def refresh(tool: str | None, add: list[str]) -> int:
         _err("--add does not apply to opencode: its model ids come from opencode models")
         return 2
     status, changed = 0, False
+    items: list[dict[str, str | None]] = []
     for t in tools:
         cli = cfg.get("cli", {}).get(t, {})
         found = discover(t, cli, add)
@@ -134,11 +143,16 @@ def refresh(tool: str | None, add: list[str]) -> int:
         cfg.setdefault("cli", {})[t] = cli
         changed = True
         for model in found.ids:
-            print(f"{t}\t{model}")
+            if as_json:
+                items.append({"tool": t, "id": model, "provider": provider(t, model)})
+            else:
+                print(f"{t}\t{model}")
         for tier, ids in cli.get("tiers", {}).items():
             for model in ids:
                 if model not in found.ids:
                     _err(f"cli.{t}.tiers.{tier} has {model!r}, which was not discovered; remove it from that tier")
     if changed:
         config.save(cfg)
+    if as_json:
+        print(json.dumps({"models": items}, ensure_ascii=False))
     return status

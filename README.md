@@ -1,9 +1,9 @@
 # grokbot-kit
 
+> Leia em português: [docs/pt-BR/README.md](docs/pt-BR/README.md)
+
 Grok Bot integration kit: delegate tasks to headless coding agents (opencode, Claude Code, Codex) and wake the right
 Grok Bot routine when they finish or need input.
-
-> Leia em português: [docs/pt-BR/README.md](docs/pt-BR/README.md)
 
 **Status:** `0.x`. The commands below work; the event schema `grokbot-kit.event/v1` may still change, always with a
 [CHANGELOG](CHANGELOG.md) entry.
@@ -97,6 +97,62 @@ grokbot-kit run --target mybot --label rename-vars -- "Rename the variables in x
 `skills/grokbot-kit/` is a skill for any Grok Bot. Copy the folder into the bot's workflows directory and the bot can
 install the kit, install and log in to the CLIs you choose, create the route to its own routine, and delegate tasks
 choosing CLI and model.
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `grokbot-kit run` | runs a task in a headless agent and sends one terminal event to the route of `--target`; the model comes from `--model` or from `--tier` (`trivial`, `standard`, `complex`), and `--plugin` runs a [plugin](#plugins) |
+| `grokbot-kit emit` | called by the agents' hooks inside a task; not for direct use |
+| `grokbot-kit redeliver <task_id>` | resends the events of a task that were not delivered |
+| `grokbot-kit gc --older-than <duration>` | removes the task dirs of tasks that finished long ago; `--dry-run` only lists them |
+| `grokbot-kit route add <bot>` | `add` routes a bot to its routine webhook (URL and key from two secrets), `rm` removes the route, `test` sends a `test` event |
+| `grokbot-kit setup cli add <tool>` | sets up the CLIs: `cli add` installs one with its official installer, `default` picks the one used when a task names none, `models refresh` discovers the model ids, `providers` picks the opencode providers and `tiers` sets the ids of a tier (see [Models](#models)) |
+| `grokbot-kit login <tool>` | logs a CLI in with its official command, by subscription or API key (`--method`) |
+| `grokbot-kit doctor` | checks versions, CLIs, logins, routes, secrets and plugins, with the command that fixes each problem; `--json` for the bot |
+| `grokbot-kit install opencode` | installs the opencode plugin that reports permission requests (inert outside a task) |
+| `grokbot-kit uninstall opencode` | removes the opencode plugin |
+| `grokbot-kit update check` | tells whether a new release exists; `apply` upgrades, `skip <version>` and `later` stop asking |
+| `grokbot-kit plugin list` | lists the plugins; `show` prints a manifest, `add` installs one from a directory or git URL, `rm` removes it |
+| `grokbot-kit secret set <name>` | stores a secret in `~/.secrets/grokbot-kit/` with mode `0600`, read without echo or from stdin |
+
+`grokbot-kit <command> --help` shows every option.
+
+## Plugins
+
+A plugin is a ready-made task: a prompt, the inputs it asks for and what the agent may do while it runs (`write`,
+`network`, `commands`). The kit ships `code-review` (reviews a GitHub pull request) and `bug-verify`;
+`grokbot-kit plugin list` shows them and the installed ones. The bot runs a plugin with a few inputs, without writing a
+prompt, and the event brings the plugin's structured result:
+
+```sh
+grokbot-kit run --plugin code-review --input pr=https://github.com/<owner>/<repo>/pull/<n> --target <bot> --label review
+```
+
+The format, the capabilities each CLI enforces and how to write a plugin are in [docs/plugins.md](docs/plugins.md).
+
+## Models
+
+`grokbot-kit setup models refresh --json` lists the model ids of each CLI. In opencode, each id carries its provider,
+the text before the first `/` (`opencode-go` in `opencode-go/<model>`). The bot asks which opencode providers you use
+and records them; a paid provider needs `grokbot-kit login opencode` first:
+
+```sh
+grokbot-kit setup providers opencode opencode-go
+```
+
+Then it asks for the ids of each tier, in order. With providers recorded, `setup tiers` refuses an opencode id from
+another provider, and `grokbot-kit doctor` reports a tier that has one:
+
+```sh
+grokbot-kit setup tiers opencode standard <id> <id>
+```
+
+`grokbot-kit run --tier <tier>` launches the first id of the tier. When the provider fails before the agent uses any
+tool (opencode: an `error` with no `tool_use`; Claude Code: an `api_error` in the first turn), the kit launches the
+next id in the same task, within the same timeout. The event names the model that ran last in `model` and lists the
+ones that failed, with the reason, in `model_fallbacks`. A model given with `--model` is never replaced, and Codex
+never falls back. When a task fails without a final message from the agent, `summary` carries the error of the CLI.
 
 ## Configuration
 

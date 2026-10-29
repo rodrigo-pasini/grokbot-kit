@@ -1,8 +1,7 @@
 # grokbot-kit
 
 Kit de integração Grok Bot: delegar tarefas a agentes headless (opencode, Claude Code, Codex)
-e acordar a routine do bot certo. Spec e decisões em `docs/` (`docs/SPEC.md` é cópia de leitura
-gerada; os originais ficam em `docs/.specs/`).
+e acordar a routine do bot certo. Specs e decisões em `docs/.specs/`.
 
 ## Gate de implementação (obrigatório)
 
@@ -33,7 +32,9 @@ o clone principal não recebe edição de código.
 - Fora da regra: `docs/.specs/` (specs e decisões, em pt-BR), `CLAUDE.md`, `AGENTS.md`, o `CHANGELOG.md` (só em
   inglês) e o que o kit entrega ao bot (`skills/grokbot-kit/SKILL.md` e os prompts e skills dos plugins próprios),
   que seguem a língua do bot.
-- Pendente: `CONTRIBUTING.md` existe só em pt-BR.
+- Mudança de comportamento visível (comando, flag, config, evento, plugin) atualiza o `README.md` e o doc do tema, em
+  inglês e em pt-BR, no mesmo PR; o plano de cada feature tem critério de doc. O `tests/test_docs.py` quebra quando um
+  subcomando de topo do `grokbot-kit` não aparece nos dois READMEs ou um doc fica sem par linkado.
 
 ## Git
 

@@ -13,7 +13,7 @@ import subprocess
 import sys
 from typing import Any
 
-from grokbot_kit import config, launch, opencode_plugin, update
+from grokbot_kit import config, launch, models, opencode_plugin, update
 from grokbot_kit import plugin as plugins
 from grokbot_kit.launch import TOOLS
 
@@ -88,8 +88,24 @@ def _cli(tool: str, cli: dict[str, Any], default: str | None) -> dict[str, Any]:
         "tiers": {tier: len(tiers.get(tier, [])) for tier in TIERS},
     }
     if tool == "opencode":
+        entry["providers"] = cli.get("providers")
         entry["plugin"] = _plugin()
     return entry
+
+
+def _provider_problems(cfg: dict[str, Any]) -> list[str]:
+    """Ids de tier do opencode cujo provedor está fora de `cli.opencode.providers` (door 3 da model-setup-docs)."""
+    cli = cfg.get("cli", {}).get("opencode", {})
+    allowed = cli.get("providers")
+    if allowed is None:
+        return []
+    return [
+        f"cli.opencode.tiers.{tier} has {model!r}, whose provider is not in cli.opencode.providers; "
+        f"run: grokbot-kit setup tiers opencode {tier} ..."
+        for tier, ids in cli.get("tiers", {}).items()
+        for model in ids
+        if models.provider("opencode", model) not in allowed
+    ]
 
 
 def problems(out: dict[str, Any], facts: dict[str, Any]) -> list[str]:
@@ -128,6 +144,7 @@ def problems(out: dict[str, Any], facts: dict[str, Any]) -> list[str]:
             found.append(f"secret {name!r} has mode {secret['mode']}, expected 0600; run: chmod 600 {name}")
     for name in facts.get("missing_secrets", []):
         found.append(f"secret {name!r} is used in the config but not found; run: grokbot-kit secret set {name}")
+    found += facts.get("provider_problems", [])
     found += facts.get("plugin_problems", [])
     return found
 
@@ -157,6 +174,7 @@ def collect() -> tuple[dict[str, Any], dict[str, Any]]:
     used = [sink[k] for sink in cfg.get("sinks", {}).values() for k in SECRET_KEYS if k in sink]
     used += [cli["api_key_secret"] for cli in cfg.get("cli", {}).values() if "api_key_secret" in cli]
     facts["missing_secrets"] = sorted({str(n) for n in used if str(n) not in secrets})
+    facts["provider_problems"] = _provider_problems(cfg)
     found_plugins = plugins.all_plugins()
     facts["plugin_problems"] = plugins.installed()[1]
     gh_logged_in = None
