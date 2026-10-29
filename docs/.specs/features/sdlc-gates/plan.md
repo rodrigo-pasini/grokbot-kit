@@ -222,12 +222,14 @@ próprio git escreve num merge.
 48. WHEN `&&`, `||`, `;`, `|` ou `&` aparecem dentro de aspas THEN `gate-humano.sh` SHALL não cortar o comando nesse ponto (`git commit -m "fix: a; git push origin main"` sai sem saída)
 49. IF o push para `main` vem com barra invertida (`\git`, `ma\in`), num subshell `( ... )` ou em segundo plano (`... main&`) THEN `gate-humano.sh` SHALL devolver `deny`
 
-50. IF o comando de `git` ou `gh` vem dentro de `$( )` ou de crase THEN `gate-humano.sh` SHALL decidir o comando de dentro, como se viesse sozinho
+50. IF o comando de `git` ou `gh` vem dentro de `$( )` ou de crase e o comando de fora não é negado THEN `gate-humano.sh` SHALL devolver `ask` (reescrita depois da rodada 6, por decisão do Rodrigo: o gate não tenta ler o comando de dentro)
 51. IF `--git-dir`, `--work-tree` ou `--namespace` vêm com o valor na palavra seguinte THEN `gate-humano.sh` SHALL tratá-los como na AC 47, e IF o `git -c` define um `alias.` THEN SHALL devolver `ask`
 52. WHEN o Bash vai rodar `git push --follow-tags`, `gh pr` com flags antes de `merge`, ou `gh api` em `merge`, `releases` ou `git/refs` THEN `gate-humano.sh` SHALL devolver `ask`; e IF flags curtas combinadas trazem `f` ou `d` (`-uf`) THEN SHALL não devolver `allow`
 
-53. IF um `$( )` ou crase aparece nos argumentos de um `git push` para `main` (`git -C $(pwd) push origin main`, `git push $(git remote) main`) THEN `gate-humano.sh` SHALL seguir devolvendo `deny`; e o conteúdo de cada `$( )` e crase, entre aspas ou não, SHALL ser decidido como um comando à parte
+53. IF um `$( )` ou crase aparece nos argumentos de um `git push` para `main` (`git -C $(pwd) push origin main`, `git push $(git remote) main`) THEN `gate-humano.sh` SHALL seguir devolvendo `deny`; e IF um comando com `$`, crase, `(`, `)`, `\` ou quebra de linha cita `git` ou `gh` junto de `push`, `tag`, `merge`, `release` ou `api` e o comando de fora não dá `deny` nem `ask` THEN SHALL devolver `ask` (reescrita depois da rodada 6, por decisão do Rodrigo: falhar fechado em vez de ler o shell)
 54. IF `-c` ou `--config-env` definem um alias em qualquer caixa (`alias.`, `Alias.`), ou o `gh api graphql` chama `mergePullRequest` THEN `gate-humano.sh` SHALL devolver `ask`
+
+55. IF o texto que cita `git push` para `main` está onde o bash não substitui (entre aspas simples, num heredoc com `'EOF'`) THEN `gate-humano.sh` SHALL não devolver `deny`; e IF o `gh api graphql` chama `enablePullRequestAutoMerge`, ou `--config-env=` define um alias THEN SHALL devolver `ask`
 
 **Independent test:** `git push origin "main"` e `bash -c "git push origin main"` não passam sem o Rodrigo ver; `git pull` numa branch divergida faz o merge sem `--no-verify`.
 

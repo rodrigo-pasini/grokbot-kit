@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 19,
+  "next_id": 21,
   "lessons": [
     {
       "id": "L-001",
@@ -328,6 +328,42 @@
       ],
       "created": "2026-10-29T17:53:22Z",
       "last_seen": "2026-10-29T17:53:22Z"
+    },
+    {
+      "id": "L-019",
+      "key": "spec_deviation::quando o gate decide o conteudo de substituicoes aninhadas o check poe o comando perigoso em cada nivel do aninhamento tambem no de fora e dentro de crase extrair so o nivel mais de dentro deixa o de fora sem decisao",
+      "text": "Quando o gate decide o conteúdo de substituições aninhadas, o check põe o comando perigoso em cada nível do aninhamento, também no de fora e dentro de crase; extrair só o nível mais de dentro deixa o de fora sem decisão.",
+      "signal": "spec_deviation",
+      "scope": "hooks",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "R6 regressão .claude/hooks/gate-humano.sh:163 (hooks)"
+      ],
+      "created": "2026-10-29T18:12:25Z",
+      "last_seen": "2026-10-29T18:12:25Z"
+    },
+    {
+      "id": "L-020",
+      "key": "ac_gap::quando o gate imita uma regra do shell o check poe um caso do lado em que o shell nao aplica a regra aspas simples heredoc com eof caractere escapado sem ele o gate decide texto literal e nega comando inofensivo",
+      "text": "Quando o gate imita uma regra do shell, o check põe um caso do lado em que o shell não aplica a regra (aspas simples, heredoc com 'EOF', caractere escapado); sem ele, o gate decide texto literal e nega comando inofensivo.",
+      "signal": "ac_gap",
+      "scope": "hooks",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "AC 23 / AC 53 .claude/hooks/gate-humano.sh:163 (hooks)"
+      ],
+      "created": "2026-10-29T18:12:25Z",
+      "last_seen": "2026-10-29T18:12:25Z"
     }
   ]
 }

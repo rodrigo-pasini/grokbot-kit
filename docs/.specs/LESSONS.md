@@ -122,6 +122,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: R5 regressão .claude/hooks/gate-humano.sh:146 (hooks)
 - last seen: 2026-10-29T17:53:22Z
 
+### L-019 - Quando o gate decide o conteúdo de substituições aninhadas, o check põe o comando perigoso em cada nível do aninhamento, também no de fora e dentro de crase; extrair só o nível mais de dentro deixa o de fora sem decisão.
+- signal: `spec_deviation` · recurrence: 1 feature(s) · scope: `hooks` · harmful: 0
+- features: sdlc-gates
+- evidence: R6 regressão .claude/hooks/gate-humano.sh:163 (hooks)
+- last seen: 2026-10-29T18:12:25Z
+
+### L-020 - Quando o gate imita uma regra do shell, o check põe um caso do lado em que o shell não aplica a regra (aspas simples, heredoc com 'EOF', caractere escapado); sem ele, o gate decide texto literal e nega comando inofensivo.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `hooks` · harmful: 0
+- features: sdlc-gates
+- evidence: AC 23 / AC 53 .claude/hooks/gate-humano.sh:163 (hooks)
+- last seen: 2026-10-29T18:12:25Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
