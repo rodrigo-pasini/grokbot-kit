@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `docs/event.md` (and `docs/pt-BR/event.md`) describes each of the 26 fields of the event `grokbot-kit.event/v1` and
+  the `event`/`status`/`exit_reason` combinations; the README now names every option of every command, including
+  `--version`, `run --tool`, `run --timeout`, `run --prompt-file`, `route add --header`, `login --secret` and
+  `setup models refresh --add`.
+
 ## [0.5.0] - 2026-10-29
 
 ### Added

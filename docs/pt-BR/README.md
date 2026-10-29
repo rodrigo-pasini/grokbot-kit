@@ -116,7 +116,16 @@ tarefas escolhendo CLI e modelo.
 | `grokbot-kit plugin list` | lista os plugins; `show` mostra um manifesto, `add` instala um de um diretório ou URL git, `rm` remove |
 | `grokbot-kit secret set <nome>` | grava um segredo em `~/.secrets/grokbot-kit/` com modo `0600`, lido sem eco ou da entrada padrão |
 
-`grokbot-kit <comando> --help` mostra todas as opções.
+`grokbot-kit <comando> --help` mostra todas as opções. As que não aparecem acima:
+
+- `grokbot-kit --version` mostra a versão instalada.
+- `run --tool <tool>` escolhe a CLI da tarefa (padrão: a gravada com `setup default`); `run --timeout <duração>`
+  (`30m`, `2h`, `1d`) substitui o `timeouts.<tier>` do config; `run --prompt-file <arquivo>` lê o prompt de um arquivo,
+  passado ao agente depois dos argumentos que seguem o `--`.
+- `emit --from <tool>` diz de qual CLI é o hook que chama.
+- `route add --header 'Nome: valor'` acrescenta um header a toda requisição da rota; repetível.
+- `setup models refresh --add <id>` (`claude` e `codex`) também testa e grava um id que a descoberta não lista.
+- `login --secret <nome>` diz o segredo que guarda a API key (padrão: `<tool>-api-key`).
 
 ## Plugins
 
@@ -153,6 +162,12 @@ ferramenta (opencode: um `error` sem `tool_use`; Claude Code: um `api_error` no 
 id na mesma tarefa, dentro do mesmo timeout. O evento diz em `model` o modelo que rodou por último e lista em
 `model_fallbacks` os que falharam, com o motivo. Um modelo dado com `--model` nunca é trocado, e o Codex nunca tenta
 outro. Quando a tarefa falha sem mensagem final do agente, o `summary` traz o erro da CLI.
+
+## Evento
+
+Cada evento que a routine recebe é um objeto JSON `grokbot-kit.event/v1`: `event` e `status` dizem como a tarefa
+terminou, `summary` traz a mensagem final do agente e `resume_hint` o comando que retoma a sessão dele. Todos os campos
+estão descritos em [event.md](event.md).
 
 ## Configuração
 

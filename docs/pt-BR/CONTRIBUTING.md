@@ -11,8 +11,9 @@ uv sync
 uv run pre-commit install
 ```
 
-`uv sync` cria `.venv/` com as dependências de desenvolvimento do `uv.lock`; `pre-commit install` liga os hooks
-de `.pre-commit-config.yaml` (ruff, checagens de TOML/YAML, espaços e `mypy`) a cada commit.
+`uv sync` cria `.venv/` com as dependências de desenvolvimento do `uv.lock`; `pre-commit install` instala os hooks
+`pre-commit`, `commit-msg` e `pre-push` de `.pre-commit-config.yaml` (ruff, checagens de TOML/YAML, espaços, `mypy` e
+as regras do fluxo do `tools/sdlc.py`, veja [Gates do fluxo](#gates-do-fluxo)).
 
 ## Lint, tipos e testes
 
@@ -29,22 +30,46 @@ marcados com `integration` usam as CLIs reais ou o GitHub e só rodam no box: `u
 ## Fluxo de PR
 
 - Tudo sai de `main` e volta por pull request; `main` é protegida e só aceita squash merge.
-- Branch no padrão `<tipo>/<id>/<slug>`, commits em [Conventional Commits](https://www.conventionalcommits.org/)
-  sem `Co-Authored-By`.
-- O pull request só entra com os 5 checks do CI verdes; o título vira a mensagem do squash.
+- Toda tarefa nasce de um issue no GitHub. Branch no padrão `<tipo>/<issue>/<slug>`, com o número do issue
+  (`feat/31/sdlc-gates`), e o corpo do pull request liga o issue com `Closes #<issue>` (ou `Fixes #`, `Refs #`).
+- Commits e título do pull request em [Conventional Commits](https://www.conventionalcommits.org/), até 100
+  caracteres na primeira linha, sem `Co-Authored-By`.
+- O pull request só entra com os 6 checks do CI verdes; o título vira a mensagem do squash.
 - Mudança de comportamento ganha entrada em `## [Unreleased]` no `CHANGELOG.md`.
 - Mudança de comportamento visível (comando, flag, config, evento, plugin) atualiza no mesmo PR o `README.md` e o doc
   do tema, em inglês e na tradução em `docs/pt-BR/`; o `tests/test_docs.py` quebra quando um subcomando não aparece
   nos READMEs ou um doc fica sem par.
 - Nunca cole tokens, keys ou URLs secretas em commit, issue ou pull request.
 
-## Gate de worktree do Claude Code
+## Gates do fluxo
+
+As regras do fluxo falham cedo, por máquina, pelo `tools/sdlc.py` (só a biblioteca padrão do Python):
+
+- hook `commit-msg`: a primeira linha segue Conventional Commits e nenhuma linha é `Co-authored-by:`.
+- hook `pre-commit`: nenhum commit em `main`, e nenhum commit de código no clone principal (ali, só `docs/`, `.specs/`,
+  `.claude/`, `.agents/` e `AGENTS.md`); `GROKBOT_KIT_ALLOW_MAIN_EDIT=1` desliga a segunda regra.
+- hook `pre-push`: a branch casa `<tipo>/<issue>/<slug>`, `chore/release/<versão>` ou `dependabot/`.
+- job `process` do CI, check obrigatório: o `tools/sdlc.py pr` confere título, branch, commits e `Closes #<issue>` do
+  pull request, roda os validadores do `tlc-spec-lean` de cada feature que o PR toca, recusa mudança em `src/` ou
+  `skills/` sem `verification.md`, `plan.md` sem a linha `**Approved**: AAAA-MM-DD` e `## Handoff` do
+  `docs/.specs/STATE.md` com mais de 40 linhas, e confere a doc: doc pareado alterado sem o par, e `feat` ou `fix`
+  que muda `src/` ou `skills/` sem entrada em `## [Unreleased]` ou sem doc (ou uma linha `Docs: n/a - <razão>` no
+  corpo).
+
+Qualquer regra roda à mão: `python3 tools/sdlc.py --help`.
+
+## Instruções dos agentes e Claude Code
+
+As instruções para agentes de código (fluxo, autonomia, skills, ambiente, regra de doc) estão no `AGENTS.md`, o único
+arquivo de instruções do projeto. O Claude Code o lê a partir da versão 2.1.277, desde que não exista `CLAUDE.md` nem
+`CLAUDE.local.md` na raiz: um `CLAUDE.local.md` local desliga essa leitura. O hook de início de sessão
+`.claude/hooks/session-start.sh` avisa disso e instala os hooks git quando faltam.
 
 Quem trabalha com o Claude Code neste repositório faz cada tarefa de código numa worktree dedicada em
-`../worktrees/`. O hook `.claude/hooks/gate-worktree.sh` (PreToolUse em Edit/Write) nega edição de código no
-clone principal, onde só `docs/`, `.specs/`, `.claude/`, `.agents/`, `CLAUDE.md` e `AGENTS.md` são editáveis.
-Para trabalhar de propósito no clone principal, rode a sessão com `GROKBOT_KIT_ALLOW_MAIN_EDIT=1`. Detalhes em
-`CLAUDE.md`.
+`../worktrees/`. O hook `.claude/hooks/gate-worktree.sh` (PreToolUse em Edit/Write) nega edição de código no clone
+principal. Para trabalhar de propósito no clone principal, rode a sessão com `GROKBOT_KIT_ALLOW_MAIN_EDIT=1`. O hook
+`.claude/hooks/gate-humano.sh` (PreToolUse em Bash) deixa o agente fazer push de branch de feature e abrir pull
+request, pede confirmação antes de merge, tag, release ou mudança na proteção da branch, e nega push para `main`.
 
 ## Release e PyPI
 
