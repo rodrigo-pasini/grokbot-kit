@@ -233,6 +233,10 @@ próprio git escreve num merge.
 
 56. WHEN `git`/`gh` com `push`, `tag`, `merge`, `release` ou `api` aparecem só em texto que o bash não executa (aspas simples, aspas duplas sem `$( )` nem crase, corpo de heredoc) e o comando não passa texto a um shell THEN `gate-humano.sh` SHALL não pedir confirmação; e um `git push` de branch de feature com `2>&1 | tail` SHALL não pedir confirmação (autonomia: mensagem de commit, comentário e corpo de PR citam esses comandos o tempo todo)
 
+57. IF o gate não acha a linha de fim de um heredoc (delimitador com aspas no meio, `-` ou `.`, ou um `<<` de aritmética, `$((1<<2))`, `(( x = 1 << 2 ))`) THEN `gate-humano.sh` SHALL ler o resto do texto como comando, e um `git push` para `main` depois dele SHALL dar `deny`
+58. WHEN o texto entre aspas tem várias linhas THEN `gate-humano.sh` SHALL não ler nenhuma delas como comando; e IF o `$( )` entre aspas duplas tem aspas dentro, ou o texto é passado a `$SHELL`, `.` ou `eval` THEN o trecho executado SHALL ser lido como na AC 53
+59. IF o refspec de um `git push` traz um redirecionamento colado (`main>/dev/null`, `HEAD:main>log`) THEN `gate-humano.sh` SHALL ler o refspec sem ele, e IF traz chaves (`{main,}`), ou o comando é `git rebase -x`/`--exec`, `git submodule foreach` ou `git bisect run` THEN SHALL devolver `ask`
+
 **Independent test:** `git push origin "main"` e `bash -c "git push origin main"` não passam sem o Rodrigo ver; `git pull` numa branch divergida faz o merge sem `--no-verify`.
 
 ## Out of scope

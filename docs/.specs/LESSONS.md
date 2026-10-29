@@ -134,6 +134,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: AC 23 / AC 53 .claude/hooks/gate-humano.sh:163 (hooks)
 - last seen: 2026-10-29T18:12:25Z
 
+### L-021 - Quando o gate descarta um trecho como dado até um marcador de fim (corpo de heredoc), o check põe um caso em que o gate não acha o marcador que o shell acha (delimitador com aspas no meio, com '-', ou '<<' aritmético) seguido de um comando perigoso; sem ele, o gate descarta o comando junto.
+- signal: `spec_deviation` · recurrence: 1 feature(s) · scope: `hooks` · harmful: 0
+- features: sdlc-gates
+- evidence: R7 regressão .claude/hooks/gate-humano.sh:193-225 (hooks)
+- last seen: 2026-10-29T19:43:50Z
+
+### L-022 - Quando o gate trata texto entre aspas ou de heredoc como dado, o check põe um caso com o texto em várias linhas e uma linha que começa com o comando perigoso; ler o resultado linha a linha corta o texto de novo.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `hooks` · harmful: 0
+- features: sdlc-gates
+- evidence: C70/C71 AC 55-56 .claude/hooks/gate-humano.sh:190 (hooks)
+- last seen: 2026-10-29T19:43:50Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

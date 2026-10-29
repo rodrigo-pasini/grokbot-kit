@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/sdlc-gates/plan.md`
 
-71 checks em 8 slices · 9 one-way doors · 0 open
+74 checks em 8 slices · 9 one-way doors · 0 open
 
 Convenções das provas:
 
@@ -248,6 +248,15 @@ Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_round6`
 **C71** - `gate-humano.sh` sai com `0` e stdout vazio para um `printf` com texto entre aspas simples que cita `git push origin main` e `gh pr merge` seguido de `git commit -q -F`, para `gh issue comment 35 --body "cita git push e gh release"`, para `cat > f.md <<'EOF'` com corpo que cita `git push origin main`, para `git push -u origin feat/31/x 2>&1 | tail -3`, para `gh pr create` com `--body "$(cat <<'EOF' ... EOF)"` cujo corpo cita `git push` e `merge`, e para `grep -rn "git push" docs`; e devolve `ask` para `bash <<'EOF'` com `git push origin main` no corpo e para `printf 'git push origin main' | sh` (AC 56, AC 53, door 6)
 Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_autonomy`
 
+**C72** - `gate-humano.sh` devolve `deny` para um `git push origin main` depois de `cat <<E'OF'` sem linha de fim, de `cat <<"E"OF` ... `EOF`, de `cat <<END-X` ... `END-X`, de `cat <<END.X` ... `END.X`, de `echo $((1<<2))` e de `(( x = 1 << 2 ))` (AC 57, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_heredoc_end`
+
+**C73** - `gate-humano.sh` sai sem saída para `git commit -m` com texto de várias linhas entre aspas simples, entre aspas duplas e num `"$(cat <<'EOF' ... EOF)"` em que uma linha é `git push origin main`, `gh pr merge 34` ou `git tag v1`; devolve `deny` para `echo "a` + quebra + `b" && git push origin main` e, com a branch atual `main`, para `git push origin 2>/dev/null`; e devolve `ask` para `echo "$(echo ")"; git push origin main)"`, `printf 'git push origin main' | "$SHELL"`, `printf 'git push origin main' > x.sh && . ./x.sh` e `eval "git push origin main"` (AC 58, AC 53, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_multiline`
+
+**C74** - `gate-humano.sh` devolve `deny` para `git push origin main>/dev/null`, `git push origin main>&2` e `git push origin HEAD:main>log`, e `ask` para `git push origin {main,}`, `git rebase -x "git push origin main" HEAD~1`, `git submodule foreach git push origin main` e `git bisect run sh -c "git push origin main"` (AC 59, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_glued`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -277,11 +286,15 @@ Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_autonomy`
 | texto que o bash não substitui (3) | aspas simples com crase C70 · aspas simples com `$( )` C70 · heredoc `'EOF'` C70 | - |
 | texto citado sem ser executado (6) | `printf` com aspas simples C71 · `--body` com aspas duplas C71 · heredoc `'EOF'` C71 · push com redirecionamento e tail C71 · heredoc dentro de `$( )` C71 · `grep` com aspas duplas C71 | - |
 | texto passado a um shell (2) | `bash <<'EOF'` C71 · printf para sh C71 | - |
+| heredoc sem fim achado (6) | aspas no meio C72 · aspas no começo C72 · hífen C72 · ponto C72 · `$(( ))` C72 · `(( ))` C72 | - |
+| texto de várias linhas (3) | aspas simples C73 · aspas duplas C73 · heredoc dentro de `$( )` C73 | - |
+| redirecionamento e chaves no refspec (4) | `main>/dev/null` C74 · `main>&2` C74 · `HEAD:main>log` C74 · `{main,}` C74 | - |
+| subcomandos que rodam shell (3) | `rebase -x` C74 · `submodule foreach` C74 · `bisect run` C74 | - |
 | mensagens de merge do git (5) | `Merge branch` C59 · `Merge branches` C59 · `Merge remote-tracking branch` C59 · `Merge tag` C59 · `Merge commit` C59 | - |
 | saídas do hook de sessão (4) | instala C41 · já instalado C41 · falha C43 · aviso `CLAUDE.md` C42 | - |
 | seções do `AGENTS.md` (5) | `## Fluxo` C34 · `## Autonomia` C34 · `## Skills` C35 · `## Ambiente` C35 · `## Documentação` C48 | - |
 | gates do `test_docs.py` novos (3) | flags C49 · campos do evento C50 · links C51 | - |
-| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4, C59 · 4 C12, C24 · 5 C22 · 6 C26-C30, C57, C58, C60-C71 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
+| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4, C59 · 4 C12, C24 · 5 C22 · 6 C26-C30, C57, C58, C60-C74 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
 
 - Checks que cruzam a fronteira real: C7 (push num remoto local), C25 (CI do GitHub), C32 (issues no GitHub), C45
   (sessão real do `claude`)

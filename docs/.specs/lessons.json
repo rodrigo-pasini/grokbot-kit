@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 21,
+  "next_id": 23,
   "lessons": [
     {
       "id": "L-001",
@@ -364,6 +364,42 @@
       ],
       "created": "2026-10-29T18:12:25Z",
       "last_seen": "2026-10-29T18:12:25Z"
+    },
+    {
+      "id": "L-021",
+      "key": "spec_deviation::quando o gate descarta um trecho como dado ate um marcador de fim corpo de heredoc o check poe um caso em que o gate nao acha o marcador que o shell acha delimitador com aspas no meio com ou aritmetico seguido de um comando perigoso sem ele o gate descarta o comando junto",
+      "text": "Quando o gate descarta um trecho como dado até um marcador de fim (corpo de heredoc), o check põe um caso em que o gate não acha o marcador que o shell acha (delimitador com aspas no meio, com '-', ou '<<' aritmético) seguido de um comando perigoso; sem ele, o gate descarta o comando junto.",
+      "signal": "spec_deviation",
+      "scope": "hooks",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "R7 regressão .claude/hooks/gate-humano.sh:193-225 (hooks)"
+      ],
+      "created": "2026-10-29T19:43:50Z",
+      "last_seen": "2026-10-29T19:43:50Z"
+    },
+    {
+      "id": "L-022",
+      "key": "spec_precision_gap::quando o gate trata texto entre aspas ou de heredoc como dado o check poe um caso com o texto em varias linhas e uma linha que comeca com o comando perigoso ler o resultado linha a linha corta o texto de novo",
+      "text": "Quando o gate trata texto entre aspas ou de heredoc como dado, o check põe um caso com o texto em várias linhas e uma linha que começa com o comando perigoso; ler o resultado linha a linha corta o texto de novo.",
+      "signal": "spec_precision_gap",
+      "scope": "hooks",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C70/C71 AC 55-56 .claude/hooks/gate-humano.sh:190 (hooks)"
+      ],
+      "created": "2026-10-29T19:43:50Z",
+      "last_seen": "2026-10-29T19:43:50Z"
     }
   ]
 }
