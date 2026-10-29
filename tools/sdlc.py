@@ -22,6 +22,8 @@ DOOR_2 = (
     r"^dependabot/",
 )
 COAUTHOR = re.compile(r"^\s*co-authored-by:", re.IGNORECASE)
+# Primeira linha que o próprio git escreve num `git merge` ou `git pull` (o hook `commit-msg` roda nos dois).
+GIT_MERGE = re.compile(r"^Merge (branch|branches|remote-tracking branch|tag|commit) '")
 MAIN_CLONE_ALLOWED = ("docs/", ".specs/", ".claude/", ".agents/")
 MAIN_CLONE_FILES = ("CLAUDE.md", "AGENTS.md")
 APPROVED = re.compile(r"^\*\*Approved\*\*: (\d{4}-\d{2}-\d{2})$")
@@ -75,7 +77,7 @@ def cmd_commit_msg(path: str) -> int:
     text = Path(path).read_text(encoding="utf-8")
     lines = [line for line in text.splitlines() if not line.startswith("#")]
     first = next((line for line in lines if line.strip()), "")
-    problems = first_line_problems(first, "commit message")
+    problems = [] if GIT_MERGE.match(first) else first_line_problems(first, "commit message")
     problems += [f"commit message has a co-author line: {line}" for line in coauthor_lines("\n".join(lines))]
     return fail(problems)
 

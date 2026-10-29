@@ -45,7 +45,9 @@ marcados com `integration` usam as CLIs reais ou o GitHub e só rodam no box: `u
 
 As regras do fluxo falham cedo, por máquina, pelo `tools/sdlc.py` (só a biblioteca padrão do Python):
 
-- hook `commit-msg`: a primeira linha segue Conventional Commits e nenhuma linha é `Co-authored-by:`.
+- hook `commit-msg`: a primeira linha segue Conventional Commits e nenhuma linha é `Co-authored-by:`; a primeira
+  linha que o git escreve num `git merge` ou `git pull` (`Merge branch '...'`) fica fora do Conventional Commits, não
+  da regra de coautoria.
 - hook `pre-commit`: nenhum commit em `main`, e nenhum commit de código no clone principal (ali, só `docs/`, `.specs/`,
   `.claude/`, `.agents/` e `AGENTS.md`); `GROKBOT_KIT_ALLOW_MAIN_EDIT=1` desliga a segunda regra.
 - hook `pre-push`: a branch casa `<tipo>/<issue>/<slug>`, `chore/release/<versão>` ou `dependabot/`.
@@ -70,6 +72,8 @@ Quem trabalha com o Claude Code neste repositório faz cada tarefa de código nu
 principal. Para trabalhar de propósito no clone principal, rode a sessão com `GROKBOT_KIT_ALLOW_MAIN_EDIT=1`. O hook
 `.claude/hooks/gate-humano.sh` (PreToolUse em Bash) deixa o agente fazer push de branch de feature e abrir pull
 request, pede confirmação antes de merge, tag, release ou mudança na proteção da branch, e nega push para `main`.
+Também pede confirmação quando não consegue ler o comando: refspec de push com `$(...)` ou crase, ou `git`/`gh`
+dentro de outro comando (`bash -c`, `sudo`, `xargs`).
 
 ## Release e PyPI
 

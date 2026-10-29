@@ -118,6 +118,35 @@ def test_commit_msg_coauthor(tmp_path: Path, line: str) -> None:
     assert line in result.stderr
 
 
+# C59 - AC 46, door 3
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Merge branch 'main' into feat/31/x",
+        "Merge branch 'main' of github.com:o/r into feat/31/x",
+        "Merge branches 'a' and 'b'",
+        "Merge remote-tracking branch 'origin/main' into feat/31/x",
+        "Merge tag 'v0.6.0'",
+        "Merge commit 'abc123'",
+    ],
+)
+def test_commit_msg_merge_accepts(tmp_path: Path, message: str) -> None:
+    result = commit_msg(
+        tmp_path, message + "\n\n# Please enter a commit message to explain why this merge is necessary\n"
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "" and result.stderr == ""
+
+
+def test_commit_msg_merge_rejects(tmp_path: Path) -> None:
+    loose = commit_msg(tmp_path, "Merge stuff\n")
+    assert loose.returncode == 1
+    assert DOOR_3 in loose.stderr
+    coauthor = commit_msg(tmp_path, "Merge branch 'main' into feat/31/x\n\nCo-authored-by: X <x@y>\n")
+    assert coauthor.returncode == 1
+    assert "Co-authored-by: X <x@y>" in coauthor.stderr
+
+
 # ---------------------------------------------------------------------------- branch
 
 
@@ -444,6 +473,15 @@ def test_pr_title(tmp_path: Path) -> None:
     bad = pr.run()
     assert bad.returncode == 1
     assert "ajusta coisa" in bad.stderr
+
+
+# C59 - AC 46: o título do PR segue a door 3 sem a exceção do merge
+def test_pr_title_merge(tmp_path: Path) -> None:
+    pr = neutral_pr(tmp_path)
+    pr.title = "Merge branch 'main'"
+    result = pr.run()
+    assert result.returncode == 1
+    assert "Merge branch 'main'" in result.stderr
 
 
 # C15 - AC 12

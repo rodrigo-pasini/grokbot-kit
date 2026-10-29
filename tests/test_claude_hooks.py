@@ -134,6 +134,39 @@ def test_gate_humano_allow_not_compound(feature_repo: Path) -> None:
     assert decision("rm -rf build && git push -u origin feat/31/sdlc-gates", feature_repo)[0] != "allow"
 
 
+# C57 - AC 44, door 6
+@pytest.mark.parametrize(
+    "command",
+    [
+        'git push origin "main"',
+        "git push origin 'HEAD:main'",
+        "GIT_DIR=.git git push origin main",
+        "env git push origin main",
+        "command git push origin main",
+        "/usr/bin/git push origin main",
+    ],
+)
+def test_gate_humano_deny_disguised(feature_repo: Path, command: str) -> None:
+    assert decision(command, feature_repo)[0] == "deny", command
+
+
+# C58 - AC 45, door 6
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git push origin $(echo main)",
+        "git push origin `echo main`",
+        'bash -c "git push origin main"',
+        "sudo git push origin main",
+        "xargs gh pr merge",
+    ],
+)
+def test_gate_humano_ask_unparsed(feature_repo: Path, command: str) -> None:
+    kind, reason = decision(command, feature_repo)
+    assert kind == "ask", command
+    assert reason.strip()
+
+
 # C30 - AC 23
 @pytest.mark.parametrize("command", ["git status", "uv run pytest", "gh pr view 30"])
 def test_gate_humano_neutral(feature_repo: Path, command: str) -> None:

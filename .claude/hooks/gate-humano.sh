@@ -6,7 +6,10 @@
 #   ask   gh pr merge, git tag, git push de tag (v*, refs/tags/, --tags), gh release, gh api com protection/environments
 #   allow git push de branch <tipo>/<issue>/<slug> (sem --delete nem --force) e gh pr create, só num comando simples
 #         (allow vale para o comando todo)
-# deny vence ask, que vence allow. Nenhum dos casos: sai sem saída e vale a permissão normal.
+# Antes de decidir, tira as aspas das palavras e os prefixos VAR=valor, env e command, e lê /usr/bin/git como git.
+# Falha fechado com ask quando não lê o comando: refspec de push com substituição ($ ou crase), ou git/gh fora da
+# primeira palavra (bash -c, sudo, xargs, echo ... | sh) junto de push, tag, merge, release ou api.
+# deny vence ask, que vence o ask de falha fechada, que vence allow. Nenhum dos casos: sai sem saída e vale a permissão normal.
 set -uo pipefail
 
 input="$(cat)"
@@ -41,6 +44,7 @@ push_decision() {
   [ "${#refs[@]}" = 0 ] && refs=("$cur")
   local result=allow ref src dst
   for ref in "${refs[@]}"; do
+    if [[ $ref == *[\$\`]* ]]; then [ "$result" = ask ] || result=unread; continue; fi
     ref="${ref#+}"
     src="${ref%%:*}"
     if [[ $ref == *:* ]]; then dst="${ref#*:}"; else dst="$src"; fi
@@ -56,8 +60,15 @@ push_decision() {
 
 # Decide um pedaço do comando.
 segment_decision() {
-  local w=("$@") i=1 sub=""
-  case "${w[0]:-}" in
+  local w=("$@") i=1 sub="" x tool=0 verb=0
+  while [ "${#w[@]}" -gt 1 ]; do
+    case "${w[0]}" in
+      env | command | [A-Za-z_]*=*) w=("${w[@]:1}") ;;
+      *) break ;;
+    esac
+  done
+  w[0]="${w[0]##*/}"
+  case "${w[0]}" in
     git)
       while [ "$i" -lt "${#w[@]}" ]; do
         case "${w[$i]}" in
@@ -79,6 +90,15 @@ segment_decision() {
         api\ *) [[ " ${w[*]} " == *protection* || " ${w[*]} " == *environments* ]] && echo ask ;;
       esac
       ;;
+    *)
+      for x in "${w[@]}"; do
+        case "${x##*/}" in
+          git | gh) tool=1 ;;
+          push | tag | merge | release | api) verb=1 ;;
+        esac
+      done
+      [ "$tool$verb" = 11 ] && echo unread
+      ;;
   esac
 }
 
@@ -89,6 +109,7 @@ decisions=""
 while IFS= read -r segment; do
   read -ra words <<<"$segment"
   [ "${#words[@]}" = 0 ] && continue
+  words=("${words[@]//[\"\']/}")
   decisions+="$(segment_decision "${words[@]}") "
 done < <(sed -E 's/(&&|\|\||;|\|)/\n/g' <<<"$cmd")
 
@@ -100,6 +121,7 @@ reply() {
 case "$decisions" in
   *deny*) reply deny "Push para main é negado: main só recebe merge de PR, feito pelo Rodrigo (AD-050). Faça push da branch <tipo>/<issue>/<slug> e abra o PR." ;;
   *ask*) reply ask "Merge, tag, release e mudança de proteção ou environment são passos do Rodrigo (AD-050): confirme antes de seguir." ;;
+  *unread*) reply ask "O gate não lê este comando (substituição no refspec, ou git/gh dentro de outro comando): confirme que ele não faz push para main, merge, tag nem release (AD-050)." ;;
   *allow*) [ "$simple" = 1 ] && reply allow "Push de branch de feature e abertura de PR o agente faz sozinho (AD-050)." ;;
 esac
 exit 0

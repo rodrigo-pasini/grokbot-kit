@@ -46,7 +46,9 @@ marked `integration` use the real CLIs or GitHub and run only on the box: `uv ru
 
 The flow rules fail early, by machine, through `tools/sdlc.py` (Python standard library only):
 
-- `commit-msg` hook: the first line follows Conventional Commits and no line is `Co-authored-by:`.
+- `commit-msg` hook: the first line follows Conventional Commits and no line is `Co-authored-by:`; the first line git
+  writes for a `git merge` or `git pull` (`Merge branch '...'`) is exempt from Conventional Commits, not from the
+  co-author rule.
 - `pre-commit` hook: no commit on `main`, and no code commit in the main clone (only `docs/`, `.specs/`, `.claude/`,
   `.agents/` and `AGENTS.md` there); `GROKBOT_KIT_ALLOW_MAIN_EDIT=1` lifts the second rule.
 - `pre-push` hook: the branch matches `<type>/<issue>/<slug>`, `chore/release/<version>` or `dependabot/`.
@@ -70,7 +72,9 @@ Whoever works on this repository with Claude Code does each code task in a dedic
 The hook `.claude/hooks/gate-worktree.sh` (PreToolUse on Edit/Write) denies code edits in the main clone. To work in
 the main clone on purpose, run the session with `GROKBOT_KIT_ALLOW_MAIN_EDIT=1`. The hook
 `.claude/hooks/gate-humano.sh` (PreToolUse on Bash) lets the agent push a feature branch and open a pull request, asks
-before a merge, a tag, a release or a change to branch protection, and denies a push to `main`.
+before a merge, a tag, a release or a change to branch protection, and denies a push to `main`. It also asks when it
+cannot read the command: a push refspec with `$(...)` or backticks, or `git`/`gh` inside another command (`bash -c`,
+`sudo`, `xargs`).
 
 ## Release and PyPI
 
