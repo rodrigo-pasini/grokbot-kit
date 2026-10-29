@@ -382,3 +382,13 @@ def test_s0_report_has_outputs_and_no_token() -> None:
             assert needle in sections[ac], f"{ac}: saída sem {needle!r}"
     assert re.search(SECRET_PATTERN, text) is None
     assert "Bearer " not in text
+
+
+# model-setup-docs C43 - AC 41
+def test_changelog_unreleased_model_setup() -> None:
+    text = read("CHANGELOG.md")
+    start = text.index("## [Unreleased]")
+    end = text.index("\n## [", start + 1)
+    unreleased = text[start:end]
+    for needle in ("setup providers", "--json", "model_fallbacks", "summary"):
+        assert needle in unreleased, needle

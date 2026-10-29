@@ -8,6 +8,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `grokbot-kit setup models refresh --json` prints `{"models": [{"tool", "id", "provider"}]}`, where `provider` is the
+  text before the first `/` of an opencode id and `null` for `claude` and `codex`. Without `--json` the output does not
+  change.
+- `grokbot-kit setup providers opencode <provider>...` records the opencode providers you use in
+  `[cli.opencode] providers`. With the list recorded, `setup tiers opencode` refuses an id from another provider and
+  `grokbot-kit doctor` reports a tier that has one; `doctor --json` shows the list in `cli.opencode.providers`.
+- Model fallback within a tier: when the model of a `--tier` task fails at the provider before the agent uses any tool
+  (opencode: an `error` with no `tool_use`; `claude`: `api_error` in the first turn), the kit launches the next id of
+  the tier in the same task, within the same timeout. The earlier attempts stay in the task dir as `out.<n>.jsonl` and
+  `stderr.<n>.log`. Codex and `--model` tasks never fall back.
+- Event `grokbot-kit.event/v1`: new field `model_fallbacks`, a list of `{"model", "error"}` for each attempt that
+  failed and led to another (`[]` without fallback, `null` in the `test` event). `model` is now the last id launched.
+
+### Changed
+
+- The Grok Bot skill asks which opencode providers you use and the ids of each tier, instead of putting the free
+  models first on its own; free models come first in `trivial` and `standard` only when the only provider chosen is
+  `opencode`.
+- When a task fails without a final message from the agent, the event `summary` carries the error message of the CLI
+  (opencode: `<name or type>: <message>` of the last `error`; codex: the message of the last `turn.failed` or
+  `error`), cut at 2000 characters. It used to be empty.
+- `README.md` lists every command, the plugins and the model setup; `CONTRIBUTING.md` is now in English, with the
+  Portuguese version in `docs/pt-BR/CONTRIBUTING.md`.
+
 ## [0.4.1] - 2026-10-27
 
 ### Security
