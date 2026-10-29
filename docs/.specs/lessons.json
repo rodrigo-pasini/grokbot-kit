@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 11,
+  "next_id": 12,
   "lessons": [
     {
       "id": "L-001",
@@ -184,6 +184,24 @@
       ],
       "created": "2026-10-21T21:03:18Z",
       "last_seen": "2026-10-21T21:03:18Z"
+    },
+    {
+      "id": "L-011",
+      "key": "surviving_mutant::prova de prazo timeout afirma um limite perto do prazo mais a folga ex 6 s para 4 s nunca um teto folgado que tambem passa um prazo por tentativa",
+      "text": "Prova de prazo/timeout afirma um limite perto do prazo mais a folga (ex.: < 6 s para 4 s), nunca um teto folgado que também passa um prazo por tentativa",
+      "signal": "surviving_mutant",
+      "scope": "run",
+      "status": "candidate",
+      "features": [
+        "model-setup-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "tests/test_run_fallback.py:203 (run)"
+      ],
+      "created": "2026-10-29T00:30:23Z",
+      "last_seen": "2026-10-29T00:30:23Z"
     }
   ]
 }

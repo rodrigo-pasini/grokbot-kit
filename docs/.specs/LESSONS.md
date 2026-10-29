@@ -74,6 +74,12 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: F14 src/grokbot_kit/update.py:290 (C39, AC 37) (update)
 - last seen: 2026-10-21T21:03:18Z
 
+### L-011 - Prova de prazo/timeout afirma um limite perto do prazo mais a folga (ex.: < 6 s para 4 s), nunca um teto folgado que também passa um prazo por tentativa
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `run` · harmful: 0
+- features: model-setup-docs
+- evidence: tests/test_run_fallback.py:203 (run)
+- last seen: 2026-10-29T00:30:23Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
