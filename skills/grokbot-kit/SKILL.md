@@ -142,8 +142,8 @@ grokbot-kit setup providers opencode <provider> [<provider>...]
 ```
 
 Um provedor pago (o usuário paga por assinatura ou API key, como o `opencode-go`) só funciona com login no opencode:
-se o `grokbot-kit doctor --json` não mostrar o opencode logado, peça que o usuário rode `grokbot-kit login opencode`
-num terminal do box antes de seguir.
+pergunte se o usuário já fez esse login no box; se não, peça que ele rode `grokbot-kit login opencode` num terminal do
+box antes de seguir. Não decida pelo `login` do `grokbot-kit doctor --json`: ele não enxerga todo login do opencode.
 
 Depois, para cada CLI instalada, faça uma pergunta por tier (`trivial`, `standard` e `complex`, nessa ordem), com até
 4 ids da lista descoberta e o recomendado primeiro; no opencode, só ids dos provedores escolhidos. O usuário escolhe

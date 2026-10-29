@@ -14,6 +14,7 @@ recusou a skill do spike no C37: as provas da 0.4.1 rodaram com `sonnet` e `open
 import json
 import os
 import shutil
+import sqlite3
 import subprocess
 import tomllib
 from pathlib import Path
@@ -65,6 +66,19 @@ def link(src: Path, dest: Path) -> None:
         dest.symlink_to(src)
 
 
+def copy_opencode_db(home: Path) -> None:
+    """Uma cópia consistente do `opencode.db` real no `HOME` temporário. No opencode 1.19.5 do box o login de um
+    provedor pago (opencode-go) fica nesse banco, não no `auth.json` (`opencode auth list`: `0 credentials`); a cópia,
+    e não um link, deixa o banco real sem as sessões do teste."""
+    src = REAL_HOME / ".local" / "share" / "opencode" / "opencode.db"
+    if not src.exists():
+        return
+    dest = home / ".local" / "share" / "opencode" / "opencode.db"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(f"file:{src}?mode=ro", uri=True) as source, sqlite3.connect(dest) as target:
+        source.backup(target)
+
+
 def install_plugin(home: Path) -> None:
     """O plugin do opencode no `HOME` temporário, com o caminho do `grokbot-kit` do teste, como o `install opencode`."""
     exe = shutil.which("grokbot-kit")
@@ -84,6 +98,8 @@ def prepare_home(tmp_path: Path, tool: str, case: str) -> tuple[Path, Path, str]
     link(
         REAL_HOME / ".local" / "share" / "opencode" / "auth.json", home / ".local" / "share" / "opencode" / "auth.json"
     )
+    if tool == "opencode":
+        copy_opencode_db(home)
     if tool == "opencode" and case == "denied":
         opencode_config = home / ".config" / "opencode" / "opencode.json"
         opencode_config.parent.mkdir(parents=True)
