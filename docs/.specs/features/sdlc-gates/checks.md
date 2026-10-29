@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/sdlc-gates/plan.md`
 
-74 checks em 8 slices · 9 one-way doors · 0 open
+57 checks em 8 slices · 9 one-way doors · 0 open
 
 Convenções das provas:
 
@@ -100,20 +100,20 @@ Proof: `gh pr checks "$(gh pr list --head "$(git branch --show-current)" --json 
 
 ### S3 - o agente faz push e abre PR, e para no merge e na tag · 3 arquivos · ~12 KB · ~3k
 
-**C26** - O `.claude/settings.json` registra `.claude/hooks/gate-humano.sh` em `PreToolUse` com `matcher` `Bash`, e mantém o `gate-worktree.sh` em `Edit|Write|MultiEdit|NotebookEdit` (AC 20-23, door 6)
+**C26** - O `.claude/settings.json` não tem hook `PreToolUse` com `matcher` `Bash`, mantém o `gate-worktree.sh` em `Edit|Write|MultiEdit|NotebookEdit` e o `session-start.sh` em `SessionStart`, e `.claude/hooks/gate-humano.sh` não existe (AC 23, door 6)
 Proof: `uv run pytest tests/test_claude_hooks.py -k settings_registers_hooks`
 
-**C27** - `gate-humano.sh` devolve `hookSpecificOutput.permissionDecision` `ask` com `permissionDecisionReason` não vazio para `gh pr merge 30 --squash`, `git tag v0.6.0`, `git push origin v0.6.0`, `git push --tags`, `gh release create v0.6.0` e `gh api -X PUT repos/o/r/branches/main/protection`, `gh api repos/o/r/environments/pypi` (AC 20, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_ask`
+**C27** - O `permissions.ask` do `.claude/settings.json` é exatamente `Bash(gh pr merge *)`, `Bash(git tag *)`, `Bash(gh release *)`, `Bash(git push --tags *)`, `Bash(git push * --tags *)`, `Bash(git push * --follow-tags *)`, `Bash(git push * v*)`, `Bash(git push * refs/tags/*)`, `Bash(gh api *protection*)`, `Bash(gh api *environments*)`, `Bash(gh api *merge*)`, `Bash(gh api *releases*)` (AC 20, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k settings_permissions_ask`
 
-**C28** - `gate-humano.sh` devolve `deny` para `git push origin main`, `git push origin HEAD:main` e, num repositório de teste com a branch atual `main`, `git push`; e para um comando composto `git status && git push origin main` (AC 21, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_deny`
+**C28** - Num clone de teste com os hooks instalados, `git push origin main` e `git push origin HEAD:main` para um remoto local saem diferente de `0` e o remoto não ganha `main`, e `tools/sdlc.py branch main` sai com `1` (AC 21, door 6)
+Proof: `uv run pytest tests/test_sdlc.py -k pre_push_refuses_main`
 
-**C29** - `gate-humano.sh` devolve `allow` para `git push -u origin feat/31/sdlc-gates` e `gh pr create --title "feat(ci): x" --body-file b.md`, e não devolve `allow` para `git push -u origin feat/sdlc` (AC 22, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_allow`
+**C29** - O `permissions.allow` do `.claude/settings.json` é exatamente `Bash(git push *)` e `Bash(gh pr create *)`, e nenhuma regra dele casa `gh pr merge 34`, `git tag v1` nem `gh release create v1` (AC 22, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k settings_permissions_allow`
 
-**C30** - `gate-humano.sh` sai com `0` e stdout vazio para `git status`, `uv run pytest` e `gh pr view 30` (AC 23)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_neutral`
+**C30** - A proteção da `main` no GitHub tem `enforce_admins` ligado, PR obrigatório e force push e deleção desligados (AC 21, door 6)
+Proof: `test "$(gh api repos/rodrigo-pasini/grokbot-kit/branches/main/protection --jq '[.enforce_admins.enabled, (.required_pull_request_reviews != null), .allow_force_pushes.enabled, .allow_deletions.enabled] | map(tostring) | join(" ")')" = "true true false false"`
 
 ### S4 - o backlog vive em GitHub Issues · 2 arquivos · ~40 KB · ~10k
 
@@ -201,61 +201,10 @@ Proof: `uv run pytest tests/test_sdlc.py -k spec_plan_doc_criterion`
 **C56** - O item de doc do `.github/pull_request_template.md` tem `README.md`, `docs`, `pt-BR` e `Docs: n/a - <reason>` (AC 43)
 Proof: `uv run pytest tests/test_docs.py -k pr_template_doc_item`
 
-### S8 - achados do review do PR #34 · 4 arquivos · ~25 KB · ~7k
-
-**C57** - `gate-humano.sh` devolve `deny` para `git push origin "main"`, `git push origin 'HEAD:main'`, `GIT_DIR=.git git push origin main`, `env git push origin main`, `command git push origin main` e `/usr/bin/git push origin main` (AC 44, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_deny_disguised`
-
-**C58** - `gate-humano.sh` devolve `ask` para `git push origin $(echo main)`, ``git push origin `echo main` ``, `bash -c "git push origin main"`, `sudo git push origin main` e `xargs gh pr merge`, e segue sem saída para `git status`, `uv run pytest` e `gh pr view 30` (AC 45, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k "gate_humano_ask_unparsed or gate_humano_neutral"`
+### S8 - achados do review do PR #34 · 2 arquivos · ~15 KB · ~4k
 
 **C59** - `tools/sdlc.py commit-msg` sai com `0` sem saída para `Merge branch 'main' into feat/31/x`, `Merge branch 'main' of github.com:o/r into feat/31/x`, `Merge branches 'a' and 'b'`, `Merge remote-tracking branch 'origin/main' into feat/31/x`, `Merge tag 'v0.6.0'` e `Merge commit 'abc123'`; sai com `1` para `Merge stuff` e para um merge com linha `Co-authored-by:`; e `tools/sdlc.py pr --title "Merge branch 'main'"` sai com `1` (AC 46, door 3)
 Proof: `uv run pytest tests/test_sdlc.py -k "commit_msg_merge or pr_title_merge"`
-
-**C60** - `gate-humano.sh` devolve `ask` para `sudo git tag v1`, `bash -c "gh release create v1"` e `xargs gh api repos/o/r/branches/main/protection` (AC 45, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_ask_unparsed_verbs`
-
-**C61** - `gate-humano.sh` não devolve `allow` para `GIT_DIR=x/.git git push origin HEAD`, `GIT_WORK_TREE=x git push origin feat/31/x`, `git -C x push origin HEAD`, `git --git-dir=x/.git push origin feat/31/x` e `git --work-tree=x push origin feat/31/x`, e devolve `deny` para `git -C x push origin main` (AC 47, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_other_repo`
-
-**C62** - `gate-humano.sh` sai com `0` e stdout vazio para `git commit -m "fix: a; git push origin main"`, `git commit -m "docs: gate | git tag"` e `git commit -m 'a && git push origin main'`, e segue devolvendo `deny` para `git status && git push origin main` (AC 48, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_quoted_separators`
-
-**C63** - `gate-humano.sh` devolve `deny` para `\git push origin main`, `git push origin ma\in`, `(git push origin main)`, `(cd x && git push origin main)` e `git push origin main&` (AC 49, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_deny_escaped`
-
-**C64** - `gate-humano.sh` devolve `ask` para `echo $(git push origin main)`, `x=$(git push origin main)` e ``echo `git push origin main` `` (AC 50, door 6; era `deny` até a rodada 6, quando a AC 50 passou a falhar fechado com `ask`)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_substitution`
-
-**C65** - `gate-humano.sh` sai sem saída para `git commit -m "a || git push origin main"` e `git commit -m "a & git push origin main"`, e devolve `deny` para `git commit -m \" ; git push origin main` (aspas escapadas não abrem aspas) (AC 48, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_quoted_more`
-
-**C66** - `gate-humano.sh` devolve `deny` para `git --git-dir x/.git push origin main`, `git --work-tree x push origin main` e `git --namespace n push origin main`; não devolve `allow` para `git --git-dir x/.git push origin feat/31/x`; e devolve `ask` para `git -c alias.p=push p origin main` (AC 51, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_spaced_options`
-
-**C67** - `gate-humano.sh` devolve `ask` para `git push --follow-tags origin feat/31/x`, `git push --tags origin main` não sai mais fraco que `deny`, `gh pr -R o/r merge 34`, `gh api -X PUT repos/o/r/pulls/34/merge`, `gh api repos/o/r/releases` e `gh api -X DELETE repos/o/r/git/refs/heads/x`; e não devolve `allow` para `git push -uf origin feat/31/x` (AC 52, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_more_ask`
-
-**C68** - `gate-humano.sh` devolve `deny` para `git -C $(pwd) push origin main`, `git push $(git remote) main`, `git push $(echo origin) main` e `git push origin $(true) main`; e `ask` para ``x=`git push origin main` ``, `git commit -m "$(git push origin main)"`, ``git commit -m "`git push origin main`"``, `echo $(echo $(git push origin main))`, `echo $(git push origin main $(true))`, `echo $(git push origin main; echo $(date))`, ``echo `echo $(git push origin main)` `` e `x=$(git push origin "$(echo main)")` (AC 53, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_substitution_args`
-
-**C69** - `gate-humano.sh` devolve `deny` para `git --config-env core.x=Y push origin main`; não devolve `allow` para `git --namespace=n push origin feat/31/x` nem para `git push -ud origin feat/31/x`; devolve `ask` para `gh pr --repo o/r merge 34`, `git -c Alias.p=push p origin main`, `git --config-env alias.p=X p origin main` e `gh api graphql -f query=mutation{mergePullRequest}` (AC 51, 52, 54, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_round5`
-
-**C70** - `gate-humano.sh` não devolve `deny` para ``git commit -m 'fix: `git push origin main` x'``, `rg -n '$(git push origin main)' docs` e um `git commit -F -` com heredoc `<<'EOF'` cujo texto cita `git push origin main`; e devolve `ask` para `git --config-env=alias.p=X p origin main` e `gh api graphql -f query=mutation{enablePullRequestAutoMerge}` (AC 55, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_round6`
-
-**C71** - `gate-humano.sh` sai com `0` e stdout vazio para um `printf` com texto entre aspas simples que cita `git push origin main` e `gh pr merge` seguido de `git commit -q -F`, para `gh issue comment 35 --body "cita git push e gh release"`, para `cat > f.md <<'EOF'` com corpo que cita `git push origin main`, para `git push -u origin feat/31/x 2>&1 | tail -3`, para `gh pr create` com `--body "$(cat <<'EOF' ... EOF)"` cujo corpo cita `git push` e `merge`, e para `grep -rn "git push" docs`; e devolve `ask` para `bash <<'EOF'` com `git push origin main` no corpo e para `printf 'git push origin main' | sh` (AC 56, AC 53, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_autonomy`
-
-**C72** - `gate-humano.sh` devolve `deny` para um `git push origin main` depois de `cat <<E'OF'` sem linha de fim, de `cat <<"E"OF` ... `EOF`, de `cat <<END-X` ... `END-X`, de `cat <<END.X` ... `END.X`, de `echo $((1<<2))` e de `(( x = 1 << 2 ))` (AC 57, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_heredoc_end`
-
-**C73** - `gate-humano.sh` sai sem saída para `git commit -m` com texto de várias linhas entre aspas simples, entre aspas duplas e num `"$(cat <<'EOF' ... EOF)"` em que uma linha é `git push origin main`, `gh pr merge 34` ou `git tag v1`; devolve `deny` para `echo "a` + quebra + `b" && git push origin main` e, com a branch atual `main`, para `git push origin 2>/dev/null`; e devolve `ask` para `echo "$(echo ")"; git push origin main)"`, `printf 'git push origin main' | "$SHELL"`, `printf 'git push origin main' > x.sh && . ./x.sh` e `eval "git push origin main"` (AC 58, AC 53, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_multiline`
-
-**C74** - `gate-humano.sh` devolve `deny` para `git push origin main>/dev/null`, `git push origin main>&2` e `git push origin HEAD:main>log`, e `ask` para `git push origin {main,}`, `git rebase -x "git push origin main" HEAD~1`, `git submodule foreach git push origin main` e `git bisect run sh -c "git push origin main"` (AC 59, door 6)
-Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_glued`
 
 ## Coverage
 
@@ -270,33 +219,15 @@ Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_glued`
 | regras do `pr` (12) | título C14 · branch C15 · coautor em commit C16 · coautor no corpo C16 · link do issue C17 · validadores C20 · `verification.md` C21 · `**Approved**` C22 · `Handoff` C23 · par de doc C52 · `CHANGELOG.md` C53 · doc ou `Docs: n/a` C54 | - |
 | palavras do link (3) | `Closes` C17 · `Fixes` C17 · `Refs` C17 | - |
 | validadores do `spec` (4) | `validate_plan` C18 · `validate_checks` C18 · `validate_verification` C18 · critério de doc C55 | - |
-| decisões do `gate-humano.sh` (4) | `ask` C27 · `deny` C28 · `allow` C29 · nada C30 | - |
-| comandos `ask` (6) | `gh pr merge` C27 · `git tag` C27 · push de tag C27 · `--tags` C27 · `gh release` C27 · `gh api` protection/environments C27 | - |
-| disfarces de push para `main` (6) | aspas C57 · `HEAD:main` entre aspas C57 · `VAR=valor` C57 · `env` C57 · `command` C57 · caminho do binário C57 | - |
-| comandos que o gate não lê (5) | `$(...)` C58 · crase C58 · `bash -c` C58 · `sudo` C58 · `xargs` C58 | - |
-| verbos do ramo de falha fechada (5) | `push` C58 · `merge` C58 · `tag` C60 · `release` C60 · `api` C60 | - |
-| redirecionamentos de repositório (5) | `GIT_DIR=` C61 · `GIT_WORK_TREE=` C61 · `-C` C61 · `--git-dir` C61 · `--work-tree` C61 | - |
-| separadores dentro de aspas (3) | ponto e vírgula C62 · barra vertical C62 · `&&` C62 | - |
-| escapes do comando (4) | barra invertida C63 · subshell C63 · segundo plano C63 · `cd` no subshell C63 | - |
-| substituições (3) | `$( )` em `echo` C64 · `$( )` em atribuição C64 · crase C64 | - |
-| opções com valor separado (4) | `--git-dir` C66 · `--work-tree` C66 · `--namespace` C66 · `-c alias.` C66 | - |
-| pedidos novos de confirmação (6) | `--follow-tags` C67 · `--tags` com `main` C67 · `gh pr -R ... merge` C67 · `gh api .../merge` C67 · `gh api .../releases` C67 · `gh api .../git/refs` C67 | - |
-| substituição nos argumentos do push (4) | `-C $(...)` C68 · remoto por `$(...)` C68 · remoto por `$(echo)` C68 · `$(true)` antes da ref C68 | - |
-| substituição em outro lugar (8) | crase em atribuição C68 · `$( )` entre aspas C68 · crase entre aspas C68 · `$( )` aninhado C68 · `$( )` depois da ref C68 · `;` dentro do `$( )` C68 · `$( )` dentro de crase C68 · `$( )` entre aspas dentro de `$( )` C68 | - |
-| texto que o bash não substitui (3) | aspas simples com crase C70 · aspas simples com `$( )` C70 · heredoc `'EOF'` C70 | - |
-| texto citado sem ser executado (6) | `printf` com aspas simples C71 · `--body` com aspas duplas C71 · heredoc `'EOF'` C71 · push com redirecionamento e tail C71 · heredoc dentro de `$( )` C71 · `grep` com aspas duplas C71 | - |
-| texto passado a um shell (2) | `bash <<'EOF'` C71 · printf para sh C71 | - |
-| heredoc sem fim achado (6) | aspas no meio C72 · aspas no começo C72 · hífen C72 · ponto C72 · `$(( ))` C72 · `(( ))` C72 | - |
-| texto de várias linhas (3) | aspas simples C73 · aspas duplas C73 · heredoc dentro de `$( )` C73 | - |
-| redirecionamento e chaves no refspec (4) | `main>/dev/null` C74 · `main>&2` C74 · `HEAD:main>log` C74 · `{main,}` C74 | - |
-| subcomandos que rodam shell (3) | `rebase -x` C74 · `submodule foreach` C74 · `bisect run` C74 | - |
+| regras `ask` (12) | `gh pr merge` C27 · `git tag` C27 · `gh release` C27 · `--tags` sem remoto C27 · `--tags` com remoto C27 · `--follow-tags` C27 · ref `v*` C27 · `refs/tags/` C27 · `gh api` protection C27 · `gh api` environments C27 · `gh api` merge C27 · `gh api` releases C27 | - |
+| barreiras do push para `main` (3) | hook `pre-push` C28 · `tools/sdlc.py branch main` C28 · proteção no GitHub C30 | - |
 | mensagens de merge do git (5) | `Merge branch` C59 · `Merge branches` C59 · `Merge remote-tracking branch` C59 · `Merge tag` C59 · `Merge commit` C59 | - |
 | saídas do hook de sessão (4) | instala C41 · já instalado C41 · falha C43 · aviso `CLAUDE.md` C42 | - |
 | seções do `AGENTS.md` (5) | `## Fluxo` C34 · `## Autonomia` C34 · `## Skills` C35 · `## Ambiente` C35 · `## Documentação` C48 | - |
 | gates do `test_docs.py` novos (3) | flags C49 · campos do evento C50 · links C51 | - |
-| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4, C59 · 4 C12, C24 · 5 C22 · 6 C26-C30, C57, C58, C60-C74 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
+| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4, C59 · 4 C12, C24 · 5 C22 · 6 C26-C30 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
 
-- Checks que cruzam a fronteira real: C7 (push num remoto local), C25 (CI do GitHub), C32 (issues no GitHub), C45
+- Checks que cruzam a fronteira real: C7 e C28 (push num remoto local), C25 (CI do GitHub), C30 (proteção no GitHub), C32 (issues no GitHub), C45
   (sessão real do `claude`)
 - Nenhum outro check afirma mais do que o caso que a prova exercita
 

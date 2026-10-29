@@ -42,7 +42,7 @@ Reusa os validadores do `tlc-spec-lean` (`.claude/skills/tlc-spec-lean/scripts/`
 1. commit local -> `pre-commit` (exists) roda os hooks de hoje e os hooks locais novos, que chamam `tools/sdlc.py`
    (door 1): `pre-commit` (main e clone principal), `commit-msg` (door 3) e, no push, `branch` (door 2)
 2. sessão do Claude Code começa -> `.claude/settings.json` (exists) ganha um hook de início de sessão, que instala os hooks git se faltarem
-3. comando Bash do agente -> `.claude/hooks/gate-humano.sh` (door 6) devolve `ask`, `deny` ou `allow` conforme a tabela
+3. comando Bash do agente -> regras de permissão do `.claude/settings.json` (door 6, AD-053): o Claude Code pede confirmação para merge, tag, release e proteção; o push para `main` é recusado pelo hook `pre-push` e pela proteção da `main` no GitHub
 4. PR para `main` -> `.github/workflows/ci.yml` (exists) ganha o job `process` (door 4), que roda `tools/sdlc.py pr`:
    título, branch, commits, link do issue (door 7), validadores das features tocadas e o marcador de aprovação (door 5)
 5. out: o check `process` entra no `main-protection.json` (exists) como o 6º obrigatório; o Rodrigo aplica o payload no
@@ -69,8 +69,7 @@ Reusa os validadores do `tlc-spec-lean` (`.claude/skills/tlc-spec-lean/scripts/`
 | instruções | um `CLAUDE.local.md` local (gitignored) faz o Claude Code parar de ler o `AGENTS.md` para quem o tiver |
 | docs | flags e campos do evento hoje sem doc passam a ser documentados nesta feature (AC 36-37) |
 | hooks | o `commit-msg` do git roda também em `git merge` e `git pull` (githooks(5)): a mensagem automática de merge fica fora da door 3 (AC 46, achado no review do PR #34); o `pr` do CI já ignora merge commits (`--no-merges`) |
-| hooks | o `gate-humano.sh` lia o comando literal: aspas, prefixo de ambiente e substituição o deixavam em silêncio; passa a normalizar o comando e a falhar fechado com `ask` (AC 44-45, achado no review do PR #34) |
-| hooks | a rodada 3 do Verifier achou duas regressões do fix (o `allow` com `GIT_DIR=` e o corte do comando dentro de aspas) e brechas anteriores (`\\`, subshell, `&`): AC 47-49 |
+| hooks | AD-053: o `gate-humano.sh` (um parser de shell em bash, 8 rodadas do Verifier sem convergir e pedidos de confirmação em texto que o bash não executa) sai; a door 6 passa a ser regras de permissão do Claude Code, e o push para `main` fica com o hook `pre-push` e a proteção da `main` no GitHub. As AC 20-23 são reescritas e as AC 44-45 e 47-59 saem |
 | tooling | `[tool.mypy] files` ganha `tools`, então `tools/sdlc.py` roda em `mypy --strict` no job `typecheck` |
 | stored data | nada a migrar; os planos já existentes não ganham `**Approved**` retroativo (a regra vale para `plan.md` adicionado ou alterado no PR) |
 
@@ -91,7 +90,7 @@ None - nothing consumed outside the repository except the check name `process`, 
 | 3. primeira linha do commit e título do PR | `^(feat\|fix\|refactor\|perf\|test\|docs\|chore\|build\|ci\|style\|revert)(\([a-z0-9._-]+\))?!?: \S.*$` com até 100 caracteres; nenhuma linha `Co-authored-by:` (sem diferenciar maiúsculas) | commitlint: dependência Node num repositório Python sem Node |
 | 4. check obrigatório | job `process` em `ci.yml`, nome de status `process`, sexto item de `required_status_checks.checks` com `app_id` `15368` | checar no workflow de release: o erro apareceria depois do merge |
 | 5. marcador de aprovação do plano | linha `**Approved**: AAAA-MM-DD` logo abaixo do título do `plan.md`, escrita só depois do ok do Rodrigo no chat | label no PR: o plano é aprovado antes de existir PR |
-| 6. gates humanos do Claude Code | `PreToolUse` em `Bash` → `.claude/hooks/gate-humano.sh`: `ask` para `gh pr merge`, `git tag`, `git push` com tag ou `--tags`, `gh release`, `gh api` com `protection` ou `environments`; `deny` para `git push` que alcança `main`; `allow` para `git push` de branch da door 2 e `gh pr create` | só permissões do `settings.json`: não expressam "push de qualquer branch menos `main`" sem lista de padrões frágil |
+| 6. gates humanos do Claude Code | `permissions` no `.claude/settings.json`: `ask` para `Bash(gh pr merge *)`, `Bash(git tag *)`, `Bash(gh release *)`, `Bash(git push --tags *)`, `Bash(git push * --tags *)`, `Bash(git push * --follow-tags *)`, `Bash(git push * v*)`, `Bash(git push * refs/tags/*)`, `Bash(gh api *protection*)`, `Bash(gh api *environments*)`, `Bash(gh api *merge*)`, `Bash(gh api *releases*)`; `allow` para `Bash(git push *)` e `Bash(gh pr create *)`; nenhum hook `PreToolUse` em `Bash`. O push para `main` é recusado pelo hook git `pre-push` (a door 2 não aceita `main`) e pela proteção da `main` no GitHub (`enforce_admins`, PR obrigatório). Reescrita pela AD-053 | `PreToolUse` em `Bash` com um parser de shell próprio (`gate-humano.sh`, a forma aprovada antes da AD-053): 8 rodadas do Verifier sem convergir e confirmação pedida em mensagem de commit; só permissões sem o `pre-push`: o `allow` de `git push *` também cobriria `main` |
 | 7. ligação PR ↔ issue | corpo do PR com `Closes #N`, `Fixes #N` ou `Refs #N`, `N` igual ao `<id>` da branch | issue no título: o título é a mensagem do squash e fica em Conventional Commits |
 
 | 8. um arquivo de instruções | só `AGENTS.md` na raiz; nenhum `CLAUDE.md`, `.claude/CLAUDE.md` ou `CLAUDE.local.md` versionado; o `~/.claude/CLAUDE.md` de cada pessoa continua valendo | `CLAUDE.md` com `@AGENTS.md`: dois arquivos, o que o Rodrigo pediu para acabar; symlink: quebra em checkout sem suporte a symlink e o Claude Code já lê o `AGENTS.md` sem ele |
@@ -144,12 +143,12 @@ O Claude Code segue sem pedir ok até o PR aberto e pede confirmação nos passo
 
 **Acceptance Criteria**
 
-20. WHEN o Bash do Claude Code vai rodar `gh pr merge`, `git tag`, `git push` com `--tags` ou com uma ref `v*`, `gh release`, ou `gh api` com `protection` ou `environments` no caminho THEN `gate-humano.sh` SHALL devolver `permissionDecision` `ask` com o motivo
-21. IF o Bash vai rodar `git push` com refspec de destino `main` ou `HEAD:main`, ou sem refspec com a branch atual `main` THEN `gate-humano.sh` SHALL devolver `permissionDecision` `deny`
-22. WHEN o Bash vai rodar `git push` de uma branch que casa a door 2, ou `gh pr create` THEN `gate-humano.sh` SHALL devolver `permissionDecision` `allow`
-23. WHEN o comando não é nenhum dos das AC 20-22 THEN `gate-humano.sh` SHALL sair com `0` sem saída
+20. The `.claude/settings.json` SHALL ter em `permissions.ask` as regras `Bash(gh pr merge *)`, `Bash(git tag *)`, `Bash(gh release *)`, `Bash(git push --tags *)`, `Bash(git push * --tags *)`, `Bash(git push * --follow-tags *)`, `Bash(git push * v*)`, `Bash(git push * refs/tags/*)`, `Bash(gh api *protection*)`, `Bash(gh api *environments*)`, `Bash(gh api *merge*)`, `Bash(gh api *releases*)`: o Claude Code pede confirmação quando qualquer trecho de um comando composto casa uma delas (AD-053)
+21. IF um `git push` tem `main` como destino THEN o hook git `pre-push` SHALL recusá-lo, e a proteção da `main` no GitHub (`enforce_admins`, PR obrigatório, sem force push nem deleção) SHALL rejeitá-lo
+22. The `.claude/settings.json` SHALL ter em `permissions.allow` as regras `Bash(git push *)` e `Bash(gh pr create *)`, e nenhuma regra de `allow` SHALL casar `gh pr merge`, `git tag` ou `gh release`
+23. The repositório SHALL não ter hook `PreToolUse` em `Bash` nem o `.claude/hooks/gate-humano.sh` (AD-053)
 
-**Independent test:** alimentar `gate-humano.sh` com o JSON de `PreToolUse` de `gh pr merge 30` imprime `ask`; de `git push -u origin feat/31/x`, `allow`.
+**Independent test:** `cd x && gh pr merge 34` pede confirmação no Claude Code; `git push origin main` num clone com os hooks é recusado pelo `pre-push`.
 
 ### S4: o backlog vive em GitHub Issues (P2)
 
@@ -207,41 +206,19 @@ Um PR que muda comportamento sem doc, sem par ou sem `CHANGELOG.md` falha, e a r
 
 **Independent test:** apagar `--timeout` do `README.md` faz o `uv run pytest tests/test_docs.py` falhar nomeando `run --timeout`.
 
-### S8: os gates não silenciam diante de um comando disfarçado nem travam um merge local (P1, achado no review do PR #34)
+### S8: o `commit-msg` não trava um merge local (P1, achado no review do PR #34)
 
-O `gate-humano.sh` falha fechado quando não consegue ler o comando, e o `commit-msg` deixa passar a mensagem que o
-próprio git escreve num merge.
+O `commit-msg` deixa passar a mensagem que o próprio git escreve num merge.
 
 **Acceptance Criteria**
 
-44. IF o Bash vai rodar `git push` para `main` com o refspec entre aspas, com prefixo `VAR=valor`, por `env`, `command` ou pelo caminho do binário (`/usr/bin/git`) THEN `gate-humano.sh` SHALL devolver `permissionDecision` `deny`, como na AC 21
-45. IF um pedaço do comando cita `git` ou `gh` fora da primeira palavra junto de `push`, `tag`, `merge`, `release` ou `api`, ou um `git push` tem refspec com substituição (`$` ou crase) THEN `gate-humano.sh` SHALL devolver `permissionDecision` `ask`
 46. WHEN a primeira linha da mensagem é a que o git escreve num merge (`Merge branch '<b>'`, `Merge branches`, `Merge remote-tracking branch '<b>'`, `Merge tag '<t>'`, `Merge commit '<c>'`) THEN `tools/sdlc.py commit-msg <arquivo>` SHALL não aplicar a door 3 a ela, e ainda SHALL aplicar a AC 3; o título do PR segue a door 3 sem exceção
 
-47. IF o `git push` aponta para outro repositório (`GIT_DIR=`, `GIT_WORK_TREE=`, `git -C`, `--git-dir`, `--work-tree`) THEN `gate-humano.sh` SHALL não devolver `allow`, e ainda SHALL devolver `deny` para destino `main`
-48. WHEN `&&`, `||`, `;`, `|` ou `&` aparecem dentro de aspas THEN `gate-humano.sh` SHALL não cortar o comando nesse ponto (`git commit -m "fix: a; git push origin main"` sai sem saída)
-49. IF o push para `main` vem com barra invertida (`\git`, `ma\in`), num subshell `( ... )` ou em segundo plano (`... main&`) THEN `gate-humano.sh` SHALL devolver `deny`
-
-50. IF o comando de `git` ou `gh` vem dentro de `$( )` ou de crase e o comando de fora não é negado THEN `gate-humano.sh` SHALL devolver `ask` (reescrita depois da rodada 6, por decisão do Rodrigo: o gate não tenta ler o comando de dentro)
-51. IF `--git-dir`, `--work-tree` ou `--namespace` vêm com o valor na palavra seguinte THEN `gate-humano.sh` SHALL tratá-los como na AC 47, e IF o `git -c` define um `alias.` THEN SHALL devolver `ask`
-52. WHEN o Bash vai rodar `git push --follow-tags`, `gh pr` com flags antes de `merge`, ou `gh api` em `merge`, `releases` ou `git/refs` THEN `gate-humano.sh` SHALL devolver `ask`; e IF flags curtas combinadas trazem `f` ou `d` (`-uf`) THEN SHALL não devolver `allow`
-
-53. IF um `$( )` ou crase aparece nos argumentos de um `git push` para `main` (`git -C $(pwd) push origin main`, `git push $(git remote) main`) THEN `gate-humano.sh` SHALL seguir devolvendo `deny`; e IF um trecho que o bash executa (fora de aspas, dentro de `$( )` ou crase também entre aspas duplas, ou o texto passado a `bash`, `sh`, `eval`, `sudo` ou `xargs`) cita `git` ou `gh` junto de `push`, `tag`, `merge`, `release` ou `api` e não é um comando `git` ou `gh` que o gate leu por inteiro THEN SHALL devolver `ask` (reescrita depois da rodada 6, por decisão do Rodrigo: falhar fechado em vez de ler o shell, sem contar texto que o bash não executa)
-54. IF `-c` ou `--config-env` definem um alias em qualquer caixa (`alias.`, `Alias.`), ou o `gh api graphql` chama `mergePullRequest` THEN `gate-humano.sh` SHALL devolver `ask`
-
-55. IF o texto que cita `git push` para `main` está onde o bash não substitui (entre aspas simples, num heredoc com `'EOF'`) THEN `gate-humano.sh` SHALL não devolver `deny`; e IF o `gh api graphql` chama `enablePullRequestAutoMerge`, ou `--config-env=` define um alias THEN SHALL devolver `ask`
-
-56. WHEN `git`/`gh` com `push`, `tag`, `merge`, `release` ou `api` aparecem só em texto que o bash não executa (aspas simples, aspas duplas sem `$( )` nem crase, corpo de heredoc) e o comando não passa texto a um shell THEN `gate-humano.sh` SHALL não pedir confirmação; e um `git push` de branch de feature com `2>&1 | tail` SHALL não pedir confirmação (autonomia: mensagem de commit, comentário e corpo de PR citam esses comandos o tempo todo)
-
-57. IF o gate não acha a linha de fim de um heredoc (delimitador com aspas no meio, `-` ou `.`, ou um `<<` de aritmética, `$((1<<2))`, `(( x = 1 << 2 ))`) THEN `gate-humano.sh` SHALL ler o resto do texto como comando, e um `git push` para `main` depois dele SHALL dar `deny`
-58. WHEN o texto entre aspas tem várias linhas THEN `gate-humano.sh` SHALL não ler nenhuma delas como comando; e IF o `$( )` entre aspas duplas tem aspas dentro, ou o texto é passado a `$SHELL`, `.` ou `eval` THEN o trecho executado SHALL ser lido como na AC 53
-59. IF o refspec de um `git push` traz um redirecionamento colado (`main>/dev/null`, `HEAD:main>log`) THEN `gate-humano.sh` SHALL ler o refspec sem ele, e IF traz chaves (`{main,}`), ou o comando é `git rebase -x`/`--exec`, `git submodule foreach` ou `git bisect run` THEN SHALL devolver `ask`
-
-**Independent test:** `git push origin "main"` e `bash -c "git push origin main"` não passam sem o Rodrigo ver; `git pull` numa branch divergida faz o merge sem `--no-verify`.
+**Independent test:** `git pull` numa branch divergida faz o merge sem `--no-verify`.
 
 ## Out of scope
 
-- O `gate-humano.sh` não interpreta o shell: continuação de linha com `\`, aspas que atravessam linhas e `cd <outro repo> && git push` ficam no #35 (achado da rodada 4 do Verifier); a proteção da `main` no GitHub segue como a barreira final
+- Barrar no GitHub o merge, a tag e o release feitos pelo agente: ele usa as credenciais do `gh` do Rodrigo, e para o GitHub é o Rodrigo; o gate é o `ask` local da AC 20 (AD-053)
 
 Product capabilities only. Process and harness rules live in AGENTS.md or as Observable `n/a`.
 
@@ -277,7 +254,7 @@ Product capabilities only. Process and harness rules live in AGENTS.md or as Obs
 | comando `tools/sdlc.py` | exit codes | door 1 (`0`, `1`, `2`) |
 | comando `tools/sdlc.py` | what it prints when it fails halfway | AC 15 (cada validador que falhou é nomeado; os outros ainda rodam) |
 | job `process` no CI | output format | AC 11-18 (o stderr do `tools/sdlc.py` no log do job) |
-| hook `gate-humano.sh` | output format | AC 20-23 (JSON de `PreToolUse` ou nada) |
+| regras de permissão do Claude Code | output format | AC 20, 22 (o pedido de confirmação nativo) |
 | hook `SessionStart` | output and failure | AC 9 |
 | doc `AGENTS.md` | structure, tone, depth, what the reader does next | AC 26 |
 | doc `CONTRIBUTING.md` (EN e pt-BR) | structure and what the reader does next | AC 28, AC 33 |

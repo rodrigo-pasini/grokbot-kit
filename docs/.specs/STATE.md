@@ -56,6 +56,7 @@
 | AD-050 | Autonomia do agente: aprovar o plano, fazer o merge em `main` e criar a tag de release são do Rodrigo; push de branch de feature, abrir PR, review com `revisar-pr` e resposta ao review o agente faz sozinho (feature `sdlc-gates`) | decisão do Rodrigo; fluxo autônomo do issue ao PR aberto | active | 2026-10-29 |
 | AD-051 | Backlog em GitHub Issues: toda tarefa tem issue, o `<id>` da branch é o número dele e o PR leva `Closes #N`; as pendências saem do `STATE.md` | decisão do Rodrigo; projeto open source e o bot lê issues | active | 2026-10-29 |
 | AD-052 | O `AGENTS.md` é o único arquivo de instruções do projeto; o `CLAUDE.md` sai e o conteúdo vai para ele. A prova C48 da model-setup-docs e a lista da door 10 da agent-run-notify passam a ler `AGENTS.md` (feature `sdlc-gates`, door 8) | decisão do Rodrigo; o Claude Code lê o `AGENTS.md` nativo desde a 2.1.277 | active | 2026-10-29 |
+| AD-053 | Os gates humanos do Claude Code são regras de permissão no `.claude/settings.json` (`ask` para merge, tag, release e proteção; `allow` para `git push` e `gh pr create`), sem parser de shell próprio; o push para `main` fica com o hook `pre-push` e a proteção da `main` no GitHub (feature `sdlc-gates`, door 6) | decisão do Rodrigo depois de 8 rodadas do Verifier sobre o `gate-humano.sh` e de confirmações pedidas em texto de commit | active | 2026-10-29 |
 
 ## Handoff
 
