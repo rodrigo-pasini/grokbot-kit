@@ -2,7 +2,8 @@
 
 O kit roda num `HOME` temporário, para não tocar no config nem nos task dirs do usuário. Do `HOME` real só entram,
 por symlink, as credenciais do Claude (`~/.claude/.credentials.json`) e do opencode
-(`~/.local/share/opencode/auth.json`). O Codex usa o `CODEX_HOME` isolado da door 7, `~/.grokbot-kit/codex-home` do
+(`~/.local/share/opencode/auth.json`), mais uma cópia do `opencode.db`, onde o opencode 1.19.5 guarda o login de um
+provedor pago. O Codex usa o `CODEX_HOME` isolado da door 7, `~/.grokbot-kit/codex-home` do
 `HOME` real, com login próprio; o `~/.codex` do usuário nunca entra (AC 98).
 
 Modelos: `GROKBOT_KIT_IT_CLAUDE_MODEL` ou `haiku` no Claude (alias documentado); no opencode, `GROKBOT_KIT_IT_OPENCODE_MODEL` ou o primeiro modelo

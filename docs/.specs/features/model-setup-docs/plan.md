@@ -209,7 +209,7 @@ O setup do bot pergunta, em vez de aplicar a regra dos gratuitos sozinho.
 | uma feature só, com setup, erro, fallback, docs e processo | uma feature, seis slices | decisão do Rodrigo em 28/10/2026 | y |
 | fallback de modelo | sim, só dentro do tier e só antes de ferramenta | decisão do Rodrigo em 28/10/2026; o limite "antes de ferramenta" evita repetir efeito | y |
 | `claude` com `num_turns` ≤ 1 e `terminal_reason` `api_error` é falha antes de ferramenta | usar essa regra | observado com modelo inválido no `claude` do host de dev (28/10/2026); uma ferramenta exige um segundo turno | n |
-| o opencode 1.19.3 do box grava `tool_use` como o 2.1.3 | usar `type` `tool_use` nas duas | observado no 2.1.3 (28/10/2026); a prova no box confere o 1.19.3 | n |
+| o opencode 1.19.3 do box grava `tool_use` como o 2.1.3 | usar `type` `tool_use` nas duas | observado no 2.1.3 (28/10/2026); a prova no box confere o 1.19.3 | y - o box está no 1.19.5, e o C36 passou nele em 29/10/2026 (`box/c36.md`) |
 | a skill pergunta até 4 ids por tier | 4, o limite de opções de uma pergunta de múltipla escolha | o usuário pode digitar outro id da lista | n |
 
 **Open questions:** none - all resolved or logged above.
