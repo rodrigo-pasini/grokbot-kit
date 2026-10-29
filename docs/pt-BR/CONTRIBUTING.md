@@ -72,9 +72,10 @@ Quem trabalha com o Claude Code neste repositório faz cada tarefa de código nu
 principal. Para trabalhar de propósito no clone principal, rode a sessão com `GROKBOT_KIT_ALLOW_MAIN_EDIT=1`. O hook
 `.claude/hooks/gate-humano.sh` (PreToolUse em Bash) deixa o agente fazer push de branch de feature e abrir pull
 request, pede confirmação antes de merge, tag, release ou mudança na proteção da branch, e nega push para `main`.
-Ele não interpreta o shell, então também pede confirmação para um comando com `$(...)`, crase, parênteses, `\` ou
-quebra de linha que cite `git`/`gh` com `push`, `tag`, `merge`, `release` ou `api`, e para `git`/`gh` dentro de outro
-comando (`bash -c`, `sudo`, `xargs`).
+Ele não interpreta o shell, então também pede confirmação quando um trecho que o bash executa cita `git`/`gh` com
+`push`, `tag`, `merge`, `release` ou `api` e o gate não consegue lê-lo por inteiro: dentro de `$(...)` ou crase, ou
+texto passado a `bash`, `sh`, `eval`, `sudo` ou `xargs`. Texto que o bash não executa (aspas simples, aspas duplas sem
+substituição, corpo de heredoc) não conta, então mensagem de commit e corpo de pull request podem citar esses comandos.
 
 ## Release e PyPI
 

@@ -73,9 +73,10 @@ The hook `.claude/hooks/gate-worktree.sh` (PreToolUse on Edit/Write) denies code
 the main clone on purpose, run the session with `GROKBOT_KIT_ALLOW_MAIN_EDIT=1`. The hook
 `.claude/hooks/gate-humano.sh` (PreToolUse on Bash) lets the agent push a feature branch and open a pull request, asks
 before a merge, a tag, a release or a change to branch protection, and denies a push to `main`. It does not interpret
-the shell, so it also asks for a command with `$(...)`, backticks, parentheses, `\` or a line break that mentions
-`git`/`gh` with `push`, `tag`, `merge`, `release` or `api`, and for `git`/`gh` inside another command (`bash -c`,
-`sudo`, `xargs`).
+the shell, so it also asks when a part the shell runs mentions `git`/`gh` with `push`, `tag`, `merge`, `release` or
+`api` and the gate cannot read it whole: inside `$(...)` or backticks, or text handed to `bash`, `sh`, `eval`, `sudo`
+or `xargs`. Text the shell does not run (single quotes, double quotes without substitution, a heredoc body) does not
+count, so commit messages and pull request bodies can mention those commands.
 
 ## Release and PyPI
 

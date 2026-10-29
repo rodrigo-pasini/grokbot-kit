@@ -370,6 +370,29 @@ def test_gate_humano_round6_ask(feature_repo: Path, command: str) -> None:
     assert decision(command, feature_repo)[0] == "ask", command
 
 
+# C71 - AC 56, AC 53, door 6
+@pytest.mark.parametrize(
+    "command",
+    [
+        "S=/tmp/x && printf '%s\\n' 'cita git push origin main e gh pr merge' > $S/m && git add a && git commit -q -F $S/m",
+        'gh issue comment 35 --body "cita git push e gh release"',
+        "cat > f.md <<'EOF'\ngit push origin main\ngh pr merge 34\nEOF",
+        "git push -u origin feat/31/x 2>&1 | tail -3",
+        'gh pr create --title "fix(x): y" --body "$(cat <<\'EOF\'\ncita git push e merge\nEOF\n)"',
+        'grep -rn "git push" docs',
+    ],
+)
+def test_gate_humano_autonomy_quiet(feature_repo: Path, command: str) -> None:
+    result = gate(command, feature_repo)
+    assert result.returncode == 0
+    assert result.stdout == "", command
+
+
+@pytest.mark.parametrize("command", ["bash <<'EOF'\ngit push origin main\nEOF", "printf 'git push origin main' | sh"])
+def test_gate_humano_autonomy_shell_text(feature_repo: Path, command: str) -> None:
+    assert decision(command, feature_repo)[0] == "ask", command
+
+
 # C30 - AC 23
 @pytest.mark.parametrize("command", ["git status", "uv run pytest", "gh pr view 30"])
 def test_gate_humano_neutral(feature_repo: Path, command: str) -> None:
