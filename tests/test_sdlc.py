@@ -209,6 +209,28 @@ def test_precommit_installs_three_hook_types(tmp_path: Path) -> None:
         assert (repo / ".git" / "hooks" / hook).is_file(), hook
 
 
+# C28 - AC 21, door 6
+def test_pre_push_refuses_main(tmp_path: Path) -> None:
+    remote = tmp_path / "remote.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True)
+    repo = clone_with_hooks(tmp_path)
+    git(repo, "remote", "add", "origin", str(remote))
+    env = {**os.environ, "GROKBOT_KIT_ALLOW_MAIN_EDIT": "1"}
+    (repo / "a.txt").write_text("a\n", encoding="utf-8")
+    git(repo, "add", "a.txt")
+    subprocess.run(["git", "commit", "-q", "--no-verify", "-m", "feat(x): a"], cwd=repo, check=True, env=env)
+    for refspec in ("main", "HEAD:main"):
+        result = subprocess.run(
+            ["git", "push", "-q", "origin", refspec], cwd=repo, capture_output=True, text=True, check=False, env=env
+        )
+        assert result.returncode != 0, refspec
+    heads = subprocess.run(
+        ["git", "ls-remote", "--heads", str(remote)], capture_output=True, text=True, check=True
+    ).stdout
+    assert "refs/heads/main" not in heads
+    assert sdlc("branch", "main", cwd=tmp_path).returncode == 1
+
+
 # C7 - AC 5
 def test_pre_push_hook_blocks(tmp_path: Path) -> None:
     remote = tmp_path / "remote.git"

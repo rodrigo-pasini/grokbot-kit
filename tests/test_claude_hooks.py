@@ -1,10 +1,11 @@
-"""Provas dos hooks do Claude Code do repositório (sdlc-gates: checks C26-C30, C41-C43; AC 9, 20-23, 32, door 6).
+"""Provas da config e dos hooks do Claude Code do repositório (sdlc-gates: C26, C27, C29, C41-C43; AC 9, 20, 22, 23, 32).
 
 Cada hook é alimentado com o JSON do evento em stdin, como o Claude Code faz.
 """
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -12,7 +13,6 @@ from typing import Any
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-GATE = ROOT / ".claude" / "hooks" / "gate-humano.sh"
 SESSION = ROOT / ".claude" / "hooks" / "session-start.sh"
 CLAUDE_MD_WARNING = "CLAUDE.md or CLAUDE.local.md found: AGENTS.md is not loaded; move its content to AGENTS.md"
 
@@ -28,37 +28,40 @@ def repo_on(tmp_path: Path, branch: str) -> Path:
     return repo
 
 
-def gate(command: str, cwd: Path) -> subprocess.CompletedProcess[str]:
-    payload = {
-        "hook_event_name": "PreToolUse",
-        "tool_name": "Bash",
-        "tool_input": {"command": command},
-        "cwd": str(cwd),
-    }
-    return subprocess.run(
-        ["bash", str(GATE)], input=json.dumps(payload), cwd=cwd, capture_output=True, text=True, check=False
-    )
+ASK = [
+    "Bash(gh pr merge *)",
+    "Bash(git tag *)",
+    "Bash(gh release *)",
+    "Bash(git push --tags *)",
+    "Bash(git push * --tags *)",
+    "Bash(git push * --follow-tags *)",
+    "Bash(git push * v*)",
+    "Bash(git push * refs/tags/*)",
+    "Bash(gh api *protection*)",
+    "Bash(gh api *environments*)",
+    "Bash(gh api *merge*)",
+    "Bash(gh api *releases*)",
+]
+ALLOW = ["Bash(git push *)", "Bash(gh pr create *)"]
 
 
-def decision(command: str, cwd: Path) -> tuple[str | None, str]:
-    result = gate(command, cwd)
-    assert result.returncode == 0, result.stderr
-    if not result.stdout.strip():
-        return None, ""
-    out = json.loads(result.stdout)["hookSpecificOutput"]
-    assert out["hookEventName"] == "PreToolUse"
-    return out["permissionDecision"], out.get("permissionDecisionReason", "")
+def settings() -> dict[str, Any]:
+    return json.loads((ROOT / ".claude" / "settings.json").read_text(encoding="utf-8"))
 
 
-@pytest.fixture
-def feature_repo(tmp_path: Path) -> Path:
-    return repo_on(tmp_path, "feat/31/sdlc-gates")
+def matches(rule: str, command: str) -> bool:
+    """Casa uma regra `Bash(<padrão>)` como o Claude Code: `*` é qualquer texto, e ` *` no fim aceita o comando sem
+    argumento."""
+    pattern = rule.removeprefix("Bash(").removesuffix(")")
+    regex = re.escape(pattern).replace(r"\*", ".*")
+    if pattern.endswith(" *"):
+        regex = regex[: -len(r"\ .*")] + r"(\ .*)?"
+    return re.fullmatch(regex, command) is not None
 
 
-# C26 - AC 20-23, door 6
+# C26 - AC 23, door 6
 def test_settings_registers_hooks() -> None:
-    settings = json.loads((ROOT / ".claude" / "settings.json").read_text(encoding="utf-8"))
-    hooks = settings["hooks"]
+    hooks = settings()["hooks"]
 
     def commands(event: str, matcher: str | None) -> list[str]:
         return [
@@ -69,404 +72,47 @@ def test_settings_registers_hooks() -> None:
             if h["type"] == "command"
         ]
 
-    assert any("gate-humano.sh" in c for c in commands("PreToolUse", "Bash"))
+    assert not commands("PreToolUse", "Bash")
     assert any("gate-worktree.sh" in c for c in commands("PreToolUse", "Edit|Write|MultiEdit|NotebookEdit"))
     session = [h["command"] for entry in hooks.get("SessionStart", []) for h in entry["hooks"]]
     assert any("session-start.sh" in c for c in session)
+    assert not (ROOT / ".claude" / "hooks" / "gate-humano.sh").exists()
 
 
 # C27 - AC 20, door 6
+def test_settings_permissions_ask() -> None:
+    assert settings()["permissions"]["ask"] == ASK
+
+
 @pytest.mark.parametrize(
     "command",
     [
-        "gh pr merge 30 --squash",
+        "gh pr merge 34 --squash",
         "git tag v0.6.0",
-        "git push origin v0.6.0",
-        "git push --tags",
         "gh release create v0.6.0",
+        "git push --tags",
+        "git push origin --tags",
+        "git push origin v0.6.0",
+        "git push origin refs/tags/v0.6.0",
         "gh api -X PUT repos/o/r/branches/main/protection",
         "gh api repos/o/r/environments/pypi",
+        "gh api -X PUT repos/o/r/pulls/34/merge",
+        "gh api graphql -f query=mutation{mergePullRequest}",
+        "gh api repos/o/r/releases",
     ],
 )
-def test_gate_humano_ask(feature_repo: Path, command: str) -> None:
-    kind, reason = decision(command, feature_repo)
-    assert kind == "ask", command
-    assert reason.strip()
-
-
-# C28 - AC 21, door 6
-@pytest.mark.parametrize(
-    "command", ["git push origin main", "git push origin HEAD:main", "git status && git push origin main"]
-)
-def test_gate_humano_deny(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] == "deny", command
-
-
-@pytest.mark.parametrize("command", ["git push --force origin main", "git push origin -d main"])
-def test_gate_humano_deny_force_main(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] == "deny", command
-
-
-@pytest.mark.parametrize("command", ["git push --force origin feat/31/x", "git push origin --delete feat/31/x"])
-def test_gate_humano_no_allow_force_or_delete(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] is None, command
-
-
-def test_gate_humano_deny_current_main(tmp_path: Path) -> None:
-    repo = repo_on(tmp_path, "main")
-    assert decision("git push", repo)[0] == "deny"
+def test_settings_permissions_ask_covers(command: str) -> None:
+    assert any(matches(rule, command) for rule in ASK), command
 
 
 # C29 - AC 22, door 6
-@pytest.mark.parametrize(
-    "command", ["git push -u origin feat/31/sdlc-gates", 'gh pr create --title "feat(ci): x" --body-file b.md']
-)
-def test_gate_humano_allow(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] == "allow", command
-
-
-def test_gate_humano_allow_not_outside_door_2(feature_repo: Path) -> None:
-    assert decision("git push -u origin feat/sdlc", feature_repo)[0] != "allow"
-
-
-def test_gate_humano_allow_not_compound(feature_repo: Path) -> None:
-    """Um `allow` vale para o comando inteiro: um composto não ganha `allow` por causa de um push bom."""
-    assert decision("rm -rf build && git push -u origin feat/31/sdlc-gates", feature_repo)[0] != "allow"
-
-
-# C57 - AC 44, door 6
-@pytest.mark.parametrize(
-    "command",
-    [
-        'git push origin "main"',
-        "git push origin 'HEAD:main'",
-        "GIT_DIR=.git git push origin main",
-        "env git push origin main",
-        "command git push origin main",
-        "/usr/bin/git push origin main",
-    ],
-)
-def test_gate_humano_deny_disguised(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] == "deny", command
-
-
-# C58 - AC 45, door 6
-@pytest.mark.parametrize(
-    "command",
-    [
-        "git push origin $(echo main)",
-        "git push origin `echo main`",
-        'bash -c "git push origin main"',
-        "sudo git push origin main",
-        "xargs gh pr merge",
-    ],
-)
-def test_gate_humano_ask_unparsed(feature_repo: Path, command: str) -> None:
-    kind, reason = decision(command, feature_repo)
-    assert kind == "ask", command
-    assert reason.strip()
-
-
-# C60 - AC 45, door 6
-@pytest.mark.parametrize(
-    "command",
-    ["sudo git tag v1", 'bash -c "gh release create v1"', "xargs gh api repos/o/r/branches/main/protection"],
-)
-def test_gate_humano_ask_unparsed_verbs(feature_repo: Path, command: str) -> None:
-    kind, reason = decision(command, feature_repo)
-    assert kind == "ask", command
-    assert reason.strip()
-
-
-# C61 - AC 47, door 6
-@pytest.mark.parametrize(
-    "command",
-    [
-        "GIT_DIR=x/.git git push origin HEAD",
-        "GIT_WORK_TREE=x git push origin feat/31/x",
-        "git -C x push origin HEAD",
-        "git --git-dir=x/.git push origin feat/31/x",
-        "git --work-tree=x push origin feat/31/x",
-    ],
-)
-def test_gate_humano_other_repo_no_allow(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] != "allow", command
-
-
-def test_gate_humano_other_repo_deny_main(feature_repo: Path) -> None:
-    assert decision("git -C x push origin main", feature_repo)[0] == "deny"
-
-
-# C62 - AC 48, door 6
-@pytest.mark.parametrize(
-    "command",
-    [
-        'git commit -m "fix: a; git push origin main"',
-        'git commit -m "docs: gate | git tag"',
-        "git commit -m 'a && git push origin main'",
-    ],
-)
-def test_gate_humano_quoted_separators(feature_repo: Path, command: str) -> None:
-    result = gate(command, feature_repo)
-    assert result.returncode == 0
-    assert result.stdout == "", command
-
-
-def test_gate_humano_quoted_separators_still_split(feature_repo: Path) -> None:
-    assert decision("git status && git push origin main", feature_repo)[0] == "deny"
-
-
-# C63 - AC 49, door 6
-@pytest.mark.parametrize(
-    "command",
-    [
-        "\\git push origin main",
-        "git push origin ma\\in",
-        "(git push origin main)",
-        "(cd x && git push origin main)",
-        "git push origin main&",
-    ],
-)
-def test_gate_humano_deny_escaped(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] == "deny", command
-
-
-# C64 - AC 50, door 6
-@pytest.mark.parametrize(
-    ("command", "expected"),
-    [
-        ("echo $(git push origin main)", "ask"),
-        ("x=$(git push origin main)", "ask"),
-        ("echo `git push origin main`", "ask"),
-    ],
-)
-def test_gate_humano_substitution(feature_repo: Path, command: str, expected: str) -> None:
-    assert decision(command, feature_repo)[0] == expected, command
-
-
-# C65 - AC 48, door 6
-@pytest.mark.parametrize(
-    "command", ['git commit -m "a || git push origin main"', 'git commit -m "a & git push origin main"']
-)
-def test_gate_humano_quoted_more(feature_repo: Path, command: str) -> None:
-    result = gate(command, feature_repo)
-    assert result.returncode == 0
-    assert result.stdout == "", command
-
-
-def test_gate_humano_quoted_more_escaped_quote(feature_repo: Path) -> None:
-    assert decision('git commit -m \\" ; git push origin main', feature_repo)[0] == "deny"
-
-
-# C66 - AC 51, door 6
-@pytest.mark.parametrize(
-    "command",
-    [
-        "git --git-dir x/.git push origin main",
-        "git --work-tree x push origin main",
-        "git --namespace n push origin main",
-    ],
-)
-def test_gate_humano_spaced_options_deny(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] == "deny", command
-
-
-def test_gate_humano_spaced_options_no_allow(feature_repo: Path) -> None:
-    assert decision("git --git-dir x/.git push origin feat/31/x", feature_repo)[0] != "allow"
-
-
-def test_gate_humano_spaced_options_alias(feature_repo: Path) -> None:
-    assert decision("git -c alias.p=push p origin main", feature_repo)[0] == "ask"
-
-
-# C67 - AC 52, door 6
-@pytest.mark.parametrize(
-    ("command", "expected"),
-    [
-        ("git push --follow-tags origin feat/31/x", "ask"),
-        ("git push --tags origin main", "deny"),
-        ("gh pr -R o/r merge 34", "ask"),
-        ("gh api -X PUT repos/o/r/pulls/34/merge", "ask"),
-        ("gh api repos/o/r/releases", "ask"),
-        ("gh api -X DELETE repos/o/r/git/refs/heads/x", "ask"),
-    ],
-)
-def test_gate_humano_more_ask(feature_repo: Path, command: str, expected: str) -> None:
-    assert decision(command, feature_repo)[0] == expected, command
-
-
-def test_gate_humano_more_ask_combined_force(feature_repo: Path) -> None:
-    assert decision("git push -uf origin feat/31/x", feature_repo)[0] != "allow"
-
-
-# C68 - AC 53, door 6
-@pytest.mark.parametrize(
-    ("command", "expected"),
-    [
-        ("git -C $(pwd) push origin main", "deny"),
-        ("git push $(git remote) main", "deny"),
-        ("git push $(echo origin) main", "deny"),
-        ("git push origin $(true) main", "deny"),
-        ("x=`git push origin main`", "ask"),
-        ('git commit -m "$(git push origin main)"', "ask"),
-        ('git commit -m "`git push origin main`"', "ask"),
-        ("echo $(echo $(git push origin main))", "ask"),
-        ("echo $(git push origin main $(true))", "ask"),
-        ("echo $(git push origin main; echo $(date))", "ask"),
-        ("echo `echo $(git push origin main)`", "ask"),
-        ('x=$(git push origin "$(echo main)")', "ask"),
-    ],
-)
-def test_gate_humano_substitution_args(feature_repo: Path, command: str, expected: str) -> None:
-    kind, reason = decision(command, feature_repo)
-    assert kind == expected, command
-    assert reason.strip()
-
-
-# C69 - AC 51, 52, 54, door 6
-def test_gate_humano_round5_config_env_deny(feature_repo: Path) -> None:
-    assert decision("git --config-env core.x=Y push origin main", feature_repo)[0] == "deny"
-
-
-@pytest.mark.parametrize("command", ["git --namespace=n push origin feat/31/x", "git push -ud origin feat/31/x"])
-def test_gate_humano_round5_no_allow(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] != "allow", command
-
-
-@pytest.mark.parametrize(
-    "command",
-    [
-        "gh pr --repo o/r merge 34",
-        "git -c Alias.p=push p origin main",
-        "git --config-env alias.p=X p origin main",
-        "gh api graphql -f query=mutation{mergePullRequest}",
-    ],
-)
-def test_gate_humano_round5_ask(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] == "ask", command
-
-
-# C70 - AC 55, door 6
-@pytest.mark.parametrize(
-    "command",
-    [
-        "git commit -m 'fix: `git push origin main` x'",
-        "rg -n '$(git push origin main)' docs",
-        "git commit -F - <<'EOF'\nfix(x): cita git push origin main\nEOF",
-    ],
-)
-def test_gate_humano_round6_no_false_deny(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] != "deny", command
-
-
-@pytest.mark.parametrize(
-    "command",
-    [
-        "git --config-env=alias.p=X p origin main",
-        "gh api graphql -f query=mutation{enablePullRequestAutoMerge}",
-    ],
-)
-def test_gate_humano_round6_ask(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] == "ask", command
-
-
-# C71 - AC 56, AC 53, door 6
-@pytest.mark.parametrize(
-    "command",
-    [
-        "S=/tmp/x && printf '%s\\n' 'cita git push origin main e gh pr merge' > $S/m && git add a && git commit -q -F $S/m",
-        'gh issue comment 35 --body "cita git push e gh release"',
-        "cat > f.md <<'EOF'\ngit push origin main\ngh pr merge 34\nEOF",
-        "git push -u origin feat/31/x 2>&1 | tail -3",
-        'gh pr create --title "fix(x): y" --body "$(cat <<\'EOF\'\ncita git push e merge\nEOF\n)"',
-        'grep -rn "git push" docs',
-    ],
-)
-def test_gate_humano_autonomy_quiet(feature_repo: Path, command: str) -> None:
-    result = gate(command, feature_repo)
-    assert result.returncode == 0
-    assert result.stdout == "", command
-
-
-@pytest.mark.parametrize("command", ["bash <<'EOF'\ngit push origin main\nEOF", "printf 'git push origin main' | sh"])
-def test_gate_humano_autonomy_shell_text(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] == "ask", command
-
-
-# C72 - AC 57, door 6
-@pytest.mark.parametrize(
-    "command",
-    [
-        "cat <<E'OF'\nx\ngit push origin main",
-        'cat <<"E"OF\nx\nEOF\ngit push origin main',
-        "cat <<END-X\nx\nEND-X\ngit push origin main",
-        "cat <<END.X\nx\nEND.X\ngit push origin main",
-        "echo $((1<<2))\ngit push origin main",
-        "(( x = 1 << 2 ))\ngit push origin main",
-    ],
-)
-def test_gate_humano_heredoc_end(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] == "deny", command
-
-
-# C73 - AC 58, AC 53, door 6
-@pytest.mark.parametrize(
-    "command",
-    [
-        "git commit -m 'fix: x\ngit push origin main\ngh pr merge 34'",
-        'git commit -m "fix: x\ngit tag v1\ngit push origin main"',
-        "git commit -m \"$(cat <<'EOF'\nfix: x\ngit push origin main\nEOF\n)\"",
-    ],
-)
-def test_gate_humano_multiline_quiet(feature_repo: Path, command: str) -> None:
-    result = gate(command, feature_repo)
-    assert result.returncode == 0
-    assert result.stdout == "", command
-
-
-def test_gate_humano_multiline_deny(feature_repo: Path, tmp_path: Path) -> None:
-    assert decision('echo "a\nb" && git push origin main', feature_repo)[0] == "deny"
-    (tmp_path / "m").mkdir()
-    on_main = repo_on(tmp_path / "m", "main")
-    assert decision("git push origin 2>/dev/null", on_main)[0] == "deny"
-
-
-@pytest.mark.parametrize(
-    "command",
-    [
-        'echo "$(echo ")"; git push origin main)"',
-        "printf 'git push origin main' | \"$SHELL\"",
-        "printf 'git push origin main' > x.sh && . ./x.sh",
-        'eval "git push origin main"',
-    ],
-)
-def test_gate_humano_multiline_ask(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] == "ask", command
-
-
-# C74 - AC 59, door 6
-@pytest.mark.parametrize(
-    ("command", "expected"),
-    [
-        ("git push origin main>/dev/null", "deny"),
-        ("git push origin main>&2", "deny"),
-        ("git push origin HEAD:main>log", "deny"),
-        ("git push origin {main,}", "ask"),
-        ('git rebase -x "git push origin main" HEAD~1', "ask"),
-        ("git submodule foreach git push origin main", "ask"),
-        ('git bisect run sh -c "git push origin main"', "ask"),
-    ],
-)
-def test_gate_humano_glued(feature_repo: Path, command: str, expected: str) -> None:
-    assert decision(command, feature_repo)[0] == expected, command
-
-
-# C30 - AC 23
-@pytest.mark.parametrize("command", ["git status", "uv run pytest", "gh pr view 30"])
-def test_gate_humano_neutral(feature_repo: Path, command: str) -> None:
-    result = gate(command, feature_repo)
-    assert result.returncode == 0
-    assert result.stdout == ""
+def test_settings_permissions_allow() -> None:
+    allow = settings()["permissions"]["allow"]
+    assert allow == ALLOW
+    for command in ("gh pr merge 34", "git tag v1", "gh release create v1"):
+        assert not any(matches(rule, command) for rule in allow), command
+    assert matches("Bash(git push *)", "git push -u origin feat/31/x")
+    assert not any(matches(rule, "git push -u origin feat/31/x") for rule in ASK)
 
 
 # ---------------------------------------------------------------------------- SessionStart

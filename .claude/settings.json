@@ -19,16 +19,27 @@
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/gate-worktree.sh"
           }
         ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/gate-humano.sh"
-          }
-        ]
       }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git push *)",
+      "Bash(gh pr create *)"
+    ],
+    "ask": [
+      "Bash(gh pr merge *)",
+      "Bash(git tag *)",
+      "Bash(gh release *)",
+      "Bash(git push --tags *)",
+      "Bash(git push * --tags *)",
+      "Bash(git push * --follow-tags *)",
+      "Bash(git push * v*)",
+      "Bash(git push * refs/tags/*)",
+      "Bash(gh api *protection*)",
+      "Bash(gh api *environments*)",
+      "Bash(gh api *merge*)",
+      "Bash(gh api *releases*)"
     ]
   }
 }

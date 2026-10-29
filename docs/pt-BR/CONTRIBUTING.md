@@ -69,13 +69,10 @@ arquivo de instruções do projeto. O Claude Code o lê a partir da versão 2.1.
 
 Quem trabalha com o Claude Code neste repositório faz cada tarefa de código numa worktree dedicada em
 `../worktrees/`. O hook `.claude/hooks/gate-worktree.sh` (PreToolUse em Edit/Write) nega edição de código no clone
-principal. Para trabalhar de propósito no clone principal, rode a sessão com `GROKBOT_KIT_ALLOW_MAIN_EDIT=1`. O hook
-`.claude/hooks/gate-humano.sh` (PreToolUse em Bash) deixa o agente fazer push de branch de feature e abrir pull
-request, pede confirmação antes de merge, tag, release ou mudança na proteção da branch, e nega push para `main`.
-Ele não interpreta o shell, então também pede confirmação quando um trecho que o bash executa cita `git`/`gh` com
-`push`, `tag`, `merge`, `release` ou `api` e o gate não consegue lê-lo por inteiro: dentro de `$(...)` ou crase, ou
-texto passado a `bash`, `sh`, `eval`, `sudo` ou `xargs`. Texto que o bash não executa (aspas simples, aspas duplas sem
-substituição, corpo de heredoc) não conta, então mensagem de commit e corpo de pull request podem citar esses comandos.
+principal. Para trabalhar de propósito no clone principal, rode a sessão com `GROKBOT_KIT_ALLOW_MAIN_EDIT=1`. As regras de
+permissão do `.claude/settings.json` deixam o agente fazer push de branch e abrir pull request, e pedem
+confirmação antes de merge, tag, release ou mudança na proteção da branch, em qualquer trecho de um comando
+composto. Push para `main` é recusado pelo hook `pre-push` e pela proteção da `main` no GitHub.
 
 ## Release e PyPI
 
