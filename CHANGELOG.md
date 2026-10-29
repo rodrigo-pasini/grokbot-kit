@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-29
+
 ### Added
 
 - `grokbot-kit setup models refresh --json` prints `{"models": [{"tool", "id", "provider"}]}`, where `provider` is the
@@ -211,7 +213,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `pytest`, `pre-commit`, CI and release workflows, Dependabot, issue and pull request templates.
 - `grokbot-kit --version`. The commands described in the README are not implemented yet.
 
-[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.3.0...v0.3.1

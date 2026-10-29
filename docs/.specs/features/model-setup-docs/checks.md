@@ -163,7 +163,10 @@ Proof: `uv run pytest tests/test_repo_files.py -k "contributing_and_changelog or
 **C42** - `docs/SPEC.md` não existe e o `CLAUDE.md` não cita `SPEC.md` (AC 40)
 Proof: `test ! -e docs/SPEC.md && ! grep -q "SPEC.md" CLAUDE.md`
 
-**C43** - O `CHANGELOG.md`, entre `## [Unreleased]` e o próximo `## [`, cita `setup providers`, `--json`, `model_fallbacks` e `summary` (AC 41)
+**C43** - O `CHANGELOG.md`, entre `## [0.5.0]` e o próximo `## [`, cita `setup providers`, `--json`, `model_fallbacks` e `summary` (AC 41)
+
+> Emendado na release 0.5.0 (29/10/2026, ok do Rodrigo): era `## [Unreleased]`; ao fechar a versão as entradas passam
+> para `## [0.5.0]`.
 Proof: `uv run pytest tests/test_repo_files.py -k changelog_unreleased_model_setup`
 
 ### S6 - o CI quebra quando a doc fica para trás · 4 arquivos · ~20 KB · ~5k
