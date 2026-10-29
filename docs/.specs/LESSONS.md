@@ -80,6 +80,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: tests/test_run_fallback.py:203 (run)
 - last seen: 2026-10-29T00:30:23Z
 
+### L-012 - Quando um check enumera N validadores ou regras rodados por um dispatcher, prove cada um com um caso que só ele reprova; um caso verde com todos presentes não mata a remoção de um.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `tools` · harmful: 0
+- features: sdlc-gates
+- evidence: F1 tools/sdlc.py:36 (tools)
+- last seen: 2026-10-29T13:34:44Z
+
+### L-013 - Quando a AC enumera uma família de arquivos (README, CONTRIBUTING, docs/<x>.md), o check nomeia cada membro, não só o primeiro exemplo.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `checks` · harmful: 0
+- features: sdlc-gates
+- evidence: C52 / AC 39 (checks)
+- last seen: 2026-10-29T13:34:44Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

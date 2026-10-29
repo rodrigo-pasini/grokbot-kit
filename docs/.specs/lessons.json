@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 12,
+  "next_id": 14,
   "lessons": [
     {
       "id": "L-001",
@@ -202,6 +202,42 @@
       ],
       "created": "2026-10-29T00:30:23Z",
       "last_seen": "2026-10-29T00:30:23Z"
+    },
+    {
+      "id": "L-012",
+      "key": "surviving_mutant::quando um check enumera n validadores ou regras rodados por um dispatcher prove cada um com um caso que so ele reprova um caso verde com todos presentes nao mata a remocao de um",
+      "text": "Quando um check enumera N validadores ou regras rodados por um dispatcher, prove cada um com um caso que só ele reprova; um caso verde com todos presentes não mata a remoção de um.",
+      "signal": "surviving_mutant",
+      "scope": "tools",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "F1 tools/sdlc.py:36 (tools)"
+      ],
+      "created": "2026-10-29T13:34:44Z",
+      "last_seen": "2026-10-29T13:34:44Z"
+    },
+    {
+      "id": "L-013",
+      "key": "spec_precision_gap::quando a ac enumera uma familia de arquivos readme contributing docs x md o check nomeia cada membro nao so o primeiro exemplo",
+      "text": "Quando a AC enumera uma família de arquivos (README, CONTRIBUTING, docs/<x>.md), o check nomeia cada membro, não só o primeiro exemplo.",
+      "signal": "spec_precision_gap",
+      "scope": "checks",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C52 / AC 39 (checks)"
+      ],
+      "created": "2026-10-29T13:34:44Z",
+      "last_seen": "2026-10-29T13:34:44Z"
     }
   ]
 }
