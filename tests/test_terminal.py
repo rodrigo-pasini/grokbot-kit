@@ -279,3 +279,102 @@ def test_plugin_precedence_table(
 ) -> None:
     got = terminal.classify(code, output, needs_input=True, stopped=stopped, plugin=True, result_valid=valid)
     assert got == expected
+
+
+# model-setup-docs: o `summary` vem da mensagem de erro da CLI quando o agente não deixou texto (door 6)
+ERROR_119 = {"type": "error", "error": {"name": "UnknownError", "data": {"message": "Unexpected server error"}}}
+ERROR_2X = {"type": "error", "error": {"type": "provider.no-route", "message": "Model unavailable: opencode/x"}}
+
+
+def jsonl(*objects: dict[str, Any]) -> str:
+    return "".join(json.dumps(o) + "\n" for o in objects)
+
+
+def summary_of(tmp_path: Path, tool: str, out: str, last_message: str | None = None) -> str:
+    (tmp_path / "out.jsonl").write_text(out, encoding="utf-8")
+    if last_message is not None:
+        (tmp_path / "last-message.txt").write_text(last_message, encoding="utf-8")
+    return terminal.read_output(tool, tmp_path).summary
+
+
+# C20 - AC 22, door 6
+@pytest.mark.parametrize(
+    ("objects", "expected"),
+    [
+        ([ERROR_119], "UnknownError: Unexpected server error"),
+        ([ERROR_2X], "provider.no-route: Model unavailable: opencode/x"),
+        ([{"type": "error", "error": {"name": "UnknownError"}}], "UnknownError"),
+        ([ERROR_2X, ERROR_119], "UnknownError: Unexpected server error"),
+    ],
+)
+def test_error_summary_opencode(tmp_path: Path, objects: list[dict[str, Any]], expected: str) -> None:
+    output_text = jsonl({"type": "step_start", "sessionID": "ses_1"}, *objects)
+    assert summary_of(tmp_path, "opencode", output_text) == expected
+    assert terminal.read_output("opencode", tmp_path).error is True
+
+
+# C21 - AC 23, door 6
+@pytest.mark.parametrize("last_message", [None, ""])
+@pytest.mark.parametrize(
+    ("objects", "expected"),
+    [
+        ([{"type": "turn.failed", "error": {"message": "boom"}}], "boom"),
+        ([{"type": "error", "message": "boom"}], "boom"),
+        ([{"type": "error", "message": "primeiro"}, {"type": "turn.failed", "error": {"message": "último"}}], "último"),
+        ([{"type": "turn.failed", "error": {"message": "primeiro"}}, {"type": "error", "message": "último"}], "último"),
+    ],
+)
+def test_error_summary_codex(
+    tmp_path: Path, objects: list[dict[str, Any]], expected: str, last_message: str | None
+) -> None:
+    assert summary_of(tmp_path, "codex", jsonl(*objects), last_message) == expected
+
+
+# C22 - AC 24
+def test_error_summary_text_wins(tmp_path: Path) -> None:
+    out = jsonl(ERROR_119, {"type": "text", "part": {"type": "text", "text": "feito"}})
+    assert summary_of(tmp_path, "opencode", out) == "feito"
+    codex = tmp_path / "codex"
+    codex.mkdir()
+    assert summary_of(codex, "codex", jsonl({"type": "turn.failed", "error": {"message": "boom"}}), "feito") == "feito"
+
+
+# C23 - AC 25
+@pytest.mark.parametrize("tool", ["opencode", "codex"])
+def test_error_summary_limit(tmp_path: Path, tool: str) -> None:
+    message = "x" * 5000
+    if tool == "opencode":
+        out = jsonl({"type": "error", "error": {"type": "e", "message": message}})
+    else:
+        out = jsonl({"type": "error", "message": message})
+    assert len(summary_of(tmp_path, tool, out)) == 2000
+
+
+# C25 - AC 26, AC 31, AC 34, door 4: a tentativa caiu no provedor antes de qualquer ferramenta
+TOOL_USE = {"type": "tool_use", "part": {"type": "tool", "tool": "read"}}
+
+
+def claude_result(**fields: Any) -> dict[str, Any]:
+    return {"type": "result", "is_error": True, "terminal_reason": "api_error", "num_turns": 1, "result": "x", **fields}
+
+
+ELIGIBILITY = [
+    ("opencode", [ERROR_119], None, True),
+    ("opencode", [TOOL_USE, ERROR_119], None, False),
+    ("opencode", [{"type": "text", "part": {"type": "text", "text": "ok"}}], None, False),
+    ("claude", [claude_result()], None, True),
+    ("claude", [claude_result(num_turns=2)], None, False),
+    ("claude", [claude_result(terminal_reason="max_turns")], None, False),
+    ("claude", [claude_result(is_error=False)], None, False),
+    ("codex", [{"type": "turn.failed", "error": {"message": "boom"}}], None, False),
+    ("opencode", [ERROR_119], "timeout", False),
+    ("claude", [claude_result()], "interrupted", False),
+]
+
+
+@pytest.mark.parametrize(("tool", "objects", "stopped", "expected"), ELIGIBILITY)
+def test_fallback_eligible(
+    tmp_path: Path, tool: str, objects: list[dict[str, Any]], stopped: str | None, expected: bool
+) -> None:
+    (tmp_path / "out.jsonl").write_text(jsonl(*objects), encoding="utf-8")
+    assert terminal.fallback_eligible(tool, tmp_path, stopped) is expected

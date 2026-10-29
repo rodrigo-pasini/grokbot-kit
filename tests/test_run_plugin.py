@@ -606,3 +606,25 @@ def test_plugin_event_delivery_statuses(kit: Kit, env: dict[str, str], receiver:
         assert len(bodies) == (1 if status == 401 else 3)
         (line,) = [json.loads(x) for x in undelivered.read_text(encoding="utf-8").splitlines()]
         assert line["http_status"] == status
+
+
+# model-setup-docs C33 - AC 35: o fallback de modelo reaproveita o clone
+def test_plugin_fallback_clone_once(kit: Kit, env: dict[str, str], tmp_path: Path) -> None:
+    m1, m2 = "opencode/m1", "opencode/m2"
+    text = kit.config_text().replace('models = ["opencode/free-model"]', f"models = {json.dumps([m1, m2])}")
+    kit.write_config(text.replace('standard = ["opencode/free-model"]', f"standard = {json.dumps([m1, m2])}", 1))
+    error = {"type": "error", "error": {"name": "UnknownError", "data": {"message": "Unexpected server error"}}}
+    fake = {
+        "FAKE_STDOUT_BY_MODEL": json.dumps({m1: json.dumps(error) + "\n"}),
+        "FAKE_RESULT_BY_MODEL": json.dumps({m2: json.dumps({"summary": "feito"})}),
+        "FAKE_CALLS": str(tmp_path / "calls.jsonl"),
+    }
+    result = run_plugin(kit, env, "teste", "--input", f"pr={PR_URL}", **fake)
+    events = kit.sink_events()
+    assert len(events) == 1, (events, result.stderr)
+    assert outcome(events[0]) == ("completed", "ok", "success")
+    assert events[0]["model"] == m2
+    assert [c["argv"][:2] for c in gh_calls(env)].count(["repo", "clone"]) == 1
+    work = str(kit.task_dir() / "work")
+    made = [json.loads(line) for line in (tmp_path / "calls.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert [c["cwd"] for c in made if c["argv"][:1] == ["run"]] == [work, work]

@@ -66,6 +66,28 @@
         null
       ]
     },
+    "model_fallbacks": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "error"
+        ],
+        "additionalProperties": false
+      }
+    },
     "tier": {
       "enum": [
         "trivial",
@@ -258,6 +280,7 @@
     "tool",
     "model",
     "model_source",
+    "model_fallbacks",
     "tier",
     "session_id",
     "cwd",

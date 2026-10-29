@@ -69,7 +69,9 @@ DOOR_2_FIELDS = {
 }
 # door 5 da feature plugins: aditivos a `grokbot-kit.event/v1`, `null` fora de tarefa de plugin
 DOOR_5_FIELDS = {"plugin", "result"}
-EVENT_FIELDS = DOOR_2_FIELDS | DOOR_5_FIELDS
+# door 5 da model-setup-docs: aditivo, `[]` sem fallback e `null` só no evento `test`
+MODEL_SETUP_FIELDS = {"model_fallbacks"}
+EVENT_FIELDS = DOOR_2_FIELDS | DOOR_5_FIELDS | MODEL_SETUP_FIELDS
 
 DOOR_2_TEST_NULLS = (
     "task_id",
@@ -252,6 +254,7 @@ def test_schema_matches_door_2_nullable_only_for_test(tmp_path: Path) -> None:
         "timestamp": "2026-10-19T12:00:00Z",
         **dict.fromkeys(DOOR_2_TEST_NULLS),
         **dict.fromkeys(DOOR_5_FIELDS),
+        **dict.fromkeys(MODEL_SETUP_FIELDS),
     }
     VALIDATOR.validate(probe)
     task = payload.task_event(
