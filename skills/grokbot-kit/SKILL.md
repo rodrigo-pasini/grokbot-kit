@@ -127,21 +127,43 @@ grokbot-kit setup default <tool>
 Descubra os modelos de cada CLI instalada:
 
 ```sh
-grokbot-kit setup models refresh
+grokbot-kit setup models refresh --json
 ```
 
-A saída lista `<tool>` e o id de cada modelo descoberto. Proponha ao usuário a tabela de tiers por CLI (`trivial`,
-`standard`, `complex`, cada um com uma lista ordenada; o primeiro id vence) usando só ids da lista descoberta:
+A saída é um objeto JSON: `models` traz um item por modelo descoberto, com `tool` (a CLI), `id` e `provider` (no
+opencode, o provedor do id; no `claude` e no `codex`, `null`). Use só ids da lista descoberta.
 
-- coloque os modelos gratuitos do opencode primeiro em `trivial` e `standard` (são os ids que a lista do opencode
-  marca com o sufixo `-free`);
-- em `complex`, nunca ponha modelo gratuito (veja a rubrica).
+Com o `opencode` instalado, faça uma única pergunta de múltipla escolha com os provedores do opencode: os valores
+distintos do campo `provider` nos itens do `opencode`, cada um com quantos ids ele tem na lista (por exemplo,
+"`opencode-go` (30 ids)"). Grave os provedores escolhidos, na ordem de preferência do usuário:
 
-Com a tabela confirmada, grave cada tier:
+```sh
+grokbot-kit setup providers opencode <provider> [<provider>...]
+```
+
+Um provedor pago (o usuário paga por assinatura ou API key, como o `opencode-go`) só funciona com login no opencode:
+se o `grokbot-kit doctor --json` não mostrar o opencode logado, peça que o usuário rode `grokbot-kit login opencode`
+num terminal do box antes de seguir.
+
+Depois, para cada CLI instalada, faça uma pergunta por tier (`trivial`, `standard` e `complex`, nessa ordem), com até
+4 ids da lista descoberta e o recomendado primeiro; no opencode, só ids dos provedores escolhidos. O usuário escolhe
+um ou mais ids, ou digita outro id da lista, e a ordem da escolha é a ordem do tier: o primeiro id vence, e se o
+provedor dele falhar antes de o agente agir, o kit tenta o próximo. Grave cada tier:
 
 ```sh
 grokbot-kit setup tiers <tool> <tier> <id> [<id>...]
 ```
+
+O que recomendar primeiro em cada pergunta:
+
+- com só o provedor `opencode` escolhido, recomende os modelos gratuitos do opencode primeiro em `trivial` e
+  `standard` (são os ids que a lista do opencode marca com o sufixo `-free`);
+- com algum provedor que não é `opencode` escolhido, recomende primeiro os ids desse provedor em todos os tiers: o
+  usuário paga por ele;
+- em `complex`, nunca recomende modelo gratuito (veja a rubrica).
+
+Quando o usuário pedir para trocar os modelos, refaça só este passo: `grokbot-kit setup models refresh --json`, a
+pergunta de provedores e as perguntas dos tiers. As CLIs, o acesso delas e a routine ficam como estão.
 
 Se o usuário quiser no `claude` ou no `codex` um id que não está na lista, teste e grave com
 `grokbot-kit setup models refresh <tool> --add <id>` antes de usá-lo; um id recusado não entra.
@@ -265,6 +287,9 @@ A routine acorda este bot com o webhook. Faça o parse de `body` como JSON e lei
 
 - `completed` com `status` `ok`: conte ao usuário o resultado a partir do `summary`.
 - `error` (`failed` ou `interrupted`) e `timeout`: conte o que houve e o que o `summary` diz; ofereça rodar de novo.
+- `model_fallbacks` com algum item: o modelo de cada item falhou no provedor (o motivo está em `error`) e o kit rodou
+  o próximo id do tier; o modelo que rodou por último está em `model`. Conte isso ao usuário e ofereça trocar os
+  modelos do tier.
 - `needs_input` (`permission` ou `question`), ou `completed` com `status` `denied`: mostre ao usuário o que o agente
   pediu (`needs_input.tool_name` e `needs_input.detail`) e ofereça retomar com o comando de `resume_hint` depois de
   ajustar a permissão. Um `needs_input` chega enquanto a tarefa ainda roda; o evento final vem depois.
