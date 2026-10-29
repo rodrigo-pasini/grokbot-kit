@@ -317,6 +317,17 @@ def test_spec_runs_validators(tmp_path: Path) -> None:
     alone = sdlc("spec", "demo", cwd=only_plan)
     assert alone.returncode == 0, alone.stderr
 
+    # o verification.md também é validado (rodada 1 do Verifier: F1 sobreviveu)
+    for rel, text in feature_files("demo").items():
+        write(repo, rel, text)
+    verification = repo / "docs/.specs/features/demo/verification.md"
+    failed = verification.read_text(encoding="utf-8").replace("**Verdict**: PASS", "**Verdict**: FAIL", 1)
+    verification.write_text(failed, encoding="utf-8")
+    bad_verification = sdlc("spec", "demo", cwd=repo)
+    assert bad_verification.returncode == 1
+    assert "validate_verification.py" in bad_verification.stderr
+    assert "validate_checks.py" not in bad_verification.stderr
+
 
 # C19 - AC 15
 def test_spec_reports_every_failure(tmp_path: Path) -> None:
@@ -562,6 +573,13 @@ def test_pr_plan_approved(tmp_path: Path) -> None:
     pr.change({"docs/.specs/features/nova/plan.md": tomorrow}, "docs(specs): data errada")
     assert pr.run().returncode == 1
 
+    # door 5: a linha vale só logo abaixo do título (rodada 1 do Verifier: F3 sobreviveu)
+    lines = unapproved.splitlines(keepends=True)
+    below = "".join(lines[:3]) + "\n**Approved**: 2026-10-29\n\n" + "".join(lines[3:])
+    assert not below.split("\n", 3)[2].startswith("**Approved**")
+    pr.change({"docs/.specs/features/nova/plan.md": below}, "docs(specs): marcador fora do lugar")
+    assert pr.run().returncode == 1
+
     edited = pr.change({"docs/.specs/features/velha/plan.md": unapproved + "\nmais\n"}, "docs(specs): mexe no velho")
     assert edited
     pr.change({"docs/.specs/features/nova/plan.md": approved_plan()}, "docs(specs): volta o novo")
@@ -575,17 +593,23 @@ def test_pr_plan_approved(tmp_path: Path) -> None:
         (["README.md"], False),
         (["docs/pt-BR/README.md"], False),
         (["README.md", "docs/pt-BR/README.md"], True),
+        (["CONTRIBUTING.md"], False),
+        (["docs/pt-BR/CONTRIBUTING.md"], False),
+        (["CONTRIBUTING.md", "docs/pt-BR/CONTRIBUTING.md"], True),
     ],
 )
 def test_pr_doc_pair(tmp_path: Path, changed: list[str], ok: bool) -> None:
     pr = PR(tmp_path / "pr")
-    pr.title = "docs: muda o readme"
-    pr.change({rel: "# mudou\n" for rel in changed}, "docs: muda o readme")
+    pr.title = "docs: muda o doc"
+    pr.change({rel: "# mudou\n" for rel in changed}, "docs: muda o doc")
     result = pr.run()
     assert (result.returncode == 0) is ok, result.stderr
     if not ok:
         assert result.returncode == 1
-        assert "README.md" in result.stderr and "docs/pt-BR/README.md" in result.stderr
+        name = Path(changed[0]).name
+        assert f"{name} changed" in result.stderr or f"pair {name}" in result.stderr
+        for rel in (name, f"docs/pt-BR/{name}"):
+            assert rel in result.stderr, rel
 
 
 def test_pr_doc_pair_other_docs(tmp_path: Path) -> None:

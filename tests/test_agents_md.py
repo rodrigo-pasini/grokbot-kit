@@ -40,8 +40,12 @@ def test_sections_and_autonomy() -> None:
 # C35 - AC 26
 def test_skills_and_environment() -> None:
     skills = section("Skills")
-    for needle in ("tlc-spec-lean", "tlc-discover", "## Intent", "tools/sdlc.py spec"):
+    for needle in ("tlc-spec-lean", "tlc-discover", "## Intent", "tools/sdlc.py spec", "--root docs"):
         assert needle in skills, needle
+    no_spec = [row for row in table(skills) if "sem spec" in row[-1]]
+    assert len(no_spec) == 1, table(skills)
+    for kind in ("dependências", "docs", "release"):
+        assert kind in no_spec[0][0], (kind, no_spec)
     environment = section("Ambiente")
     assert "opencode-go" in environment
     assert re.search(r"box.*só pelo bot|só pelo bot.*box", environment), environment
@@ -74,3 +78,11 @@ def test_documentation_section() -> None:
         "Docs: n/a -",
     ):
         assert needle in docs, needle
+    flat = re.sub(r"\s+", " ", docs)
+    assert "inglês" in flat and "5 primeiras linhas" in flat
+    assert re.search(r"Fora da regra: `docs/\.specs/`.*`AGENTS\.md`.*`CHANGELOG\.md`.*SKILL\.md", flat), flat
+    rows = {row[0]: row[1] for row in table(docs)[1:]}
+    assert "`README.md`" in rows["subcomando ou flag"] and "doc do tema" in rows["subcomando ou flag"]
+    assert "`docs/event.md`" in rows["campo do evento `grokbot-kit.event/v1`"]
+    assert "`docs/plugins.md`" in rows["plugin, manifesto ou capacidade"]
+    assert "`CHANGELOG.md`" in rows["qualquer comportamento visível"]
