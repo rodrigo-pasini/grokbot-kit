@@ -68,6 +68,8 @@ Reusa os validadores do `tlc-spec-lean` (`.claude/skills/tlc-spec-lean/scripts/`
 | instruções | o `CLAUDE.md` some: o conteúdo vai para o `AGENTS.md`. Leem o `CLAUDE.md` hoje: o Claude Code (passa a ler o `AGENTS.md` quando não há `CLAUDE.md` nem `CLAUDE.local.md`), `test_claude_md_doc_rule` (C48 da model-setup-docs), `DOOR_10_FILES` em `test_repo_files.py` (door 10 da agent-run-notify), `CONTRIBUTING.md` (EN e pt-BR) e o `copy` do `worktree-handoff.json` (`CLAUDE.local.md`); `detectar-contexto.sh` e o `gate-worktree.sh` já aceitam os dois nomes |
 | instruções | um `CLAUDE.local.md` local (gitignored) faz o Claude Code parar de ler o `AGENTS.md` para quem o tiver |
 | docs | flags e campos do evento hoje sem doc passam a ser documentados nesta feature (AC 36-37) |
+| hooks | o `commit-msg` do git roda também em `git merge` e `git pull` (githooks(5)): a mensagem automática de merge fica fora da door 3 (AC 46, achado no review do PR #34); o `pr` do CI já ignora merge commits (`--no-merges`) |
+| hooks | o `gate-humano.sh` lia o comando literal: aspas, prefixo de ambiente e substituição o deixavam em silêncio; passa a normalizar o comando e a falhar fechado com `ask` (AC 44-45, achado no review do PR #34) |
 | tooling | `[tool.mypy] files` ganha `tools`, então `tools/sdlc.py` roda em `mypy --strict` no job `typecheck` |
 | stored data | nada a migrar; os planos já existentes não ganham `**Approved**` retroativo (a regra vale para `plan.md` adicionado ou alterado no PR) |
 
@@ -203,6 +205,19 @@ Um PR que muda comportamento sem doc, sem par ou sem `CHANGELOG.md` falha, e a r
 43. The `.github/pull_request_template.md` SHALL ter, no item de doc, a alternativa `Docs: n/a - <reason>` nesta descrição
 
 **Independent test:** apagar `--timeout` do `README.md` faz o `uv run pytest tests/test_docs.py` falhar nomeando `run --timeout`.
+
+### S8: os gates não silenciam diante de um comando disfarçado nem travam um merge local (P1, achado no review do PR #34)
+
+O `gate-humano.sh` falha fechado quando não consegue ler o comando, e o `commit-msg` deixa passar a mensagem que o
+próprio git escreve num merge.
+
+**Acceptance Criteria**
+
+44. IF o Bash vai rodar `git push` para `main` com o refspec entre aspas, com prefixo `VAR=valor`, por `env`, `command` ou pelo caminho do binário (`/usr/bin/git`) THEN `gate-humano.sh` SHALL devolver `permissionDecision` `deny`, como na AC 21
+45. IF um pedaço do comando cita `git` ou `gh` fora da primeira palavra junto de `push`, `tag`, `merge`, `release` ou `api`, ou um `git push` tem refspec com substituição (`$` ou crase) THEN `gate-humano.sh` SHALL devolver `permissionDecision` `ask`
+46. WHEN a primeira linha da mensagem é a que o git escreve num merge (`Merge branch '<b>'`, `Merge branches`, `Merge remote-tracking branch '<b>'`, `Merge tag '<t>'`, `Merge commit '<c>'`) THEN `tools/sdlc.py commit-msg <arquivo>` SHALL não aplicar a door 3 a ela, e ainda SHALL aplicar a AC 3; o título do PR segue a door 3 sem exceção
+
+**Independent test:** `git push origin "main"` e `bash -c "git push origin main"` não passam sem o Rodrigo ver; `git pull` numa branch divergida faz o merge sem `--no-verify`.
 
 ## Out of scope
 

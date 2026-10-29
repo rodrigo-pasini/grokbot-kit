@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/sdlc-gates/plan.md`
 
-56 checks em 7 slices · 9 one-way doors · 0 open
+59 checks em 8 slices · 9 one-way doors · 0 open
 
 Convenções das provas:
 
@@ -201,6 +201,17 @@ Proof: `uv run pytest tests/test_sdlc.py -k spec_plan_doc_criterion`
 **C56** - O item de doc do `.github/pull_request_template.md` tem `README.md`, `docs`, `pt-BR` e `Docs: n/a - <reason>` (AC 43)
 Proof: `uv run pytest tests/test_docs.py -k pr_template_doc_item`
 
+### S8 - achados do review do PR #34 · 4 arquivos · ~25 KB · ~7k
+
+**C57** - `gate-humano.sh` devolve `deny` para `git push origin "main"`, `git push origin 'HEAD:main'`, `GIT_DIR=.git git push origin main`, `env git push origin main`, `command git push origin main` e `/usr/bin/git push origin main` (AC 44, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k gate_humano_deny_disguised`
+
+**C58** - `gate-humano.sh` devolve `ask` para `git push origin $(echo main)`, ``git push origin `echo main` ``, `bash -c "git push origin main"`, `sudo git push origin main` e `xargs gh pr merge`, e segue sem saída para `git status`, `uv run pytest` e `gh pr view 30` (AC 45, door 6)
+Proof: `uv run pytest tests/test_claude_hooks.py -k "gate_humano_ask_unparsed or gate_humano_neutral"`
+
+**C59** - `tools/sdlc.py commit-msg` sai com `0` sem saída para `Merge branch 'main' into feat/31/x`, `Merge branch 'main' of github.com:o/r into feat/31/x`, `Merge branches 'a' and 'b'`, `Merge remote-tracking branch 'origin/main' into feat/31/x`, `Merge tag 'v0.6.0'` e `Merge commit 'abc123'`; sai com `1` para `Merge stuff` e para um merge com linha `Co-authored-by:`; e `tools/sdlc.py pr --title "Merge branch 'main'"` sai com `1` (AC 46, door 3)
+Proof: `uv run pytest tests/test_sdlc.py -k "commit_msg_merge or pr_title_merge"`
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -216,10 +227,13 @@ Proof: `uv run pytest tests/test_docs.py -k pr_template_doc_item`
 | validadores do `spec` (4) | `validate_plan` C18 · `validate_checks` C18 · `validate_verification` C18 · critério de doc C55 | - |
 | decisões do `gate-humano.sh` (4) | `ask` C27 · `deny` C28 · `allow` C29 · nada C30 | - |
 | comandos `ask` (6) | `gh pr merge` C27 · `git tag` C27 · push de tag C27 · `--tags` C27 · `gh release` C27 · `gh api` protection/environments C27 | - |
+| disfarces de push para `main` (6) | aspas C57 · `HEAD:main` entre aspas C57 · `VAR=valor` C57 · `env` C57 · `command` C57 · caminho do binário C57 | - |
+| comandos que o gate não lê (5) | `$(...)` C58 · crase C58 · `bash -c` C58 · `sudo` C58 · `xargs` C58 | - |
+| mensagens de merge do git (5) | `Merge branch` C59 · `Merge branches` C59 · `Merge remote-tracking branch` C59 · `Merge tag` C59 · `Merge commit` C59 | - |
 | saídas do hook de sessão (4) | instala C41 · já instalado C41 · falha C43 · aviso `CLAUDE.md` C42 | - |
 | seções do `AGENTS.md` (5) | `## Fluxo` C34 · `## Autonomia` C34 · `## Skills` C35 · `## Ambiente` C35 · `## Documentação` C48 | - |
 | gates do `test_docs.py` novos (3) | flags C49 · campos do evento C50 · links C51 | - |
-| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4 · 4 C12, C24 · 5 C22 · 6 C26-C30 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
+| doors (9) | 1 C2, C11 · 2 C6 · 3 C3, C4, C59 · 4 C12, C24 · 5 C22 · 6 C26-C30, C57, C58 · 7 C17 · 8 C39, C45 · 9 C48, C54, C55 | - |
 
 - Checks que cruzam a fronteira real: C7 (push num remoto local), C25 (CI do GitHub), C32 (issues no GitHub), C45
   (sessão real do `claude`)
