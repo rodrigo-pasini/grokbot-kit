@@ -6,7 +6,10 @@
 #   ask   gh pr merge, git tag, git push de tag (v*, refs/tags/, --tags), gh release, gh api com protection/environments
 #   allow git push de branch <tipo>/<issue>/<slug> (sem --delete nem --force) e gh pr create, só num comando simples
 #         (allow vale para o comando todo)
-# Antes de decidir, tira as aspas das palavras e os prefixos VAR=valor, env e command, e lê /usr/bin/git como git.
+# O comando é cortado fora das aspas, também em ( ) de subshell e em & de segundo plano (não no $( ) da substituição).
+# Antes de decidir, tira aspas e barras invertidas das palavras e os prefixos VAR=valor, env e command, e lê
+# /usr/bin/git como git. Push para outro repositório (GIT_DIR=, GIT_WORK_TREE=, -C, --git-dir, --work-tree) não ganha
+# allow: o HEAD e a branch atual são lidos do cwd.
 # Falha fechado com ask quando não lê o comando: refspec de push com substituição ($ ou crase), ou git/gh fora da
 # primeira palavra (bash -c, sudo, xargs, echo ... | sh) junto de push, tag, merge, release ou api.
 # deny vence ask, que vence o ask de falha fechada, que vence allow. Nenhum dos casos: sai sem saída e vale a permissão normal.
@@ -24,6 +27,9 @@ branch_ok() {
 }
 
 current_branch() { git -C "$cwd" branch --show-current 2>/dev/null; }
+
+# 1 quando o pedaço em análise aponta o git para outro repositório.
+redirect=0
 
 # Decide um git push; args sem o "git push". Imprime deny, ask, allow ou nada.
 push_decision() {
@@ -54,15 +60,17 @@ push_decision() {
     if [[ $dst == v* || $dst == refs/tags/* || $src == refs/tags/* ]]; then result=ask; continue; fi
     if [ "$result" = allow ] && ! branch_ok "$dst"; then result=none; fi
   done
-  [ "$result" = allow ] && [ "$risky" = 1 ] && result=none
+  [ "$result" = allow ] && [ "$risky$redirect" != 00 ] && result=none
   [ "$result" != none ] && echo "$result"
 }
 
 # Decide um pedaço do comando.
 segment_decision() {
   local w=("$@") i=1 sub="" x tool=0 verb=0
+  redirect=0
   while [ "${#w[@]}" -gt 1 ]; do
     case "${w[0]}" in
+      GIT_DIR=* | GIT_WORK_TREE=*) redirect=1; w=("${w[@]:1}") ;;
       env | command | [A-Za-z_]*=*) w=("${w[@]:1}") ;;
       *) break ;;
     esac
@@ -72,7 +80,9 @@ segment_decision() {
     git)
       while [ "$i" -lt "${#w[@]}" ]; do
         case "${w[$i]}" in
-          -C | -c) i=$((i + 2)) ;;
+          -C) redirect=1; i=$((i + 2)) ;;
+          -c) i=$((i + 2)) ;;
+          --git-dir* | --work-tree*) redirect=1; i=$((i + 1)) ;;
           -*) i=$((i + 1)) ;;
           *) sub="${w[$i]}"; break ;;
         esac
@@ -105,13 +115,37 @@ segment_decision() {
 simple=1
 case "$cmd" in *[\;\&\|\<\>\$\`]* | *$'\n'*) simple=0 ;; esac
 
+# Um pedaço por linha: corta em &&, ||, ;, |, &, ( e ) fora de aspas; $( ... ) fica inteiro; \ escapa o próximo.
+split_segments() {
+  awk '{
+    q = ""; out = ""; depth = 0; n = length($0)
+    for (i = 1; i <= n; i++) {
+      c = substr($0, i, 1)
+      if (q == "\047") { out = out c; if (c == q) q = ""; continue }
+      if (c == "\\") { out = out c substr($0, i + 1, 1); i++; continue }
+      if (q == "\"") { out = out c; if (c == q) q = ""; continue }
+      if (c == "\047" || c == "\"") { q = c; out = out c; continue }
+      if (c == "$" && substr($0, i + 1, 1) == "(") { depth++; out = out "$("; i++; continue }
+      if (c == ")" && depth > 0) { depth--; out = out c; continue }
+      if (c == ";" || c == "|" || c == "&" || c == "(" || c == ")") {
+        print out; out = ""
+        nx = substr($0, i + 1, 1)
+        if ((c == "|" || c == "&") && nx == c) i++
+        continue
+      }
+      out = out c
+    }
+    print out
+  }'
+}
+
 decisions=""
 while IFS= read -r segment; do
   read -ra words <<<"$segment"
   [ "${#words[@]}" = 0 ] && continue
-  words=("${words[@]//[\"\']/}")
+  words=("${words[@]//[\"\'\\]/}")
   decisions+="$(segment_decision "${words[@]}") "
-done < <(sed -E 's/(&&|\|\||;|\|)/\n/g' <<<"$cmd")
+done < <(split_segments <<<"$cmd")
 
 reply() {
   jq -n --arg d "$1" --arg r "$2" \

@@ -167,6 +167,70 @@ def test_gate_humano_ask_unparsed(feature_repo: Path, command: str) -> None:
     assert reason.strip()
 
 
+# C60 - AC 45, door 6
+@pytest.mark.parametrize(
+    "command",
+    ["sudo git tag v1", 'bash -c "gh release create v1"', "xargs gh api repos/o/r/branches/main/protection"],
+)
+def test_gate_humano_ask_unparsed_verbs(feature_repo: Path, command: str) -> None:
+    kind, reason = decision(command, feature_repo)
+    assert kind == "ask", command
+    assert reason.strip()
+
+
+# C61 - AC 47, door 6
+@pytest.mark.parametrize(
+    "command",
+    [
+        "GIT_DIR=x/.git git push origin HEAD",
+        "GIT_WORK_TREE=x git push origin feat/31/x",
+        "git -C x push origin HEAD",
+        "git --git-dir=x/.git push origin feat/31/x",
+        "git --work-tree=x push origin feat/31/x",
+    ],
+)
+def test_gate_humano_other_repo_no_allow(feature_repo: Path, command: str) -> None:
+    assert decision(command, feature_repo)[0] != "allow", command
+
+
+def test_gate_humano_other_repo_deny_main(feature_repo: Path) -> None:
+    assert decision("git -C x push origin main", feature_repo)[0] == "deny"
+
+
+# C62 - AC 48, door 6
+@pytest.mark.parametrize(
+    "command",
+    [
+        'git commit -m "fix: a; git push origin main"',
+        'git commit -m "docs: gate | git tag"',
+        "git commit -m 'a && git push origin main'",
+    ],
+)
+def test_gate_humano_quoted_separators(feature_repo: Path, command: str) -> None:
+    result = gate(command, feature_repo)
+    assert result.returncode == 0
+    assert result.stdout == "", command
+
+
+def test_gate_humano_quoted_separators_still_split(feature_repo: Path) -> None:
+    assert decision("git status && git push origin main", feature_repo)[0] == "deny"
+
+
+# C63 - AC 49, door 6
+@pytest.mark.parametrize(
+    "command",
+    [
+        "\\git push origin main",
+        "git push origin ma\\in",
+        "(git push origin main)",
+        "(cd x && git push origin main)",
+        "git push origin main&",
+    ],
+)
+def test_gate_humano_deny_escaped(feature_repo: Path, command: str) -> None:
+    assert decision(command, feature_repo)[0] == "deny", command
+
+
 # C30 - AC 23
 @pytest.mark.parametrize("command", ["git status", "uv run pytest", "gh pr view 30"])
 def test_gate_humano_neutral(feature_repo: Path, command: str) -> None:
