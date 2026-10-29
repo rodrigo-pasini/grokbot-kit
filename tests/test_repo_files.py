@@ -384,11 +384,11 @@ def test_s0_report_has_outputs_and_no_token() -> None:
     assert "Bearer " not in text
 
 
-# model-setup-docs C43 - AC 41
+# model-setup-docs C43 - AC 41 (emendado na release: a seção é a da 0.5.0)
 def test_changelog_unreleased_model_setup() -> None:
     text = read("CHANGELOG.md")
-    start = text.index("## [Unreleased]")
+    start = text.index("## [0.5.0]")
     end = text.index("\n## [", start + 1)
-    unreleased = text[start:end]
+    release = text[start:end]
     for needle in ("setup providers", "--json", "model_fallbacks", "summary"):
-        assert needle in unreleased, needle
+        assert needle in release, needle
