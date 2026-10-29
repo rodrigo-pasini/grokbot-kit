@@ -135,7 +135,8 @@ def set_tiers(tool: str, tier: str, ids: list[str]) -> int:
     if unknown:
         _err(f"not discovered for {tool}: {', '.join(unknown)}; run: grokbot-kit setup models refresh {tool}")
         return 2
-    allowed = cli.get("providers")
+    # door 3 da model-setup-docs: provedor só existe no opencode
+    allowed = cli.get("providers") if tool == "opencode" else None
     if allowed is not None:
         outside = [model for model in ids if provider(tool, model) not in allowed]
         if outside:

@@ -222,3 +222,12 @@ def test_codex_never_falls_back(kit: Kit, tmp_path: Path) -> None:
     assert len([c for c in calls(tmp_path) if c["tool"] == "codex" and c["argv"][:1] == ["exec"]]) == 1
     assert outcome(event) == ("error", "failed", "agent_error")
     assert event["model_fallbacks"] == []
+
+
+# review do PR 29: um tier vazio nunca chega ao laço de tentativas; o `run` recusa antes do task dir
+def test_empty_tier_refused_before_task_dir(kit: Kit, tmp_path: Path) -> None:
+    opencode_config(kit, [M1], [])
+    result = kit.run("--tier", "standard", "--target", "bot-a", "--label", "vazio", "--", "x")
+    assert result.returncode == 2
+    assert "no model in cli.opencode.tiers.standard" in result.stderr
+    assert kit.tasks() == []

@@ -56,6 +56,10 @@ def check(root: Path, commands: list[str]) -> list[str]:
             failures.append(f"{rel}: no link to {pair_rel} in its first {LINK_LINES} lines")
         if not links_to(pair, doc):
             failures.append(f"{pair_rel}: no link to {rel} in its first {LINK_LINES} lines")
+    english = {doc.name for doc in paired_docs(root)}
+    for pair in sorted((root / "docs" / "pt-BR").glob("*.md")):
+        if pair.name not in english:
+            failures.append(f"docs/pt-BR/{pair.name}: no English original (README.md, CONTRIBUTING.md or docs/*.md)")
     return failures
 
 
@@ -142,6 +146,14 @@ def test_gate_reports_missing_pair(tmp_path: Path) -> None:
     failures = check(root, commands())
     assert any(f.startswith("docs/plugins.md: no pt-BR pair") for f in failures), failures
     assert any(f.startswith("docs/novo.md: no pt-BR pair") for f in failures), failures
+
+
+def test_gate_reports_portuguese_only(tmp_path: Path) -> None:
+    """Review do PR 29: um doc só em `docs/pt-BR/`, sem o original em inglês, também falha."""
+    root = copy_docs(tmp_path)
+    (root / "docs" / "pt-BR" / "so-pt.md").write_text("# só pt\n", encoding="utf-8")
+    failures = check(root, commands())
+    assert any(f.startswith("docs/pt-BR/so-pt.md: no English original") for f in failures), failures
 
 
 # C46 - AC 44, door 7

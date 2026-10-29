@@ -102,3 +102,13 @@ def test_tiers_no_providers(kit: Kit) -> None:
     result = kit.cli("setup", "tiers", "opencode", "standard", "opencode/a-free", "opencode-go/b")
     assert result.returncode == 0, result.stderr
     assert kit.config()["cli"]["opencode"]["tiers"]["standard"] == ["opencode/a-free", "opencode-go/b"]
+
+
+# review do PR 29: `providers` só vale para o opencode; um campo manual em outra CLI não restringe os tiers dela
+def test_tiers_providers_ignored_outside_opencode(kit: Kit) -> None:
+    text = default_config(kit.sink).replace('models = ["sonnet"]', 'models = ["sonnet"]\nproviders = ["x"]', 1)
+    kit.write_config(text)
+    assert kit.config()["cli"]["claude"]["providers"] == ["x"]
+    result = kit.cli("setup", "tiers", "claude", "standard", "sonnet")
+    assert result.returncode == 0, result.stderr
+    assert kit.config()["cli"]["claude"]["tiers"]["standard"] == ["sonnet"]
