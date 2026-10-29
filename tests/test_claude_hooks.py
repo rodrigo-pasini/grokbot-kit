@@ -231,6 +231,74 @@ def test_gate_humano_deny_escaped(feature_repo: Path, command: str) -> None:
     assert decision(command, feature_repo)[0] == "deny", command
 
 
+# C64 - AC 50, door 6
+@pytest.mark.parametrize(
+    ("command", "expected"),
+    [
+        ("echo $(git push origin main)", "deny"),
+        ("x=$(git push origin main)", "deny"),
+        ("echo `git push origin main`", "ask"),
+    ],
+)
+def test_gate_humano_substitution(feature_repo: Path, command: str, expected: str) -> None:
+    assert decision(command, feature_repo)[0] == expected, command
+
+
+# C65 - AC 48, door 6
+@pytest.mark.parametrize(
+    "command", ['git commit -m "a || git push origin main"', 'git commit -m "a & git push origin main"']
+)
+def test_gate_humano_quoted_more(feature_repo: Path, command: str) -> None:
+    result = gate(command, feature_repo)
+    assert result.returncode == 0
+    assert result.stdout == "", command
+
+
+def test_gate_humano_quoted_more_escaped_quote(feature_repo: Path) -> None:
+    assert decision('git commit -m \\" ; git push origin main', feature_repo)[0] == "deny"
+
+
+# C66 - AC 51, door 6
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git --git-dir x/.git push origin main",
+        "git --work-tree x push origin main",
+        "git --namespace n push origin main",
+    ],
+)
+def test_gate_humano_spaced_options_deny(feature_repo: Path, command: str) -> None:
+    assert decision(command, feature_repo)[0] == "deny", command
+
+
+def test_gate_humano_spaced_options_no_allow(feature_repo: Path) -> None:
+    assert decision("git --git-dir x/.git push origin feat/31/x", feature_repo)[0] != "allow"
+
+
+def test_gate_humano_spaced_options_alias(feature_repo: Path) -> None:
+    assert decision("git -c alias.p=push p origin main", feature_repo)[0] == "ask"
+
+
+# C67 - AC 52, door 6
+@pytest.mark.parametrize(
+    ("command", "expected"),
+    [
+        ("git push --follow-tags origin feat/31/x", "ask"),
+        ("git push --tags origin main", "deny"),
+        ("gh pr -R o/r merge 34", "ask"),
+        ("gh api -X PUT repos/o/r/pulls/34/merge", "ask"),
+        ("gh api repos/o/r/releases", "ask"),
+        ("gh api -X DELETE repos/o/r/git/refs/heads/x", "ask"),
+    ],
+)
+def test_gate_humano_more_ask(feature_repo: Path, command: str, expected: str) -> None:
+    assert decision(command, feature_repo)[0] == expected, command
+
+
+def test_gate_humano_more_ask_combined_force(feature_repo: Path) -> None:
+    assert decision("git push -uf origin feat/31/x", feature_repo)[0] != "allow"
+
+
 # C30 - AC 23
 @pytest.mark.parametrize("command", ["git status", "uv run pytest", "gh pr view 30"])
 def test_gate_humano_neutral(feature_repo: Path, command: str) -> None:

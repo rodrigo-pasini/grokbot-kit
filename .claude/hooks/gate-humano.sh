@@ -6,7 +6,7 @@
 #   ask   gh pr merge, git tag, git push de tag (v*, refs/tags/, --tags), gh release, gh api com protection/environments
 #   allow git push de branch <tipo>/<issue>/<slug> (sem --delete nem --force) e gh pr create, só num comando simples
 #         (allow vale para o comando todo)
-# O comando é cortado fora das aspas, também em ( ) de subshell e em & de segundo plano (não no $( ) da substituição).
+# O comando é cortado fora das aspas, também em ( ) de subshell e de $( ) e em & de segundo plano.
 # Antes de decidir, tira aspas e barras invertidas das palavras e os prefixos VAR=valor, env e command, e lê
 # /usr/bin/git como git. Push para outro repositório (GIT_DIR=, GIT_WORK_TREE=, -C, --git-dir, --work-tree) não ganha
 # allow: o HEAD e a branch atual são lidos do cwd.
@@ -33,14 +33,15 @@ redirect=0
 
 # Decide um git push; args sem o "git push". Imprime deny, ask, allow ou nada.
 push_decision() {
-  local pos=() skip=0 risky=0 a
+  local pos=() skip=0 risky=0 tags=0 a
   for a in "$@"; do
     if [ "$skip" = 1 ]; then skip=0; continue; fi
     case "$a" in
-      --tags) echo ask; return ;;
+      --tags | --follow-tags) tags=1 ;;
       --all | --mirror) echo deny; return ;;
       -d | --delete | -f | --force | --force-with-lease*) risky=1 ;;
       -o | --push-option | --repo | --receive-pack | --exec) skip=1 ;;
+      -[!-]*) [[ $a == *[fd]* ]] && risky=1 ;;
       -*) ;;
       *) pos+=("$a") ;;
     esac
@@ -60,6 +61,7 @@ push_decision() {
     if [[ $dst == v* || $dst == refs/tags/* || $src == refs/tags/* ]]; then result=ask; continue; fi
     if [ "$result" = allow ] && ! branch_ok "$dst"; then result=none; fi
   done
+  [ "$tags" = 1 ] && result=ask
   [ "$result" = allow ] && [ "$risky$redirect" != 00 ] && result=none
   [ "$result" != none ] && echo "$result"
 }
@@ -81,8 +83,13 @@ segment_decision() {
       while [ "$i" -lt "${#w[@]}" ]; do
         case "${w[$i]}" in
           -C) redirect=1; i=$((i + 2)) ;;
-          -c) i=$((i + 2)) ;;
-          --git-dir* | --work-tree*) redirect=1; i=$((i + 1)) ;;
+          -c)
+            [[ ${w[$((i + 1))]:-} == alias.* ]] && { echo unread; return; }
+            i=$((i + 2))
+            ;;
+          --git-dir | --work-tree | --namespace) redirect=1; i=$((i + 2)) ;;
+          --git-dir=* | --work-tree=* | --namespace=*) redirect=1; i=$((i + 1)) ;;
+          --config-env) i=$((i + 2)) ;;
           -*) i=$((i + 1)) ;;
           *) sub="${w[$i]}"; break ;;
         esac
@@ -93,15 +100,25 @@ segment_decision() {
       esac
       ;;
     gh)
-      case "${w[1]:-} ${w[2]:-}" in
+      # As duas primeiras palavras que não são flag (gh pr -R o/r merge -> pr merge).
+      local g=() j=1
+      while [ "$j" -lt "${#w[@]}" ] && [ "${#g[@]}" -lt 2 ]; do
+        case "${w[$j]}" in
+          -R | --repo) j=$((j + 2)) ;;
+          -*) j=$((j + 1)) ;;
+          *) g+=("${w[$j]}"); j=$((j + 1)) ;;
+        esac
+      done
+      case "${g[0]:-} ${g[1]:-}" in
         "pr merge") echo ask ;;
         "pr create") echo allow ;;
         release\ *) echo ask ;;
-        api\ *) [[ " ${w[*]} " == *protection* || " ${w[*]} " == *environments* ]] && echo ask ;;
+        api\ *) [[ " ${w[*]} " =~ protection|environments|/merge|releases|git/refs ]] && echo ask ;;
       esac
       ;;
     *)
       for x in "${w[@]}"; do
+        x="${x//\`/}"
         case "${x##*/}" in
           git | gh) tool=1 ;;
           push | tag | merge | release | api) verb=1 ;;
@@ -115,18 +132,17 @@ segment_decision() {
 simple=1
 case "$cmd" in *[\;\&\|\<\>\$\`]* | *$'\n'*) simple=0 ;; esac
 
-# Um pedaço por linha: corta em &&, ||, ;, |, &, ( e ) fora de aspas; $( ... ) fica inteiro; \ escapa o próximo.
+# Um pedaço por linha: corta em &&, ||, ;, |, &, ( e ) fora de aspas, também os de $( ), para que o comando de dentro
+# seja decidido sozinho; \ escapa o próximo caractere.
 split_segments() {
   awk '{
-    q = ""; out = ""; depth = 0; n = length($0)
+    q = ""; out = ""; n = length($0)
     for (i = 1; i <= n; i++) {
       c = substr($0, i, 1)
       if (q == "\047") { out = out c; if (c == q) q = ""; continue }
       if (c == "\\") { out = out c substr($0, i + 1, 1); i++; continue }
       if (q == "\"") { out = out c; if (c == q) q = ""; continue }
       if (c == "\047" || c == "\"") { q = c; out = out c; continue }
-      if (c == "$" && substr($0, i + 1, 1) == "(") { depth++; out = out "$("; i++; continue }
-      if (c == ")" && depth > 0) { depth--; out = out c; continue }
       if (c == ";" || c == "|" || c == "&" || c == "(" || c == ")") {
         print out; out = ""
         nx = substr($0, i + 1, 1)
