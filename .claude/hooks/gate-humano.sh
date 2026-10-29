@@ -7,7 +7,8 @@
 #   allow git push de branch <tipo>/<issue>/<slug> (sem --delete nem --force) e gh pr create, só num comando simples
 #         (allow vale para o comando todo)
 # O comando é cortado fora das aspas, também em ( ) de subshell e em & de segundo plano; um $( ) fica inteiro na palavra
-# do comando de fora, e o conteúdo de cada $( ) e crase, entre aspas ou não, é decidido também como um comando à parte.
+# do comando de fora. O gate não interpreta o shell: um comando com $, crase, (, ), \ ou quebra de linha que cita git ou
+# gh junto de push, tag, merge, release ou api, e que o comando de fora não nega nem pede, cai em ask (falha fechado).
 # Antes de decidir, tira aspas e barras invertidas das palavras e os prefixos VAR=valor, env e command, e lê
 # /usr/bin/git como git. Push para outro repositório (GIT_DIR=, GIT_WORK_TREE=, -C, --git-dir, --work-tree) não ganha
 # allow: o HEAD e a branch atual são lidos do cwd.
@@ -89,6 +90,11 @@ segment_decision() {
             [[ ${x,,} == alias.* ]] && { echo unread; return; }
             i=$((i + 2))
             ;;
+          --config-env=*)
+            x="${w[$i]#--config-env=}"
+            [[ ${x,,} == alias.* ]] && { echo unread; return; }
+            i=$((i + 1))
+            ;;
           --git-dir | --work-tree | --namespace) redirect=1; i=$((i + 2)) ;;
           --git-dir=* | --work-tree=* | --namespace=*) redirect=1; i=$((i + 1)) ;;
           -*) i=$((i + 1)) ;;
@@ -114,7 +120,7 @@ segment_decision() {
         "pr merge") echo ask ;;
         "pr create") echo allow ;;
         release\ *) echo ask ;;
-        api\ *) [[ " ${w[*]} " =~ protection|environments|/merge|mergePullRequest|releases|git/refs ]] && echo ask ;;
+        api\ *) [[ " ${w[*]} " =~ protection|environments|/merge|mergePullRequest|enablePullRequestAutoMerge|releases|git/refs ]] && echo ask ;;
       esac
       ;;
     *)
@@ -157,10 +163,16 @@ split_segments() {
   }'
 }
 
-# O conteúdo de cada $( ) sem $( ) dentro e de cada crase, um por linha, onde quer que estejam (aspas duplas não impedem
-# a substituição). Um $( ) aninhado é alcançado pelo de dentro.
-substitutions() {
-  grep -oE '\$\([^()]*\)|`[^`]*`' <<<"$cmd" | sed -E 's/^\$\(//; s/\)$//; s/^`//; s/`$//'
+# 0 quando o comando cita git ou gh junto de um verbo que o gate decide, em qualquer palavra.
+mentions_gated() {
+  local x tool=0 verb=0
+  for x in $(tr -c 'A-Za-z0-9_./-' ' ' <<<"$cmd"); do
+    case "${x##*/}" in
+      git | gh) tool=1 ;;
+      push | tag | merge | release | api) verb=1 ;;
+    esac
+  done
+  [ "$tool$verb" = 11 ]
 }
 
 decisions=""
@@ -169,10 +181,14 @@ while IFS= read -r segment; do
   [ "${#words[@]}" = 0 ] && continue
   words=("${words[@]//[\"\'\\]/}")
   decisions+="$(segment_decision "${words[@]}") "
-done < <(
-  split_segments <<<"$cmd"
-  substitutions | split_segments
-)
+done < <(split_segments <<<"$cmd")
+
+case "$decisions" in
+  *deny* | *ask* | *unread*) ;;
+  *)
+    if [[ $cmd == *[\$\`\(\)\\]* || $cmd == *$'\n'* ]] && mentions_gated; then decisions+="unread "; fi
+    ;;
+esac
 
 reply() {
   jq -n --arg d "$1" --arg r "$2" \

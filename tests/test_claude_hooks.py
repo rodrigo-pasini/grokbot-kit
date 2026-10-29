@@ -235,9 +235,9 @@ def test_gate_humano_deny_escaped(feature_repo: Path, command: str) -> None:
 @pytest.mark.parametrize(
     ("command", "expected"),
     [
-        ("echo $(git push origin main)", "deny"),
-        ("x=$(git push origin main)", "deny"),
-        ("echo `git push origin main`", "deny"),
+        ("echo $(git push origin main)", "ask"),
+        ("x=$(git push origin main)", "ask"),
+        ("echo `git push origin main`", "ask"),
     ],
 )
 def test_gate_humano_substitution(feature_repo: Path, command: str, expected: str) -> None:
@@ -301,20 +301,26 @@ def test_gate_humano_more_ask_combined_force(feature_repo: Path) -> None:
 
 # C68 - AC 53, door 6
 @pytest.mark.parametrize(
-    "command",
+    ("command", "expected"),
     [
-        "git -C $(pwd) push origin main",
-        "git push $(git remote) main",
-        "git push $(echo origin) main",
-        "git push origin $(true) main",
-        "x=`git push origin main`",
-        'git commit -m "$(git push origin main)"',
-        'git commit -m "`git push origin main`"',
-        "echo $(echo $(git push origin main))",
+        ("git -C $(pwd) push origin main", "deny"),
+        ("git push $(git remote) main", "deny"),
+        ("git push $(echo origin) main", "deny"),
+        ("git push origin $(true) main", "deny"),
+        ("x=`git push origin main`", "ask"),
+        ('git commit -m "$(git push origin main)"', "ask"),
+        ('git commit -m "`git push origin main`"', "ask"),
+        ("echo $(echo $(git push origin main))", "ask"),
+        ("echo $(git push origin main $(true))", "ask"),
+        ("echo $(git push origin main; echo $(date))", "ask"),
+        ("echo `echo $(git push origin main)`", "ask"),
+        ('x=$(git push origin "$(echo main)")', "ask"),
     ],
 )
-def test_gate_humano_substitution_args(feature_repo: Path, command: str) -> None:
-    assert decision(command, feature_repo)[0] == "deny", command
+def test_gate_humano_substitution_args(feature_repo: Path, command: str, expected: str) -> None:
+    kind, reason = decision(command, feature_repo)
+    assert kind == expected, command
+    assert reason.strip()
 
 
 # C69 - AC 51, 52, 54, door 6
@@ -337,6 +343,30 @@ def test_gate_humano_round5_no_allow(feature_repo: Path, command: str) -> None:
     ],
 )
 def test_gate_humano_round5_ask(feature_repo: Path, command: str) -> None:
+    assert decision(command, feature_repo)[0] == "ask", command
+
+
+# C70 - AC 55, door 6
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git commit -m 'fix: `git push origin main` x'",
+        "rg -n '$(git push origin main)' docs",
+        "git commit -F - <<'EOF'\nfix(x): cita git push origin main\nEOF",
+    ],
+)
+def test_gate_humano_round6_no_false_deny(feature_repo: Path, command: str) -> None:
+    assert decision(command, feature_repo)[0] != "deny", command
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git --config-env=alias.p=X p origin main",
+        "gh api graphql -f query=mutation{enablePullRequestAutoMerge}",
+    ],
+)
+def test_gate_humano_round6_ask(feature_repo: Path, command: str) -> None:
     assert decision(command, feature_repo)[0] == "ask", command
 
 

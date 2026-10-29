@@ -72,8 +72,9 @@ Whoever works on this repository with Claude Code does each code task in a dedic
 The hook `.claude/hooks/gate-worktree.sh` (PreToolUse on Edit/Write) denies code edits in the main clone. To work in
 the main clone on purpose, run the session with `GROKBOT_KIT_ALLOW_MAIN_EDIT=1`. The hook
 `.claude/hooks/gate-humano.sh` (PreToolUse on Bash) lets the agent push a feature branch and open a pull request, asks
-before a merge, a tag, a release or a change to branch protection, and denies a push to `main`. It also asks when it
-cannot read the command: a push refspec with `$(...)` or backticks, or `git`/`gh` inside another command (`bash -c`,
+before a merge, a tag, a release or a change to branch protection, and denies a push to `main`. It does not interpret
+the shell, so it also asks for a command with `$(...)`, backticks, parentheses, `\` or a line break that mentions
+`git`/`gh` with `push`, `tag`, `merge`, `release` or `api`, and for `git`/`gh` inside another command (`bash -c`,
 `sudo`, `xargs`).
 
 ## Release and PyPI
