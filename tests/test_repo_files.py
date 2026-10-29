@@ -107,11 +107,11 @@ def test_ruff_config() -> None:
     assert ruff["force-exclude"] is True
 
 
-# C11 - AC 8
+# C11 - AC 8 (sdlc-gates: `tools` entra no mypy, Impact do plano)
 def test_mypy_strict_config() -> None:
     mypy = pyproject()["tool"]["mypy"]
     assert mypy["strict"] is True
-    assert mypy["files"] == ["src"]
+    assert mypy["files"] == ["src", "tools"]
 
 
 # C12 - AC 9
@@ -135,6 +135,21 @@ def test_precommit_hooks() -> None:
     assert len(mypy) == 1, "hook local `uv run mypy` ausente"
     for hook in hooks:
         assert hook.get("exclude") == PRECOMMIT_EXCLUDE, f"hook {hook['id']} sem exclude"
+
+
+# sdlc-gates C2 - AC 1, door 1
+def test_sdlc_hooks_stages() -> None:
+    by_id = {hook["id"]: hook for hook in precommit_hooks()}
+    for hook_id, stage, command in [
+        ("sdlc-pre-commit", "pre-commit", "tools/sdlc.py pre-commit"),
+        ("sdlc-commit-msg", "commit-msg", "tools/sdlc.py commit-msg"),
+        ("sdlc-pre-push", "pre-push", "tools/sdlc.py branch"),
+    ]:
+        assert hook_id in by_id, f"hook {hook_id} ausente"
+        hook = by_id[hook_id]
+        assert hook["stages"] == [stage], hook_id
+        assert command in hook["entry"], hook_id
+        assert hook.get("exclude") == PRECOMMIT_EXCLUDE, hook_id
 
 
 # C16 - AC 13

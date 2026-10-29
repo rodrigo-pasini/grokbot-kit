@@ -45,7 +45,7 @@ force-exclude = true
 
 [tool.mypy]
 strict = true
-files = ["src"]
+files = ["src", "tools"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
