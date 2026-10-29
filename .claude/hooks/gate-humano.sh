@@ -38,6 +38,7 @@ push_decision() {
   for a in "$@"; do
     if [ "$skip" = 1 ]; then skip=0; continue; fi
     [[ $a =~ ^[0-9]*[\<\>] ]] && continue
+    a="${a%%[<>]*}"
     case "$a" in
       --tags | --follow-tags) tags=1 ;;
       --all | --mirror) echo deny; return ;;
@@ -54,7 +55,7 @@ push_decision() {
   local result=allow ref src dst
   for ref in "${refs[@]}"; do
     # Q: texto entre aspas com substituição, no segundo passe.
-    if [[ $ref == *[\$\`]* || $ref == Q ]]; then [ "$result" = ask ] || result=unread; continue; fi
+    if [[ $ref == *[\$\`{]* || $ref == Q ]]; then [ "$result" = ask ] || result=unread; continue; fi
     ref="${ref#+}"
     src="${ref%%:*}"
     if [[ $ref == *:* ]]; then dst="${ref#*:}"; else dst="$src"; fi
@@ -105,6 +106,10 @@ segment_decision() {
       case "$sub" in
         tag) echo ask ;;
         push) push_decision "${w[@]:$((i + 1))}" ;;
+        # Subcomandos que rodam um comando de shell: o gate não lê o comando.
+        rebase) [[ " ${w[*]} " =~ \ (-x|--exec|--exec=[^\ ]*)\  ]] && echo unread || echo clean ;;
+        submodule) [[ " ${w[*]} " == *" foreach "* ]] && echo unread || echo clean ;;
+        bisect) [[ " ${w[*]} " == *" run "* ]] && echo unread || echo clean ;;
         *) echo clean ;;
       esac
       ;;
@@ -145,88 +150,122 @@ case "$cmd" in *[\;\&\|\<\>\$\`]* | *$'\n'*) simple=0 ;; esac
 #      conteúdo de $( ) e crase, também entre aspas duplas e em heredoc sem aspas no delimitador, vira pedaço próprio
 #   R  como B, mas o texto entre aspas e de heredoc fica inteiro: o comando passa texto a um shell
 VIEW_AWK='
-function regions(t,   out, k, n, ch, d, r) {
+# Índice logo depois do ) que fecha o $( aberto antes de j, com aspas e $( ) aninhados.
+function subst_end(s, j, n,   d, ch) {
+  d = 1
+  while (j <= n) {
+    ch = substr(s, j, 1)
+    if (ch == "\\") { j += 2; continue }
+    if (ch == "\047") { j++; while (j <= n && substr(s, j, 1) != "\047") j++; j++; continue }
+    if (ch == "\"") { j = dq_end(s, j + 1, n); continue }
+    if (ch == "$" && substr(s, j + 1, 1) == "(") { j = subst_end(s, j + 2, n); continue }
+    if (ch == "(") d++
+    else if (ch == ")") { d--; if (d == 0) return j + 1 }
+    j++
+  }
+  return j
+}
+# Índice logo depois da aspa dupla que fecha a aberta antes de j.
+function dq_end(s, j, n,   ch) {
+  while (j <= n) {
+    ch = substr(s, j, 1)
+    if (ch == "\\") { j += 2; continue }
+    if (ch == "$" && substr(s, j + 1, 1) == "(") { j = subst_end(s, j + 2, n); continue }
+    if (ch == "`") { j++; while (j <= n && substr(s, j, 1) != "`") j++; j++; continue }
+    if (ch == "\"") return j + 1
+    j++
+  }
+  return j
+}
+# O conteúdo de cada $( ) e crase de t, um por linha.
+function regions(t,   out, k, n, ch, e) {
   out = ""; n = length(t)
   for (k = 1; k <= n; k++) {
     ch = substr(t, k, 1)
     if (ch == "\\") { k++; continue }
     if (ch == "$" && substr(t, k + 1, 1) == "(") {
-      d = 1; k += 2; r = ""
-      while (k <= n) {
-        ch = substr(t, k, 1)
-        if (ch == "(") d++
-        else if (ch == ")") { d--; if (d == 0) break }
-        r = r ch; k++
-      }
-      out = out "\n" r "\n"; continue
+      e = subst_end(t, k + 2, n)
+      out = out "\n" substr(t, k + 2, e - k - 3) "\n"
+      k = e - 1; continue
     }
     if (ch == "`") {
-      k++; r = ""
-      while (k <= n && substr(t, k, 1) != "`") { r = r substr(t, k, 1); k++ }
-      out = out "\n" r "\n"
+      e = k + 1
+      while (e <= n && substr(t, e, 1) != "`") e++
+      out = out "\n" substr(t, k + 1, e - k - 1) "\n"
+      k = e
     }
   }
   return out
 }
 function quoted(t, single) {
+  if (mode == "A") { gsub(/\n/, " ", t); return (single ? "\047" : "\"") t (single ? "\047" : "\"") }
   if (mode == "R") return " " t " "
   if (t !~ /[ \t\n$`]/) return t
   if (single) return " Q "
   return " Q \n" scan(regions(t)) "\n"
 }
-function scan(s,   out, n, i, j, c, ch, t, d, q, dash, np, pd, pq, pdash, h, e, line, cmp, body, depth) {
+function scan(s,   out, n, i, j, c, ch, t, d, q, dash, np, pd, pq, pdash, h, e, line, cmp, body, depth, start, ok) {
   out = ""; n = length(s); i = 1; np = 0; depth = 0
   while (i <= n) {
     c = substr(s, i, 1)
     if (c == "\\") { out = out (mode == "A" ? c : "") substr(s, i + 1, 1); i += 2; continue }
-    if (c == "\047" || c == "\"") {
-      j = i + 1; t = ""
-      while (j <= n) {
-        ch = substr(s, j, 1)
-        if (c == "\"" && ch == "\\") { t = t ch substr(s, j + 1, 1); j += 2; continue }
-        if (ch == c) break
-        t = t ch; j++
-      }
-      out = out (mode == "A" ? c t c : quoted(t, c == "\047"))
+    if (c == "\047") {
+      j = i + 1
+      while (j <= n && substr(s, j, 1) != "\047") j++
+      out = out quoted(substr(s, i + 1, j - i - 1), 1)
       i = j + 1; continue
+    }
+    if (c == "\"") {
+      j = dq_end(s, i + 1, n)
+      out = out quoted(substr(s, i + 1, j - i - 2), 0)
+      i = j; continue
+    }
+    # Aritmética, $(( )) e (( )): nem heredoc nem subshell.
+    if (substr(s, i, 3) == "$((" || (c == "(" && substr(s, i + 1, 1) == "(")) {
+      e = index(substr(s, i), "))")
+      if (e) { out = out " "; i += e + 1; continue }
     }
     if (c == "<" && substr(s, i + 1, 1) == "<" && substr(s, i + 2, 1) != "<" && substr(s, i - 1, 1) != "<") {
       j = i + 2; dash = 0; q = 0; d = ""
       if (substr(s, j, 1) == "-") { dash = 1; j++ }
       while (substr(s, j, 1) == " " || substr(s, j, 1) == "\t") j++
-      ch = substr(s, j, 1)
-      if (ch == "\047" || ch == "\"") {
-        q = 1; j++
-        while (j <= n && substr(s, j, 1) != ch) { d = d substr(s, j, 1); j++ }
-        j++
-      } else {
-        if (ch == "\\") { q = 1; j++ }
-        while (j <= n && substr(s, j, 1) ~ /[A-Za-z0-9_]/) { d = d substr(s, j, 1); j++ }
+      while (j <= n) {
+        ch = substr(s, j, 1)
+        if (ch ~ /[ \t\n;|&<>()]/) break
+        if (ch == "\047" || ch == "\"") {
+          q = 1; j++
+          while (j <= n && substr(s, j, 1) != ch) { d = d substr(s, j, 1); j++ }
+          j++; continue
+        }
+        if (ch == "\\") { q = 1; d = d substr(s, j + 1, 1); j += 2; continue }
+        d = d ch; j++
       }
-      if (d != "") { np++; pd[np] = d; pq[np] = q; pdash[np] = dash }
-      out = out " "; i = j; continue
+      if (d != "") { np++; pd[np] = d; pq[np] = q; pdash[np] = dash; out = out " "; i = j; continue }
     }
     if (c == "\n" && np > 0) {
       out = out "\n"; i++
       for (h = 1; h <= np; h++) {
-        body = ""
+        # Sem a linha de fim, não é heredoc: o resto volta a ser lido como comando (falha fechado).
+        start = i; body = ""; ok = 0
         while (i <= n) {
           e = index(substr(s, i), "\n")
           line = e ? substr(s, i, e - 1) : substr(s, i)
           i += e ? e : length(line) + 1
           cmp = line
           if (pdash[h]) sub(/^\t+/, "", cmp)
-          if (cmp == pd[h]) break
+          if (cmp == pd[h]) { ok = 1; break }
           body = body line "\n"
         }
+        if (!ok) { i = start; break }
         if (mode == "R") out = out body "\n"
         else if (mode == "B" && !pq[h]) out = out " Q \n" scan(regions(body)) "\n"
       }
       np = 0; continue
     }
-    if (mode == "A" && c == "$" && substr(s, i + 1, 1) == "(") { depth++; out = out "$("; i += 2; continue }
-    if (mode == "A" && c == ")" && depth > 0) { depth--; out = out c; i++; continue }
-    if (mode != "A" && c == "$" && substr(s, i + 1, 1) == "(") { out = out "\n"; i += 2; continue }
+    if (c == "$" && substr(s, i + 1, 1) == "(") {
+      if (mode == "A") { e = subst_end(s, i + 2, n); t = substr(s, i, e - i); gsub(/\n/, " ", t); out = out t; i = e; continue }
+      out = out "\n"; i += 2; continue
+    }
     if (c == ";" || c == "|" || c == "&" || c == "(" || c == ")" || c == "\n" || (mode != "A" && c == "`")) {
       out = out "\n"; i++; continue
     }
@@ -261,9 +300,13 @@ done < <(view A)
 
 # Segundo passe (falha fechado). Um comando que passa texto a um shell lê o texto todo.
 executed="$(view B)"
+# $SHELL entre aspas some na visão B; o . só é shell como primeira palavra de um trecho.
+if [[ $cmd == *'$SHELL'* || $cmd == *'${SHELL}'* ]] || grep -qE '^[[:space:]]*\.[[:space:]]' <<<"$executed"; then
+  executed="$(view R)"
+fi
 for x in $(tr -c 'A-Za-z0-9_./-' ' ' <<<"$executed"); do
   case "${x##*/}" in
-    bash | sh | zsh | dash | ksh | fish | eval | exec | source | sudo | doas | su | xargs | nohup | timeout | nice | time | watch | parallel)
+    bash | sh | zsh | dash | ksh | fish | SHELL | eval | exec | source | sudo | doas | su | xargs | nohup | timeout | nice | time | watch | parallel)
       executed="$(view R)"
       break
       ;;

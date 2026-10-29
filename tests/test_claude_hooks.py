@@ -393,6 +393,74 @@ def test_gate_humano_autonomy_shell_text(feature_repo: Path, command: str) -> No
     assert decision(command, feature_repo)[0] == "ask", command
 
 
+# C72 - AC 57, door 6
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cat <<E'OF'\nx\ngit push origin main",
+        'cat <<"E"OF\nx\nEOF\ngit push origin main',
+        "cat <<END-X\nx\nEND-X\ngit push origin main",
+        "cat <<END.X\nx\nEND.X\ngit push origin main",
+        "echo $((1<<2))\ngit push origin main",
+        "(( x = 1 << 2 ))\ngit push origin main",
+    ],
+)
+def test_gate_humano_heredoc_end(feature_repo: Path, command: str) -> None:
+    assert decision(command, feature_repo)[0] == "deny", command
+
+
+# C73 - AC 58, AC 53, door 6
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git commit -m 'fix: x\ngit push origin main\ngh pr merge 34'",
+        'git commit -m "fix: x\ngit tag v1\ngit push origin main"',
+        "git commit -m \"$(cat <<'EOF'\nfix: x\ngit push origin main\nEOF\n)\"",
+    ],
+)
+def test_gate_humano_multiline_quiet(feature_repo: Path, command: str) -> None:
+    result = gate(command, feature_repo)
+    assert result.returncode == 0
+    assert result.stdout == "", command
+
+
+def test_gate_humano_multiline_deny(feature_repo: Path, tmp_path: Path) -> None:
+    assert decision('echo "a\nb" && git push origin main', feature_repo)[0] == "deny"
+    (tmp_path / "m").mkdir()
+    on_main = repo_on(tmp_path / "m", "main")
+    assert decision("git push origin 2>/dev/null", on_main)[0] == "deny"
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        'echo "$(echo ")"; git push origin main)"',
+        "printf 'git push origin main' | \"$SHELL\"",
+        "printf 'git push origin main' > x.sh && . ./x.sh",
+        'eval "git push origin main"',
+    ],
+)
+def test_gate_humano_multiline_ask(feature_repo: Path, command: str) -> None:
+    assert decision(command, feature_repo)[0] == "ask", command
+
+
+# C74 - AC 59, door 6
+@pytest.mark.parametrize(
+    ("command", "expected"),
+    [
+        ("git push origin main>/dev/null", "deny"),
+        ("git push origin main>&2", "deny"),
+        ("git push origin HEAD:main>log", "deny"),
+        ("git push origin {main,}", "ask"),
+        ('git rebase -x "git push origin main" HEAD~1', "ask"),
+        ("git submodule foreach git push origin main", "ask"),
+        ('git bisect run sh -c "git push origin main"', "ask"),
+    ],
+)
+def test_gate_humano_glued(feature_repo: Path, command: str, expected: str) -> None:
+    assert decision(command, feature_repo)[0] == expected, command
+
+
 # C30 - AC 23
 @pytest.mark.parametrize("command", ["git status", "uv run pytest", "gh pr view 30"])
 def test_gate_humano_neutral(feature_repo: Path, command: str) -> None:
