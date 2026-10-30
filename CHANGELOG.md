@@ -8,12 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-30
+
 ### Added
 
 - `docs/event.md` (and `docs/pt-BR/event.md`) describes each of the 26 fields of the event `grokbot-kit.event/v1` and
   the `event`/`status`/`exit_reason` combinations; the README now names every option of every command, including
   `--version`, `run --tool`, `run --timeout`, `run --prompt-file`, `route add --header`, `login --secret` and
   `setup models refresh --add`.
+
+### Changed
+
+- Contributing: `AGENTS.md` is the only instruction file for coding agents (`CLAUDE.md` is gone; Claude Code reads
+  `AGENTS.md` from 2.1.277 on), and the development flow is checked by `tools/sdlc.py` in local hooks and in the new
+  required CI check `process` (branch and commit names, issue link, specs, changelog and doc pairs). See
+  `CONTRIBUTING.md`.
 
 ## [0.5.0] - 2026-10-29
 
@@ -220,7 +229,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `pytest`, `pre-commit`, CI and release workflows, Dependabot, issue and pull request templates.
 - `grokbot-kit --version`. The commands described in the README are not implemented yet.
 
-[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/rodrigo-pasini/grokbot-kit/compare/v0.3.1...v0.4.0
