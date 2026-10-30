@@ -146,6 +146,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C70/C71 AC 55-56 .claude/hooks/gate-humano.sh:190 (hooks)
 - last seen: 2026-10-29T19:43:50Z
 
+### L-023 - Um check de hook pre-push do pre-commit prova um push com dois refs (git push origin feat/x main): o pre-commit só passa ao hook o primeiro ref com commits.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `hooks` · harmful: 0
+- features: sdlc-gates
+- evidence: N1 AC 21 / C28 .pre-commit-config.yaml:48 (hooks)
+- last seen: 2026-10-30T17:17:02Z
+
+### L-024 - Com um allow largo como Bash(git push *), o check das regras ask prova as formas de refspec (HEAD:refs/tags/v1, :v1, --mirror): o ask casa texto, e o allow pega o que o ask não escreveu.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `claude-permissions` · harmful: 0
+- features: sdlc-gates
+- evidence: N2 AC 20 / C27 .claude/settings.json:27 (claude-permissions)
+- last seen: 2026-10-30T17:17:02Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 23,
+  "next_id": 25,
   "lessons": [
     {
       "id": "L-001",
@@ -400,6 +400,42 @@
       ],
       "created": "2026-10-29T19:43:50Z",
       "last_seen": "2026-10-29T19:43:50Z"
+    },
+    {
+      "id": "L-023",
+      "key": "spec_precision_gap::um check de hook pre push do pre commit prova um push com dois refs git push origin feat x main o pre commit so passa ao hook o primeiro ref com commits",
+      "text": "Um check de hook pre-push do pre-commit prova um push com dois refs (git push origin feat/x main): o pre-commit só passa ao hook o primeiro ref com commits.",
+      "signal": "spec_precision_gap",
+      "scope": "hooks",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "N1 AC 21 / C28 .pre-commit-config.yaml:48 (hooks)"
+      ],
+      "created": "2026-10-30T17:17:02Z",
+      "last_seen": "2026-10-30T17:17:02Z"
+    },
+    {
+      "id": "L-024",
+      "key": "spec_precision_gap::com um allow largo como bash git push o check das regras ask prova as formas de refspec head refs tags v1 v1 mirror o ask casa texto e o allow pega o que o ask nao escreveu",
+      "text": "Com um allow largo como Bash(git push *), o check das regras ask prova as formas de refspec (HEAD:refs/tags/v1, :v1, --mirror): o ask casa texto, e o allow pega o que o ask não escreveu.",
+      "signal": "spec_precision_gap",
+      "scope": "claude-permissions",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "N2 AC 20 / C27 .claude/settings.json:27 (claude-permissions)"
+      ],
+      "created": "2026-10-30T17:17:02Z",
+      "last_seen": "2026-10-30T17:17:02Z"
     }
   ]
 }
