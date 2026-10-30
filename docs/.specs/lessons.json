@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 25,
+  "next_id": 26,
   "lessons": [
     {
       "id": "L-001",
@@ -436,6 +436,24 @@
       ],
       "created": "2026-10-30T17:17:02Z",
       "last_seen": "2026-10-30T17:17:02Z"
+    },
+    {
+      "id": "L-025",
+      "key": "ac_gap::uma regra ask de flag escrita bash cmd flag nao casa a flag como primeiro argumento git push follow tags cada flag ganha o par bash cmd flag e o check prova cada membro com um comando concreto nao so pela igualdade da lista",
+      "text": "Uma regra ask de flag escrita Bash(cmd * --flag *) não casa a flag como primeiro argumento (git push --follow-tags): cada flag ganha o par Bash(cmd --flag *), e o check prova cada membro com um comando concreto, não só pela igualdade da lista.",
+      "signal": "ac_gap",
+      "scope": "claude-permissions",
+      "status": "candidate",
+      "features": [
+        "sdlc-gates"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "N5 plan.md:73 / C27 .claude/settings.json:35 (claude-permissions)"
+      ],
+      "created": "2026-10-30T17:25:45Z",
+      "last_seen": "2026-10-30T17:25:45Z"
     }
   ]
 }

@@ -158,6 +158,12 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: N2 AC 20 / C27 .claude/settings.json:27 (claude-permissions)
 - last seen: 2026-10-30T17:17:02Z
 
+### L-025 - Uma regra ask de flag escrita Bash(cmd * --flag *) não casa a flag como primeiro argumento (git push --follow-tags): cada flag ganha o par Bash(cmd --flag *), e o check prova cada membro com um comando concreto, não só pela igualdade da lista.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `claude-permissions` · harmful: 0
+- features: sdlc-gates
+- evidence: N5 plan.md:73 / C27 .claude/settings.json:35 (claude-permissions)
+- last seen: 2026-10-30T17:25:45Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
