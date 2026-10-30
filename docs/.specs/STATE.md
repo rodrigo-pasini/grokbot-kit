@@ -64,16 +64,16 @@
 Só o estado atual (até 40 linhas, conferido por `tools/sdlc.py state`). O histórico de cada feature está no git, nos
 PRs e nos `verification.md` de `docs/.specs/features/`.
 
-**Feature**: sdlc-gates (issue #31, AD-050 a AD-052), branch `feat/31/sdlc-gates`, base `main` em `15398f3`
-**Where**: build completo (C1-C56), Verifier e PR com `Closes #31`; merge, tag e aplicar o
-`.github/repo-settings/main-protection.json` (6º check `process`) ficam com o Rodrigo
-**Released**: `0.5.0` em `main` (PR 30), no PyPI e no GitHub Release
-**Features entregues**: agent-run-notify, kit-update, plugins, model-setup-docs (verificadas, `verification.md` de cada)
+**Feature**: nenhuma em curso; release `0.6.0` na branch `chore/release/0.6.0`
+**Where**: sdlc-gates mergeada (PR 34, `da62d9a`, issue #31 fechada); o `main-protection.json` com o `process` já está
+aplicado no GitHub (6 checks obrigatórios)
+**Released**: `0.5.0` em `main` (PR 30), no PyPI e no GitHub Release; `0.6.0` sai com a tag `v0.6.0` depois do merge
+**Features entregues**: agent-run-notify, kit-update, plugins, model-setup-docs, sdlc-gates (verificadas,
+`verification.md` de cada)
 **Abertos sem issue ainda**: o `doctor` decide o login do opencode pelo `<n> credentials` do `opencode auth list`, que
 dá `0` no box logado; erro do opencode só no stderr chega com `summary` vazio e sem fallback
 
-**Next step**: depois do merge da sdlc-gates, o Rodrigo aplica o `main-protection.json` no GitHub; pendências no backlog:
-#32, #33
+**Next step**: o Rodrigo faz o merge do PR da release e cria a tag `v0.6.0` no `main`; pendências no backlog: #32, #33
 **Blockers**: nenhum
 **Uncommitted**: nada
-**Branch**: `main` (`0.5.0`); `main` protegida (PR + 5 checks, só squash; 6 com o `process` depois do payload aplicado)
+**Branch**: `main` (`0.5.0` até a tag); `main` protegida (PR + 6 checks com o `process`, só squash)
