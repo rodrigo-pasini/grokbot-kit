@@ -71,7 +71,7 @@ instructions file of the project. Claude Code reads it from version 2.1.277 on, 
 Whoever works on this repository with Claude Code does each code task in a dedicated worktree under `../worktrees/`.
 The hook `.claude/hooks/gate-worktree.sh` (PreToolUse on Edit/Write) denies code edits in the main clone. To work in
 the main clone on purpose, run the session with `GROKBOT_KIT_ALLOW_MAIN_EDIT=1`. The permission rules
-of `.claude/settings.json` let the agent push a branch and open a pull request, and ask before a merge, a tag,
+of `.claude/settings.json` let the agent push a branch and open a pull request, and ask before a merge, a tag push,
 a release or a change to branch protection, in any part of a compound command. A push to `main` is refused by
 the `pre-push` hook and by the branch protection of `main` on GitHub.
 

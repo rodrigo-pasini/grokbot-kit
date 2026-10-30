@@ -30,13 +30,15 @@ def repo_on(tmp_path: Path, branch: str) -> Path:
 
 ASK = [
     "Bash(gh pr merge *)",
-    "Bash(git tag *)",
     "Bash(gh release *)",
     "Bash(git push --tags *)",
     "Bash(git push * --tags *)",
     "Bash(git push * --follow-tags *)",
     "Bash(git push * v*)",
     "Bash(git push * refs/tags/*)",
+    "Bash(git push *:refs/tags/*)",
+    "Bash(git push *:v*)",
+    "Bash(git push *--mirror*)",
     "Bash(gh api *protection*)",
     "Bash(gh api *environments*)",
     "Bash(gh api *merge*)",
@@ -82,18 +84,23 @@ def test_settings_registers_hooks() -> None:
 # C27 - AC 20, door 6
 def test_settings_permissions_ask() -> None:
     assert settings()["permissions"]["ask"] == ASK
+    for command in ("git tag", "git tag -l 'v0.0.0*'", "git tag --list"):
+        assert not any(matches(rule, command) for rule in ASK), command
 
 
 @pytest.mark.parametrize(
     "command",
     [
         "gh pr merge 34 --squash",
-        "git tag v0.6.0",
         "gh release create v0.6.0",
         "git push --tags",
         "git push origin --tags",
         "git push origin v0.6.0",
         "git push origin refs/tags/v0.6.0",
+        "git push origin HEAD:refs/tags/v9.9.9",
+        "git push origin :refs/tags/v0.6.0",
+        "git push origin :v0.6.0",
+        "git push --mirror origin",
         "gh api -X PUT repos/o/r/branches/main/protection",
         "gh api repos/o/r/environments/pypi",
         "gh api -X PUT repos/o/r/pulls/34/merge",

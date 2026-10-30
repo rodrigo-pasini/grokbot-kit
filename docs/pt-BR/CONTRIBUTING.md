@@ -71,7 +71,7 @@ Quem trabalha com o Claude Code neste repositório faz cada tarefa de código nu
 `../worktrees/`. O hook `.claude/hooks/gate-worktree.sh` (PreToolUse em Edit/Write) nega edição de código no clone
 principal. Para trabalhar de propósito no clone principal, rode a sessão com `GROKBOT_KIT_ALLOW_MAIN_EDIT=1`. As regras de
 permissão do `.claude/settings.json` deixam o agente fazer push de branch e abrir pull request, e pedem
-confirmação antes de merge, tag, release ou mudança na proteção da branch, em qualquer trecho de um comando
+confirmação antes de merge, push de tag, release ou mudança na proteção da branch, em qualquer trecho de um comando
 composto. Push para `main` é recusado pelo hook `pre-push` e pela proteção da `main` no GitHub.
 
 ## Release e PyPI
