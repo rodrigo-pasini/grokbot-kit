@@ -107,11 +107,11 @@ def test_ruff_config() -> None:
     assert ruff["force-exclude"] is True
 
 
-# C11 - AC 8
+# C11 - AC 8 (sdlc-gates: `tools` entra no mypy, Impact do plano)
 def test_mypy_strict_config() -> None:
     mypy = pyproject()["tool"]["mypy"]
     assert mypy["strict"] is True
-    assert mypy["files"] == ["src"]
+    assert mypy["files"] == ["src", "tools"]
 
 
 # C12 - AC 9
@@ -135,6 +135,21 @@ def test_precommit_hooks() -> None:
     assert len(mypy) == 1, "hook local `uv run mypy` ausente"
     for hook in hooks:
         assert hook.get("exclude") == PRECOMMIT_EXCLUDE, f"hook {hook['id']} sem exclude"
+
+
+# sdlc-gates C2 - AC 1, door 1
+def test_sdlc_hooks_stages() -> None:
+    by_id = {hook["id"]: hook for hook in precommit_hooks()}
+    for hook_id, stage, command in [
+        ("sdlc-pre-commit", "pre-commit", "tools/sdlc.py pre-commit"),
+        ("sdlc-commit-msg", "commit-msg", "tools/sdlc.py commit-msg"),
+        ("sdlc-pre-push", "pre-push", "tools/sdlc.py branch"),
+    ]:
+        assert hook_id in by_id, f"hook {hook_id} ausente"
+        hook = by_id[hook_id]
+        assert hook["stages"] == [stage], hook_id
+        assert command in hook["entry"], hook_id
+        assert hook.get("exclude") == PRECOMMIT_EXCLUDE, hook_id
 
 
 # C16 - AC 13
@@ -214,6 +229,8 @@ MAIN_PROTECTION = {
             {"context": "test (3.11)", "app_id": 15368},
             {"context": "test (3.12)", "app_id": 15368},
             {"context": "test (3.13)", "app_id": 15368},
+            # sdlc-gates C24 (door 4): o 6º check obrigatório
+            {"context": "process", "app_id": 15368},
         ],
     },
     "enforce_admins": True,
@@ -261,7 +278,7 @@ def test_assets_in_wheel(tmp_path: Path) -> None:
         assert asset in names, f"{asset} fora do wheel"
 
 
-# C23 - door 10
+# C23 - door 10 (sdlc-gates C46, AD-052: `AGENTS.md` no lugar do `CLAUDE.md`)
 DOOR_10_FILES = [
     "LICENSE",
     "README.md",
@@ -280,7 +297,6 @@ DOOR_10_FILES = [
     "docs/.specs/DECISOES.md",
     "docs/.specs/features/agent-run-notify/plan.md",
     "NOTICE",
-    "CLAUDE.md",
     "AGENTS.md",
     ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
@@ -392,3 +408,47 @@ def test_changelog_unreleased_model_setup() -> None:
     release = text[start:end]
     for needle in ("setup providers", "--json", "model_fallbacks", "summary"):
         assert needle in release, needle
+
+
+# sdlc-gates C31, C40 - AC 24, 31
+def test_worktree_handoff_config() -> None:
+    config = json.loads(read(".claude/worktree-handoff.json"))
+    assert config["branch_pattern"] == "<tipo>/<issue>/<slug>"
+    assert config["handoff_skill"] == "tlc-spec-lean"
+    assert "CLAUDE.local.md" not in config["copy"]
+
+
+def handoff_section() -> str:
+    lines = read("docs/.specs/STATE.md").splitlines()
+    start = lines.index("## Handoff")
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
+    return "\n".join(lines[start:end])
+
+
+# sdlc-gates C33 - AC 25 (issues 32: limites do webhook; 33: sandbox do Codex no box)
+def test_state_handoff_cites_issues() -> None:
+    handoff = handoff_section()
+    for issue in ("#32", "#33"):
+        assert re.search(rf"{issue}(?!\d)", handoff), issue
+    assert "bwrap" not in handoff
+    assert "limites do webhook" not in handoff
+
+
+# sdlc-gates C38 - AC 29
+def test_state_handoff_within_limit() -> None:
+    result = subprocess.run(
+        ["python3", "tools/sdlc.py", "state"], cwd=ROOT, capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+
+
+# sdlc-gates C39 - AC 30, door 8
+def test_no_claude_md_tracked() -> None:
+    files = subprocess.run(
+        ["git", "ls-files", "CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert files.stdout == ""

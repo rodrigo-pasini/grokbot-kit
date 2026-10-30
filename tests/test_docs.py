@@ -6,6 +6,7 @@ O checador da door 7 roda no `uv run pytest` padrão: cada subcomando de topo do
 """
 
 import argparse
+import json
 import re
 import shutil
 from pathlib import Path
@@ -83,6 +84,79 @@ def section(path: str, heading: str) -> str:
 
 def commands() -> list[str]:
     return top_level_commands(build_parser())
+
+
+# sdlc-gates: os gates de flags, campos do evento e links (AC 36-38)
+EVENT_SCHEMA = ROOT / "src" / "grokbot_kit" / "assets" / "event.v1.json"
+MD_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
+
+
+def long_options(parser: argparse.ArgumentParser, path: str = "") -> list[tuple[str, str]]:
+    """Cada opção longa (menos `--help`) de cada subcomando, como `(caminho do subcomando, opção)`."""
+    found = []
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            for name, child in action.choices.items():
+                found += long_options(child, f"{path} {name}".strip())
+        else:
+            found += [(path, opt) for opt in action.option_strings if opt.startswith("--") and opt != "--help"]
+    return found
+
+
+def english_text(root: Path) -> str:
+    docs = [root / "README.md", *sorted((root / "docs").glob("*.md"))]
+    return "\n".join(p.read_text(encoding="utf-8") for p in docs if p.exists())
+
+
+def portuguese_text(root: Path) -> str:
+    return "\n".join(p.read_text(encoding="utf-8") for p in sorted((root / "docs" / "pt-BR").glob("*.md")))
+
+
+def check_flags(root: Path, options: list[tuple[str, str]]) -> list[str]:
+    failures = []
+    texts = (("README.md or docs/*.md", english_text(root)), ("docs/pt-BR/*.md", portuguese_text(root)))
+    for path, option in options:
+        name = f"grokbot-kit {path} {option}".replace("  ", " ")
+        for where, text in texts:
+            if not re.search(rf"(?<![\w-]){re.escape(option)}(?![\w-])", text):
+                failures.append(f"{name}: not in {where}")
+    return failures
+
+
+def event_fields() -> list[str]:
+    return list(json.loads(EVENT_SCHEMA.read_text(encoding="utf-8"))["properties"])
+
+
+def check_event_fields(root: Path, fields: list[str]) -> list[str]:
+    failures = []
+    for where, text in (("README.md or docs/*.md", english_text(root)), ("docs/pt-BR/*.md", portuguese_text(root))):
+        failures += [f"event field `{f}`: not in {where}" for f in fields if f"`{f}`" not in text]
+    return failures
+
+
+def linked_docs(root: Path) -> list[Path]:
+    found = [root / name for name in ("README.md", "CONTRIBUTING.md") if (root / name).exists()]
+    return found + sorted((root / "docs").glob("*.md")) + sorted((root / "docs" / "pt-BR").glob("*.md"))
+
+
+def check_links(root: Path) -> list[str]:
+    """Cada link Markdown relativo que aponta para arquivo inexistente, como `<arquivo>:<linha>`."""
+    failures = []
+    for doc in linked_docs(root):
+        fenced = False
+        for number, line in enumerate(doc.read_text(encoding="utf-8").splitlines(), start=1):
+            if line.lstrip().startswith("```"):
+                fenced = not fenced
+                continue
+            if fenced:
+                continue
+            for target in MD_LINK_RE.findall(line):
+                path = target.split("#", 1)[0]
+                if not path or re.match(r"^[a-z][a-z0-9+.-]*:", path):
+                    continue
+                if not (doc.parent / path).exists():
+                    failures.append(f"{doc.relative_to(root).as_posix()}:{number}: broken link {target}")
+    return failures
 
 
 # C38 - AC 36
@@ -175,9 +249,9 @@ def test_gate_repo_clean() -> None:
     assert check(ROOT, commands()) == []
 
 
-# C48 - AC 45
-def test_claude_md_doc_rule() -> None:
-    text = re.sub(r"\s+", " ", (ROOT / "CLAUDE.md").read_text(encoding="utf-8"))
+# C48 - AC 45 (sdlc-gates C47, AD-052: a regra mora no `AGENTS.md`)
+def test_agents_md_doc_rule() -> None:
+    text = re.sub(r"\s+", " ", (ROOT / "AGENTS.md").read_text(encoding="utf-8"))
     rule = next((s for s in text.split(" - ") if "mesmo PR" in s), "")
     assert "`README.md`" in rule, rule
     assert "inglês" in rule and "pt-BR" in rule, rule
@@ -189,4 +263,87 @@ def test_pr_template_doc_item() -> None:
     items = [
         line for line in (ROOT / ".github" / "pull_request_template.md").read_text().splitlines() if "- [ ]" in line
     ]
-    assert any("README.md" in i and "docs" in i and "pt-BR" in i for i in items), items
+    doc = [i for i in items if "README.md" in i and "docs" in i and "pt-BR" in i]
+    assert doc, items
+    # sdlc-gates C56 - AC 43: o escape da door 9 no mesmo item
+    assert any("Docs: n/a - <reason>" in i for i in doc), doc
+
+
+def strip_from(paths: list[Path], needle: str) -> None:
+    for path in paths:
+        path.write_text(path.read_text(encoding="utf-8").replace(needle, ""), encoding="utf-8")
+
+
+# sdlc-gates C49 - AC 36
+def test_gate_reports_missing_flag(tmp_path: Path) -> None:
+    options = long_options(build_parser())
+    english = copy_docs(tmp_path / "en")
+    strip_from([english / "README.md", *(english / "docs").glob("*.md")], "--timeout")
+    failures = check_flags(english, options)
+    assert [f for f in failures if "--timeout" in f] == ["grokbot-kit run --timeout: not in README.md or docs/*.md"]
+
+    portuguese = copy_docs(tmp_path / "pt")
+    strip_from(list((portuguese / "docs" / "pt-BR").glob("*.md")), "--timeout")
+    failures = check_flags(portuguese, options)
+    assert [f for f in failures if "--timeout" in f] == ["grokbot-kit run --timeout: not in docs/pt-BR/*.md"]
+
+
+def test_gate_flags_repo_clean() -> None:
+    options = long_options(build_parser())
+    assert ("run", "--timeout") in options and ("", "--version") in options
+    assert check_flags(ROOT, options) == []
+
+
+# sdlc-gates C50 - AC 37
+def test_gate_reports_missing_event_field(tmp_path: Path) -> None:
+    english = copy_docs(tmp_path / "en")
+    strip_from([english / "README.md", *(english / "docs").glob("*.md")], "`exit_code`")
+    assert [f for f in check_event_fields(english, event_fields()) if "exit_code" in f] == [
+        "event field `exit_code`: not in README.md or docs/*.md"
+    ]
+    portuguese = copy_docs(tmp_path / "pt")
+    strip_from(list((portuguese / "docs" / "pt-BR").glob("*.md")), "`exit_code`")
+    assert [f for f in check_event_fields(portuguese, event_fields()) if "exit_code" in f] == [
+        "event field `exit_code`: not in docs/pt-BR/*.md"
+    ]
+
+
+def test_gate_event_fields_repo_clean() -> None:
+    fields = event_fields()
+    assert len(fields) == 26
+    assert check_event_fields(ROOT, fields) == []
+
+
+# sdlc-gates C51 - AC 38
+def test_gate_reports_broken_link(tmp_path: Path) -> None:
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "existe.md").write_text("# existe\n", encoding="utf-8")
+    (tmp_path / "docs" / "x.md").write_text(
+        "# x\n\n[a](nao-existe.md)\n[b](https://example.com/y.md) [c](http://example.com) [d](#secao)\n"
+        "[e](existe.md#secao)\n",
+        encoding="utf-8",
+    )
+    assert check_links(tmp_path) == ["docs/x.md:3: broken link nao-existe.md"]
+
+
+def test_gate_links_repo_clean() -> None:
+    assert check_links(ROOT) == []
+
+
+def contributing_texts() -> list[str]:
+    return [(ROOT / p).read_text(encoding="utf-8") for p in ("CONTRIBUTING.md", "docs/pt-BR/CONTRIBUTING.md")]
+
+
+# sdlc-gates C37 - AC 28
+def test_contributing_gates() -> None:
+    english, portuguese = contributing_texts()
+    for text, pattern in ((english, "<type>/<issue>/<slug>"), (portuguese, "<tipo>/<issue>/<slug>")):
+        for needle in ("commit-msg", "pre-push", "`process`", pattern, "Closes #"):
+            assert needle in text, needle
+
+
+# sdlc-gates C44 - AC 33
+def test_contributing_agents_md() -> None:
+    for text in contributing_texts():
+        for needle in ("AGENTS.md", "2.1.277", "CLAUDE.local.md"):
+            assert needle in text, needle

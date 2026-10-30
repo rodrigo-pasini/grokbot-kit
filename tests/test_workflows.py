@@ -1,6 +1,7 @@
 """Provas do S0 sobre os workflows e o Dependabot (checks C13-C15, C19, C38)."""
 
 import itertools
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -45,7 +46,8 @@ def test_ci_jobs_and_triggers() -> None:
     assert ci["on"]["pull_request"]["branches"] == ["main"]
     jobs = ci["jobs"]
     names = {name: job_id for job_id, job in jobs.items() for name in job_names(job_id, job)}
-    assert sorted(names) == sorted(["lint", "typecheck", "test (3.11)", "test (3.12)", "test (3.13)"])
+    # sdlc-gates (door 4): o job `process` entra no `ci.yml`
+    assert sorted(names) == sorted(["lint", "typecheck", "test (3.11)", "test (3.12)", "test (3.13)", "process"])
     for job in jobs.values():
         assert job["runs-on"] == "ubuntu-latest"
         assert "uv sync --locked" in runs(job)
@@ -151,3 +153,35 @@ def test_release_reads_no_secret() -> None:
     text = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
     assert "secrets." not in text
     assert "secrets[" not in text
+
+
+# sdlc-gates C12 - AC 10, door 4
+def process_job() -> dict[str, Any]:
+    job: dict[str, Any] = load(".github/workflows/ci.yml")["jobs"]["process"]
+    return job
+
+
+def test_process_job() -> None:
+    ci = load(".github/workflows/ci.yml")
+    assert sorted(ci["on"]["pull_request"]["types"]) == sorted(["opened", "edited", "synchronize", "reopened"])
+    job = process_job()
+    assert job["name"] == "process"
+    checkout = next(s for s in job["steps"] if s.get("uses", "").startswith("actions/checkout@"))
+    assert checkout["with"]["fetch-depth"] == 0
+    step = next(s for s in job["steps"] if "tools/sdlc.py pr" in s.get("run", ""))
+    base = re.search(r"--base\s+\"?\$\{?(\w+)", step["run"])
+    assert base is not None, step["run"]
+    assert step["env"][base.group(1)] == "${{ github.event.pull_request.base.sha }}"
+
+
+# sdlc-gates C13 - AC 10
+def test_process_job_no_expression_in_run() -> None:
+    job = process_job()
+    for step in job["steps"]:
+        run = step.get("run", "")
+        for expression in ("github.event.pull_request.title", "github.event.pull_request.body", "github.head_ref"):
+            assert expression not in run, (expression, run)
+    env = {k: v for step in job["steps"] for k, v in step.get("env", {}).items()}
+    values = " ".join(env.values())
+    for expression in ("github.event.pull_request.title", "github.event.pull_request.body", "github.head_ref"):
+        assert expression in values, expression
