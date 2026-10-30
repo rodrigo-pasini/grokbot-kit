@@ -103,7 +103,7 @@ Proof: `gh pr checks "$(gh pr list --head "$(git branch --show-current)" --json 
 **C26** - O `.claude/settings.json` não tem hook `PreToolUse` com `matcher` `Bash`, mantém o `gate-worktree.sh` em `Edit|Write|MultiEdit|NotebookEdit` e o `session-start.sh` em `SessionStart`, e `.claude/hooks/gate-humano.sh` não existe (AC 23, door 6)
 Proof: `uv run pytest tests/test_claude_hooks.py -k settings_registers_hooks`
 
-**C27** - O `permissions.ask` do `.claude/settings.json` é exatamente `Bash(gh pr merge *)`, `Bash(git tag *)`, `Bash(gh release *)`, `Bash(git push --tags *)`, `Bash(git push * --tags *)`, `Bash(git push * --follow-tags *)`, `Bash(git push * v*)`, `Bash(git push * refs/tags/*)`, `Bash(gh api *protection*)`, `Bash(gh api *environments*)`, `Bash(gh api *merge*)`, `Bash(gh api *releases*)` (AC 20, door 6)
+**C27** - O `permissions.ask` do `.claude/settings.json` é exatamente `Bash(gh pr merge *)`, `Bash(gh release *)`, `Bash(git push --tags *)`, `Bash(git push * --tags *)`, `Bash(git push * --follow-tags *)`, `Bash(git push * v*)`, `Bash(git push * refs/tags/*)`, `Bash(git push *:refs/tags/*)`, `Bash(git push *:v*)`, `Bash(git push *--mirror*)`, `Bash(gh api *protection*)`, `Bash(gh api *environments*)`, `Bash(gh api *merge*)`, `Bash(gh api *releases*)`, e nenhuma delas casa `git tag`, `git tag -l 'v0.0.0*'` nem `git tag --list` (AC 20, door 6)
 Proof: `uv run pytest tests/test_claude_hooks.py -k settings_permissions_ask`
 
 **C28** - Num clone de teste com os hooks instalados, `git push origin main` e `git push origin HEAD:main` para um remoto local saem diferente de `0` e o remoto não ganha `main`, e `tools/sdlc.py branch main` sai com `1` (AC 21, door 6)
@@ -219,7 +219,7 @@ Proof: `uv run pytest tests/test_sdlc.py -k "commit_msg_merge or pr_title_merge"
 | regras do `pr` (12) | título C14 · branch C15 · coautor em commit C16 · coautor no corpo C16 · link do issue C17 · validadores C20 · `verification.md` C21 · `**Approved**` C22 · `Handoff` C23 · par de doc C52 · `CHANGELOG.md` C53 · doc ou `Docs: n/a` C54 | - |
 | palavras do link (3) | `Closes` C17 · `Fixes` C17 · `Refs` C17 | - |
 | validadores do `spec` (4) | `validate_plan` C18 · `validate_checks` C18 · `validate_verification` C18 · critério de doc C55 | - |
-| regras `ask` (12) | `gh pr merge` C27 · `git tag` C27 · `gh release` C27 · `--tags` sem remoto C27 · `--tags` com remoto C27 · `--follow-tags` C27 · ref `v*` C27 · `refs/tags/` C27 · `gh api` protection C27 · `gh api` environments C27 · `gh api` merge C27 · `gh api` releases C27 | - |
+| regras `ask` (14) | `gh pr merge` C27 · `gh release` C27 · `--tags` sem remoto C27 · `--tags` com remoto C27 · `--follow-tags` C27 · ref `v*` C27 · `refs/tags/` C27 · `<src>:refs/tags/` C27 · `<src>:v*` C27 · `--mirror` C27 · `gh api` protection C27 · `gh api` environments C27 · `gh api` merge C27 · `gh api` releases C27 | - |
 | barreiras do push para `main` (3) | hook `pre-push` C28 · `tools/sdlc.py branch main` C28 · proteção no GitHub C30 | - |
 | mensagens de merge do git (5) | `Merge branch` C59 · `Merge branches` C59 · `Merge remote-tracking branch` C59 · `Merge tag` C59 · `Merge commit` C59 | - |
 | saídas do hook de sessão (4) | instala C41 · já instalado C41 · falha C43 · aviso `CLAUDE.md` C42 | - |
@@ -235,7 +235,7 @@ Proof: `uv run pytest tests/test_sdlc.py -k "commit_msg_merge or pr_title_merge"
 
 Segue a do `CONTRIBUTING.md` (copiada da agent-run-notify), sem linha nova: o `tools/sdlc.py` decide e é alcançado por
 uma fronteira (o hook git e o CI), então é provado como subprocesso contra um repositório git de teste, um caso por
-linha das tabelas de decisão (`pr`: 12 regras; `branch`: 4 formas; `pre-commit`: 3 regras). Os dois hooks do Claude
+linha das tabelas de decisão (`pr`: 12 regras; `branch`: 4 formas; `pre-commit`: 3 regras). Os hooks do Claude
 Code decidem e são alcançados pelo JSON em stdin: provados assim, um caso por decisão.
 
 ## Swept
