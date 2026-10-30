@@ -33,11 +33,11 @@ Do issue ao merge, cada passo com o gate que o confere:
 | push da branch de feature, abrir o PR, `revisar-pr`, responder e resolver o review | criar a tag de release |
 
 Os gates do Claude Code são regras de permissão do `.claude/settings.json` (AD-050, AD-053, AD-054): `allow` para `git
-push` e `gh pr create`, e `ask` para `gh pr merge`, push de tag (até por refspec ou `--mirror`), `gh release` e `gh api`
-de proteção, environment, merge ou release, em qualquer trecho de um comando composto. Aplicar um payload de
-`.github/repo-settings/` no GitHub cai no mesmo `ask`. O push para `main` é recusado pelo hook `pre-push` e pela
-proteção da `main` no GitHub (`enforce_admins`, PR obrigatório). O hook `commit-msg` aceita a mensagem que o git escreve
-num merge (`Merge branch '...'`).
+push` e `gh pr create`, e `ask` para `gh pr merge`, push de tag (até por refspec, `--follow-tags` ou `--mirror`), `gh
+release` e `gh api` de proteção, environment, merge ou release, em qualquer trecho de um comando composto. Aplicar um
+payload de `.github/repo-settings/` no GitHub cai no mesmo `ask`. O push para `main` é recusado pelo hook `pre-push` e
+pela proteção da `main` no GitHub (`enforce_admins`, PR obrigatório). O hook `commit-msg` aceita a mensagem que o git
+escreve num merge (`Merge branch '...'`).
 
 ## Skills
 
