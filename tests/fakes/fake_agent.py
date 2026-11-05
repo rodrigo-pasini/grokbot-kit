@@ -12,7 +12,8 @@ Descoberta de modelos: `opencode models` imprime `FAKE_OPENCODE_MODELS` e sai co
 ids da lista e recusam os outros com erro de modelo e exit `1`; os ids de `FAKE_ERROR_EXIT0` saem com `0` e erro na
 saída JSON. `FAKE_CALLS` acumula uma linha JSON por chamada (argv, stdin, cwd e `CODEX_HOME`).
 
-Setup e login: `--version` imprime `FAKE_VERSION` (padrão `9.9.9 (<tool> fake)`) e sai com `FAKE_VERSION_EXIT`; `claude auth login`,
+Setup e login: `--version` imprime o conteúdo de `~/.fake-version-<tool>` (gravado pelo instalador falso), senão
+`FAKE_VERSION` (padrão `9.9.9 (<tool> fake)`), e sai com `FAKE_VERSION_EXIT`; `claude auth login`,
 `opencode auth login` e `codex login --device-auth|--with-api-key` saem com `FAKE_LOGIN_EXIT` (o `codex login`
 grava `auth.json` em `CODEX_HOME`, ou em `~/.codex` sem ele, como a CLI real); `claude auth status` e
 `codex login status` saem com `1` quando a tool está em `FAKE_LOGGED_OUT` (lista separada por vírgula) e `0` senão;
@@ -101,7 +102,12 @@ if tool == "codex":
 
 logged_out = os.environ.get("FAKE_LOGGED_OUT", "").split(",")
 if args == ["--version"]:
-    print(os.environ.get("FAKE_VERSION", f"9.9.9 ({tool} fake)"))
+    installed = os.path.join(os.path.expanduser("~"), f".fake-version-{tool}")
+    if os.path.exists(installed):
+        with open(installed, encoding="utf-8") as f:
+            print(f.read())
+    else:
+        print(os.environ.get("FAKE_VERSION", f"9.9.9 ({tool} fake)"))
     sys.exit(int(os.environ.get("FAKE_VERSION_EXIT", "0")))
 if (tool, args[:2]) in (("claude", ["auth", "login"]), ("opencode", ["auth", "login"])):
     sys.exit(int(os.environ.get("FAKE_LOGIN_EXIT", "0")))

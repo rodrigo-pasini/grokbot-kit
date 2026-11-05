@@ -23,12 +23,14 @@ Convenções das provas:
   Em `tests/test_payload.py`, `test_schema_matches_door_2` passa a exigir o conjunto exato de 5 chaves do
   `needs_input` (door 2 desta feature), no lugar das 3 da agent-run-notify.
 - Provas antigas que fixam um valor que este plano muda passam a fixar o valor novo, sem afrouxar a asserção:
-  `tests/test_launch.py::test_env_contract_and_commands` (14 subcomandos, com `reply`),
+  `tests/test_launch.py::test_env_contract_and_commands` e `tests/test_docs.py::test_readme_commands_section`
+  (14 subcomandos, com `reply`),
   `tests/test_run_plugin.py::test_run_without_plugin_unchanged` (o hook do Claude com `"timeout": 660`, AC 1) e as
   chamadas de `payload.needs_input_event` em `tests/test_payload.py` (com `request_id`). As provas que rodam o `emit`
   dentro de uma tarefa para cobrar o aviso (`run_with_emits` em `tests/test_emit.py`,
   `test_transcript_path_from_hook_cli_through_emit`, `test_exactly_one_terminal_per_task`) passam `--ask-wait 0`, o
-  modo só-aviso da AC 6. O `emit` não espera numa tarefa com `finished_at` (nenhuma CLI espera a decisão), o que
+  modo só-aviso da AC 6, e o config das provas `-m integration` de `tests/integration/test_real_cli.py` ganha
+  `[ask] wait = "0"` pelo mesmo motivo (C16 e C38 passam `--ask-wait` na linha de comando). O `emit` não espera numa tarefa com `finished_at` (nenhuma CLI espera a decisão), o que
   mantém as provas da agent-run-notify que chamam o `emit` depois do `run`.
 
 ## Checks

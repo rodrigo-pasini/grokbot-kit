@@ -8,6 +8,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `grokbot-kit reply <task_id> <request_id> allow|deny [--message <text>] [--by bot|user]` answers a permission
+  request of a running task. With Claude Code and opencode 2.x the agent now waits for the reply, so an `allow` lets it
+  use the tool in the same task; with no reply before the deadline the kit denies the request, as before.
+- `run --ask-wait <duration>` and `[ask] wait` in the config set how long a request waits (default `10m`; `0` only
+  notifies, the old behaviour).
+- The `needs_input` object of the event `grokbot-kit.event/v1` has two new fields: `request_id` and `reply_deadline`.
+- `grokbot-kit setup cli upgrade <tool>` reruns the official installer to bring a CLI to its latest version, and
+  rewrites the opencode plugin for the new opencode version.
+- The Grok Bot skill answers low-risk requests by itself (`reply ... --by bot`: reading files, running tests, linters
+  or the build, editing inside the task's directory, read-only `git`) and asks the user about everything else.
+- `grokbot-kit doctor` reports an opencode plugin made for another opencode version, and warns while opencode is 1.x.
+
+### Changed
+
+- `completed` with `status` `denied` now means a permission request ended without `allow`; a task whose requests were
+  all allowed ends `ok`.
+
+### Fixed
+
+- The opencode plugin loads in opencode 2.x again (opencode 2 only loads a default export, so `needs_input` from
+  opencode 2.x tasks never arrived). `install opencode` picks the plugin for the installed opencode version, and every
+  opencode task rewrites a plugin made for another version before it starts.
+
 ## [0.6.0] - 2026-10-30
 
 ### Added
