@@ -393,3 +393,57 @@ def test_opencode_tier_provider_problem(kit: Kit) -> None:
     with_providers(kit, ["opencode-go"], "opencode-go/b")
     _, out = report(kit)
     assert not any("whose provider" in p for p in out["problems"])
+
+
+def write_plugin_for(kit: Kit, major: int | None) -> None:
+    assert kit.cli("install", "opencode").returncode == 0
+    path = plugin_file(kit)
+    lines = path.read_text(encoding="utf-8").splitlines()[1:]
+    head = [] if major is None else [f"// grokbot-kit opencode plugin for opencode {major}"]
+    path.write_text("\n".join(head + lines) + "\n", encoding="utf-8")
+
+
+# C35 - AC 24 da needs-input-reply
+@pytest.mark.parametrize(
+    ("version", "marker", "plugin_major", "opencode_major"),
+    [("opencode v2.2.4", 1, 1, 2), ("opencode v1.19.3", 2, 2, 1), ("opencode v2.2.4", None, 1, 2)],
+    ids=["v1-no-2", "v2-no-1", "sem-marcador"],
+)
+def test_plugin_major_mismatch(
+    kit: Kit, version: str, marker: int | None, plugin_major: int, opencode_major: int
+) -> None:
+    write_secret(kit.home, "bot-a-key", "crsr_x\n")
+    kit.env = {**kit.env, "FAKE_VERSION": version}
+    write_plugin_for(kit, marker)
+    code, out = report(kit)
+    expected = (
+        f"opencode plugin is for opencode {plugin_major}, installed opencode is {opencode_major}; "
+        "run: grokbot-kit install opencode"
+    )
+    assert code == 1
+    assert expected in out["problems"]
+
+
+def test_plugin_major_match_is_ok(kit: Kit) -> None:
+    write_secret(kit.home, "bot-a-key", "crsr_x\n")
+    kit.env = {**kit.env, "FAKE_VERSION": "opencode v2.2.4"}
+    assert kit.cli("install", "opencode").returncode == 0
+    _, out = report(kit)
+    assert not any("plugin is for opencode" in p for p in out["problems"]), out["problems"]
+
+
+# C48 - AC 34 da needs-input-reply
+def test_opencode_1_warning(kit: Kit) -> None:
+    write_secret(kit.home, "bot-a-key", "crsr_x\n")
+    kit.env = {**kit.env, "FAKE_VERSION": "opencode v1.19.3"}
+    assert kit.cli("install", "opencode").returncode == 0
+    warning = "opencode 1.19.3: replies to needs_input need opencode 2; run: grokbot-kit setup cli upgrade opencode"
+    code, out = report(kit)
+    assert out["cli"]["opencode"]["reply"]["warning"] == warning
+    assert not any("replies to needs_input" in p for p in out["problems"])
+    assert warning in run_doctor(kit).stdout
+    kit.env = {**kit.env, "FAKE_VERSION": "opencode v2.2.4"}
+    assert kit.cli("install", "opencode").returncode == 0
+    code_2, out_2 = report(kit)
+    assert out_2["cli"]["opencode"]["reply"]["warning"] is None
+    assert code == code_2

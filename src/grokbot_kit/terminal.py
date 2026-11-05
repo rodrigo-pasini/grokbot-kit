@@ -112,6 +112,21 @@ def fallback_eligible(tool: str, task_dir: Path, stopped: str | None) -> bool:
     return False
 
 
+def unanswered(task_dir: Path, asked: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Os `needs_input` sem `allow` gravado em `replies/` (AC 27 e 28 da needs-input-reply): sem resposta, com `deny`
+    do usuário ou do bot, ou negados pelo prazo."""
+    from grokbot_kit.emit import read_reply
+
+    left = []
+    for event in asked:
+        info = event.get("needs_input")
+        request_id = info.get("request_id") if isinstance(info, dict) else None
+        reply = read_reply(task_dir / "replies" / f"{request_id}.json") if isinstance(request_id, str) else None
+        if reply is None or reply["decision"] != "allow":
+            left.append(event)
+    return left
+
+
 def classify(
     exit_code: int,
     output: AgentOutput,

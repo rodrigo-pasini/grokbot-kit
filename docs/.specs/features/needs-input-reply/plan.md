@@ -35,8 +35,9 @@ entrega com dedupe (`deliver.deliver`), o `cli_major` que o harness já usa para
 
 1. `run.py` (exists) grava `ask_wait_seconds` no `meta.json` (door 4) e, no Claude, põe no hook do
    `claude-settings.json` um `timeout` acima da espera
-2. a CLI pede uma permissão -> o hook do Claude, ou o plugin v2 do opencode pelo `permission.hook("evaluate")` (door 5),
-   chama `grokbot-kit emit --from <cli>` (exists) e espera a saída dele
+2. a CLI pede uma permissão -> o hook do Claude, ou o plugin v2 do opencode pelo `permission.hook("evaluate")` (door 5,
+   com `GROKBOT_KIT_REPLY=1` no env do `emit`, door 8), chama `grokbot-kit emit --from <cli>` (exists) e espera a
+   saída dele
 3. `emit.py` (exists) entrega o `needs_input` com `request_id` e `reply_deadline` (door 2) e espera o arquivo
    `<task_dir>/replies/<request_id>.json` (door 1) até o prazo; no prazo, cria ele mesmo o arquivo com `deny`
 4. o bot aplica a regra de risco da skill (`SKILL.md`, exists): baixo risco, responde sozinho; senão, pergunta ao
@@ -107,6 +108,8 @@ Comandos e config (exit codes):
 | 5. plugin do opencode 2.x | asset novo `assets/opencode/grokbot-kit.v2.ts` com `export default { id: "grokbot-kit", setup }` e `ctx.permission.hook("evaluate", ...)`; o asset atual fica para o opencode 1.x; cada asset tem na primeira linha o marcador `// grokbot-kit opencode plugin for opencode <major>` (`1` ou `2`); `install` escolhe por `cli_major` (`>= 2` ou desconhecido -> v2) | um arquivo com os dois formatos: com o `export default`, o opencode 2.2.4 ignora o export nomeado (spike 2), e o loader do 1.x diante de um default que não é função não foi testado |
 | 7. upgrade de CLI | `grokbot-kit setup cli upgrade <tool>`: o mesmo instalador oficial do `setup cli add` (`setup.installer`), a versão lida por `<bin> --version` antes e depois | o `update apply` atualizar as CLIs junto com o kit: mistura o release do kit com o das CLIs, e o bot pergunta do update do kit antes de toda tarefa (AD-036); o comando próprio da CLI (`opencode upgrade`, `claude update`): cada CLI tem o seu, e o `codex` não tem um equivalente provado |
 | 6. resposta do `emit` à CLI | Claude: `{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}` ou `"behavior":"deny","message":...`; opencode: `{"effect":"allow"\|"deny","message":<string\|null>}`; sem decisão, `{}` como hoje | exit `2` do hook: o Claude não honra exit `2` no `PermissionRequest` (research.md) |
+
+| 8. quem pode esperar (achada no build) | o `emit` só espera com `--from claude`, ou com `--from opencode` e `GROKBOT_KIT_REPLY=1` no env, que só o plugin v2 passa; o `--from codex` e o plugin v1 do opencode 1.x seguem só avisando | esperar em todo `--from opencode`: o plugin v1 chama o `emit` com `spawnSync` e timeout de 30 s, então travaria o opencode 1.x 30 s por pedido e mataria o `emit` antes do prazo; um campo novo no stdin do plugin: mudaria o JSON da door 14 da agent-run-notify, que o plugin v1 já instalado nos boxes não manda |
 
 - Nothing else in this change is hard to reverse: o `timeout` do hook do Claude, o intervalo de leitura do arquivo e o
   texto da regra de risco na skill são decididos no build.

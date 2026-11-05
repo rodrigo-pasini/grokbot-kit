@@ -123,6 +123,10 @@ def _resolve(args: argparse.Namespace, cfg: dict[str, Any]) -> dict[str, Any]:
         for key in SECRET_KEYS:
             if key in sink:
                 config.check_secret(sink[key])
+    try:
+        wait = resolve.ask_wait(cfg, args.ask_wait)
+    except resolve.ResolveError as e:
+        raise UsageError(str(e)) from None
     if not LABEL_RE.match(args.label):
         raise UsageError("--label must use only letters, digits, '.', '_' and '-'")
     try:
@@ -144,6 +148,7 @@ def _resolve(args: argparse.Namespace, cfg: dict[str, Any]) -> dict[str, Any]:
         "cwd": cwd,
         "extras": extras,
         "task": task,
+        "ask_wait": wait,
     }
 
 
@@ -352,13 +357,13 @@ def run(args: argparse.Namespace) -> int:
     kit_exe = launch.kit_executable()
     bin_path = os.path.expanduser(r["cli"].get("bin", tool))
     harness = launch.Harness([], {}, {})
+    major = launch.cli_major(bin_path) if tool == "opencode" else None
     if task:
-        major = launch.cli_major(bin_path) if tool == "opencode" else None
         caps = task["plugin"].manifest["capabilities"]
         harness = launch.plugin_harness(tool, caps, task_dir, task_dir / "plugin", major)
         extras = [*harness.args, *extras]
     if tool == "claude":
-        claude_settings: dict[str, Any] = launch.claude_settings(kit_exe)
+        claude_settings: dict[str, Any] = launch.claude_settings(kit_exe, r["ask_wait"])
         if harness.permissions:
             claude_settings["permissions"] = harness.permissions
         settings = json.dumps(claude_settings, indent=2) + "\n"
@@ -387,6 +392,7 @@ def run(args: argparse.Namespace) -> int:
         "model_fallbacks": [],
         "tier": r["tier"],
         "timeout_seconds": r["timeout_seconds"],
+        "ask_wait_seconds": r["ask_wait"],
         "cwd": str(cwd),
         "started_at": rfc3339(started),
         "finished_at": None,
@@ -398,6 +404,17 @@ def run(args: argparse.Namespace) -> int:
         meta["plugin"] = plugin_meta
     _write_meta(task_dir, meta)
 
+    if tool == "opencode":
+        # o plugin global acompanha o major do opencode (AC 25 e 26 da needs-input-reply); falhar não segura a tarefa
+        from grokbot_kit import opencode_plugin
+
+        try:
+            rewritten = opencode_plugin.sync(major)
+        except OSError as e:
+            _log(task_dir, f"cannot rewrite the opencode plugin at {opencode_plugin.plugin_path()}: {e}")
+        else:
+            if rewritten:
+                _log(task_dir, rewritten)
     if task and not task["target"] and args.cwd:
         _log(task_dir, f"--cwd ignored: a plugin task runs in {cwd}")
     if task and task["target"]:
@@ -457,7 +474,12 @@ def run(args: argparse.Namespace) -> int:
         if output.permission_denied or asked:
             _log(task_dir, "the CLI denied a permission; in a plugin task this does not change the status")
     event_name, status, exit_reason = terminal.classify(
-        exit_code, output, needs_input=bool(asked), stopped=stopped, plugin=bool(task), result_valid=result is not None
+        exit_code,
+        output,
+        needs_input=bool(terminal.unanswered(task_dir, asked)),
+        stopped=stopped,
+        plugin=bool(task),
+        result_valid=result is not None,
     )
     summary = output.summary
     if exit_reason == "result_invalid":

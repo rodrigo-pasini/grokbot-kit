@@ -136,6 +136,7 @@ def test_codex_argv_env_and_inline_hooks_layer(tmp_path: Path) -> None:
 SURFACE_COMMANDS = {
     "run",
     "emit",
+    "reply",
     "redeliver",
     "gc",
     "setup",
@@ -167,4 +168,24 @@ def test_env_contract_and_commands(kit: Kit) -> None:
     assert help_text.returncode == 0
     listed = help_text.stdout.split("{", 1)[1].split("}", 1)[0].split(",")
     assert set(listed) == SURFACE_COMMANDS
-    assert len(listed) == 13
+    assert len(listed) == 14
+
+
+# C1 - AC 1 da needs-input-reply
+@pytest.mark.parametrize(("wait", "timeout"), [(600, 660), (30, 90), (0, None)])
+def test_claude_settings_hook_timeout(kit: Kit, wait: int, timeout: int | None) -> None:
+    flag = [] if wait == 600 else ["--ask-wait", f"{wait}s" if wait else "0"]
+    result = kit.run("--tool", "claude", "--target", "bot-a", "--label", "cl", *flag, "--", "oi")
+    assert result.returncode == 0, result.stderr
+    settings = json.loads((kit.task_dir() / "claude-settings.json").read_text(encoding="utf-8"))
+    [hook] = [h for group in settings["hooks"]["PermissionRequest"] for h in group["hooks"]]
+    assert hook.get("timeout") == timeout
+    assert ("timeout" in hook) is (timeout is not None)
+
+
+def test_claude_settings_hook_timeout_layer() -> None:
+    hook = launch.claude_settings("/opt/gk/grokbot-kit", 600)["hooks"]["PermissionRequest"][0]["hooks"][0]
+    assert hook == {"type": "command", "command": "/opt/gk/grokbot-kit emit --from claude", "timeout": 660}
+    assert (
+        "timeout" not in launch.claude_settings("/opt/gk/grokbot-kit", 0)["hooks"]["PermissionRequest"][0]["hooks"][0]
+    )

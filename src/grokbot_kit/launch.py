@@ -27,8 +27,12 @@ def emit_command(kit_exe: str, tool: str) -> str:
     return f"{shlex.quote(kit_exe)} emit --from {tool}"
 
 
-def claude_settings(kit_exe: str) -> dict[str, Any]:
-    hook = {"type": "command", "command": emit_command(kit_exe, "claude")}
+def claude_settings(kit_exe: str, ask_wait: int = 0) -> dict[str, Any]:
+    """O hook `PermissionRequest` do Claude; com espera, o `timeout` dele passa dela em 60 s (AC 1 da
+    needs-input-reply): é só a rede de segurança caso o `emit` trave, porque quem conta o prazo é o `emit`."""
+    hook: dict[str, Any] = {"type": "command", "command": emit_command(kit_exe, "claude")}
+    if ask_wait > 0:
+        hook["timeout"] = ask_wait + 60
     return {"hooks": {"PermissionRequest": [{"matcher": "*", "hooks": [hook]}]}}
 
 

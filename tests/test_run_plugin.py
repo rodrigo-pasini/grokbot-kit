@@ -427,7 +427,8 @@ def test_run_without_plugin_unchanged(kit: Kit) -> None:
     assert result.returncode == 0, result.stderr
     exe = shutil.which("grokbot-kit")
     assert exe is not None
-    hook = {"type": "command", "command": f"{shlex.quote(exe)} emit --from claude"}
+    # com a espera padrão de 10 min, o hook leva `timeout` de 660 s (needs-input-reply, AC 1)
+    hook = {"type": "command", "command": f"{shlex.quote(exe)} emit --from claude", "timeout": 660}
     settings = json.loads((kit.task_dir() / "claude-settings.json").read_text(encoding="utf-8"))
     assert settings == {"hooks": {"PermissionRequest": [{"matcher": "*", "hooks": [hook]}]}}
 
