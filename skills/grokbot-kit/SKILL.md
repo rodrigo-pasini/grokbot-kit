@@ -323,7 +323,9 @@ Baixo risco é só isto:
 
 Pergunte ao usuário todo pedido fora dessa lista, e sempre que ele tiver:
 
-- caminho fora do `cwd` do evento;
+- caminho fora do `cwd` do evento, inclusive por `..` ou por link;
+- mais de um comando no mesmo pedido (`;`, `&&`, `||`, `|`), substituição (`$(...)` ou crase) ou redirecionamento
+  (`>`), mesmo que comece por teste ou build;
 - rede: download, instalação de pacote, `git fetch`, `git pull`, `git push`, `git clone`;
 - apagar arquivos;
 - reescrever o histórico do `git` (`reset`, `rebase`, `commit --amend`, push forçado);

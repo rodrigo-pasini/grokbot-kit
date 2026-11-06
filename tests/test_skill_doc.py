@@ -547,6 +547,13 @@ def test_risk_rule_ask_list() -> None:
     ask = norm(s.split("Pergunte ao usuário", 1)[1].split("De baixo risco", 1)[0])
     for needle in (
         "fora do `cwd`",
+        "`..`",
+        "mais de um comando",
+        "`;`",
+        "`&&`",
+        "`|`",
+        "`$(...)`",
+        "redirecionamento",
         "`git fetch`",
         "`git pull`",
         "`git push`",

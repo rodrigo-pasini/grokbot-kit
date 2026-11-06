@@ -15,7 +15,6 @@ from grokbot_kit import launch
 
 ASSETS_DIR = Path(__file__).parent / "assets" / "opencode"
 ASSETS = {1: ASSETS_DIR / "grokbot-kit.ts", 2: ASSETS_DIR / "grokbot-kit.v2.ts"}
-ASSET = ASSETS[1]
 PLACEHOLDER = '"__GROKBOT_KIT_EXE__"'
 MARKER = "// grokbot-kit opencode plugin for opencode "
 
