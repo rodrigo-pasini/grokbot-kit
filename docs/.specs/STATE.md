@@ -79,7 +79,8 @@ desconhecido, o `run` grava o plugin v2 mas não passa `--standalone`; o hook gi
 worktree `31-sdlc-gates`, que não existe mais
 
 **Next step**: o Rodrigo revisa e faz o merge do PR; no box, o bot roda `grokbot-kit update apply` e
-`grokbot-kit setup cli upgrade opencode` (o box estava no opencode 1.19.3) e testa um pedido com `reply`
+`grokbot-kit setup cli upgrade opencode` (o box estava no opencode 1.19.3) e testa um pedido com `reply`;
+pendências no backlog: #32, #33
 **Blockers**: nenhum
 **Uncommitted**: nada
 **Branch**: `feat/41/needs-input-reply`; `main` protegida (PR + 6 checks com o `process`, só squash)
