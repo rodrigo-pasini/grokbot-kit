@@ -10,13 +10,14 @@ schema pode mudar, sempre com entrada no [CHANGELOG](../../CHANGELOG.md).
 ## Eventos e status
 
 Uma tarefa envia exatamente um evento terminal (`completed`, `error` ou `timeout`), mais um evento `needs_input` a cada
-vez que o agente para num pedido de permissão ou numa pergunta. O `grokbot-kit route test` envia um evento `test`,
+vez que o agente para num pedido de permissão ou numa pergunta. Um pedido de permissão espera o `grokbot-kit reply`
+até `needs_input.reply_deadline` (veja o README, Pedidos de permissão). O `grokbot-kit route test` envia um evento `test`,
 com os campos de tarefa `null`.
 
 | `event` | `status` | `exit_reason` |
 | --- | --- | --- |
 | `completed` | `ok`: o agente terminou | `success` |
-| `completed` | `denied`: o agente terminou, mas uma permissão foi negada no caminho | `permission_denied` |
+| `completed` | `denied`: o agente terminou, mas um pedido de permissão terminou sem `allow` (negado, ou sem resposta até o `reply_deadline`) | `permission_denied` |
 | `error` | `failed` | `agent_error` (a CLI informou um erro), `nonzero_exit`, ou `result_invalid` (tarefa de plugin cujo resultado não casa o schema do plugin) |
 | `error` | `interrupted`: a tarefa recebeu `SIGINT` ou `SIGTERM` | `interrupted` |
 | `timeout` | `timeout`: a tarefa passou do `--timeout` | `timeout` |
@@ -44,7 +45,7 @@ com os campos de tarefa `null`.
 | `exit_code` | inteiro | o exit do `grokbot-kit run` (o do agente, ou o do próprio kit em `timeout`, `interrupted` e binário ausente); `null` no `needs_input` e no `test` |
 | `exit_reason` | string | por que a tarefa terminou (tabela acima) |
 | `summary` | string | a mensagem final do agente, ou o erro da CLI quando a tarefa falhou sem ela; em tarefa de plugin, o `summary` do resultado |
-| `needs_input` | objeto | num evento `needs_input`, `{"kind", "tool_name", "detail"}`: o que o agente pediu; `null` nos outros |
+| `needs_input` | objeto | num evento `needs_input`, `{"kind", "tool_name", "detail", "request_id", "reply_deadline"}`: o que o agente pediu; `null` nos outros. `needs_input.request_id` é o id que o `grokbot-kit reply` responde; `needs_input.reply_deadline` (ISO 8601) é quando o kit nega um pedido sem resposta, `null` quando ninguém espera resposta (`--ask-wait 0`, opencode 1.x, uma pergunta) |
 | `resume_hint` | string | o comando que retoma a sessão do agente (`claude -p --resume <id>`, `opencode run -s <id>`, `codex exec resume <id>`); `null` sem `session_id` |
 | `output_file` | string | a saída bruta do agente, `<task dir>/out.jsonl`; `null` no `test` |
 | `transcript_path` | string | o transcript do próprio agente, quando o hook dele informou um |

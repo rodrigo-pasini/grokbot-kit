@@ -413,7 +413,8 @@ def test_run_without_plugin_unchanged(kit: Kit) -> None:
     assert result.returncode == 0, result.stderr
     task_dir = kit.task_dir()
     launched = kit.launched()
-    assert launched["argv"] == ["run", "--format", "json", "-m", MODELS["opencode"], "oi"]
+    # o opencode falso responde `9.9.9`: toda tarefa do opencode 2.x em diante roda isolada (door 9 da needs-input-reply)
+    assert launched["argv"] == ["run", "--format", "json", "-m", MODELS["opencode"], "--standalone", "oi"]
     assert "GROKBOT_KIT_RESULT_FILE" not in launched["env"]
     assert "plugin" not in json.loads((task_dir / "meta.json").read_text(encoding="utf-8"))
     (event,) = kit.sink_events()
@@ -427,7 +428,8 @@ def test_run_without_plugin_unchanged(kit: Kit) -> None:
     assert result.returncode == 0, result.stderr
     exe = shutil.which("grokbot-kit")
     assert exe is not None
-    hook = {"type": "command", "command": f"{shlex.quote(exe)} emit --from claude"}
+    # com a espera padrão de 10 min, o hook leva `timeout` de 660 s (needs-input-reply, AC 1)
+    hook = {"type": "command", "command": f"{shlex.quote(exe)} emit --from claude", "timeout": 660}
     settings = json.loads((kit.task_dir() / "claude-settings.json").read_text(encoding="utf-8"))
     assert settings == {"hooks": {"PermissionRequest": [{"matcher": "*", "hooks": [hook]}]}}
 

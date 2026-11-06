@@ -272,3 +272,158 @@ def test_prompt_file_appended_last(kit: Kit) -> None:
     assert result.returncode == 0, result.stderr
     argv = kit.launched()["argv"]
     assert argv[-3:] == ["--extra", "valor", "renomeie as variáveis\nde x.py"]
+
+
+def _meta(kit: Kit) -> dict[str, Any]:
+    import json
+
+    meta: dict[str, Any] = json.loads((kit.task_dir() / "meta.json").read_text(encoding="utf-8"))
+    return meta
+
+
+# C2 - AC 1 e 6 da needs-input-reply, door 4
+@pytest.mark.parametrize(
+    ("config_wait", "flag", "expected"),
+    [(None, None, 600), ("2m", None, 120), ("2m", "30s", 30), (None, "0", 0), ("0", None, 0)],
+)
+def test_ask_wait_meta(kit: Kit, config_wait: str | None, flag: str | None, expected: int) -> None:
+    if config_wait is not None:
+        kit.write_config(kit.config_text() + f'\n[ask]\nwait = "{config_wait}"\n')
+    extra = ["--ask-wait", flag] if flag is not None else []
+    result = kit.run("--tool", "claude", "--target", "bot-a", "--label", "w", *extra, "--", "oi")
+    assert result.returncode == 0, result.stderr
+    assert _meta(kit)["ask_wait_seconds"] == expected
+
+
+# C3 - Surface da needs-input-reply
+def test_ask_wait_invalid(kit: Kit) -> None:
+    result = kit.run("--tool", "claude", "--target", "bot-a", "--label", "w", "--ask-wait", "10x", "--", "oi")
+    assert result.returncode == 2
+    assert "invalid duration '10x'" in result.stderr
+    assert kit.tasks() == []
+
+
+# C41 - AC 27 da needs-input-reply, na fronteira
+def test_run_allowed_request_ends_ok(kit: Kit) -> None:
+    import json
+    import threading
+    import time
+
+    from test_emit import CLAUDE_OK, claude_hook
+
+    answers: list[int] = []
+
+    def answer() -> None:
+        until = time.monotonic() + 30
+        while time.monotonic() < until:
+            asked = [e for e in kit.sink_events() if e["event"] == "needs_input"]
+            if asked:
+                event = asked[0]
+                result = kit.cli("reply", event["task_id"], event["needs_input"]["request_id"], "allow")
+                answers.append(result.returncode)
+                return
+            time.sleep(0.05)
+
+    thread = threading.Thread(target=answer)
+    thread.start()
+    result = kit.run(
+        "--tool",
+        "claude",
+        "--target",
+        "bot-a",
+        "--label",
+        "ok",
+        "--ask-wait",
+        "20s",
+        "--",
+        "faça",
+        FAKE_STDOUT=CLAUDE_OK,
+        FAKE_EMIT=json.dumps([claude_hook()]),
+    )
+    thread.join()
+    assert answers == [0]
+    assert result.returncode == 0, result.stderr
+    [terminal] = [e for e in kit.sink_events() if e["event"] != "needs_input"]
+    assert (terminal["event"], terminal["status"], terminal["exit_reason"]) == ("completed", "ok", "success")
+
+
+def _plugin_path(kit: Kit) -> "os.PathLike[str]":
+    return kit.home / ".config" / "opencode" / "plugins" / "grokbot-kit.ts"
+
+
+def _install_marked(kit: Kit, major: int) -> None:
+    from pathlib import Path
+
+    path = Path(_plugin_path(kit))
+    env = kit.env
+    kit.env = {**env, "FAKE_VERSION": f"opencode v{major}.0.0"}
+    try:
+        assert kit.cli("install", "opencode").returncode == 0
+    finally:
+        kit.env = env
+    assert path.read_text(encoding="utf-8").startswith(f"// grokbot-kit opencode plugin for opencode {major}\n")
+
+
+# C36 - AC 25 da needs-input-reply
+def test_run_rewrites_stale_plugin(kit: Kit) -> None:
+    import json
+    from pathlib import Path
+
+    path = Path(_plugin_path(kit))
+    _install_marked(kit, 1)
+    result = kit.run(
+        "--tool", "opencode", "--target", "bot-a", "--label", "p", "--", "oi", FAKE_VERSION="opencode v2.2.4"
+    )
+    assert result.returncode == 0, result.stderr
+    assert path.read_text(encoding="utf-8").startswith("// grokbot-kit opencode plugin for opencode 2\n")
+    log = (kit.task_dir() / "kit.log").read_text(encoding="utf-8")
+    assert "opencode plugin rewritten for opencode 2" in log
+    # já reescrito quando a CLI rodou: o log diz isso antes do `launch`
+    assert log.index("opencode plugin rewritten") < log.index("launch opencode")
+    assert json.loads((kit.task_dir() / "meta.json").read_text(encoding="utf-8"))["tool"] == "opencode"
+
+
+def test_run_rewrites_stale_plugin_untouched_when_current(kit: Kit) -> None:
+    import os as _os
+    from pathlib import Path
+
+    path = Path(_plugin_path(kit))
+    _install_marked(kit, 2)
+    _os.utime(path, (1_000_000_000, 1_000_000_000))
+    result = kit.run(
+        "--tool", "opencode", "--target", "bot-a", "--label", "p", "--", "oi", FAKE_VERSION="opencode v2.2.4"
+    )
+    assert result.returncode == 0, result.stderr
+    assert path.stat().st_mtime == 1_000_000_000
+    assert "rewritten" not in (kit.task_dir() / "kit.log").read_text(encoding="utf-8")
+
+
+def test_run_rewrites_stale_plugin_absent(kit: Kit) -> None:
+    from pathlib import Path
+
+    result = kit.run(
+        "--tool", "opencode", "--target", "bot-a", "--label", "p", "--", "oi", FAKE_VERSION="opencode v2.2.4"
+    )
+    assert result.returncode == 0, result.stderr
+    assert not Path(_plugin_path(kit)).exists()
+
+
+# C37 - AC 26 da needs-input-reply
+def test_run_plugin_rewrite_failure(kit: Kit) -> None:
+    from pathlib import Path
+
+    path = Path(_plugin_path(kit))
+    _install_marked(kit, 1)
+    os.chmod(path.parent, 0o500)
+    try:
+        result = kit.run(
+            "--tool", "opencode", "--target", "bot-a", "--label", "p", "--", "oi", FAKE_VERSION="opencode v2.2.4"
+        )
+    finally:
+        os.chmod(path.parent, 0o700)
+    assert result.returncode == 0, result.stderr
+    log = (kit.task_dir() / "kit.log").read_text(encoding="utf-8")
+    assert "cannot rewrite the opencode plugin" in log
+    assert kit.launched()["tool"] == "opencode"
+    [terminal] = kit.sink_events()
+    assert terminal["event"] == "completed"

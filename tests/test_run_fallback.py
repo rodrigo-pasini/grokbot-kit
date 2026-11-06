@@ -72,8 +72,11 @@ def run_task(kit: Kit, tmp_path: Path, *args: str, target: str = "bot-a", **fake
 
 
 def calls(tmp_path: Path) -> list[dict[str, Any]]:
+    """As tentativas gravadas pela CLI falsa, sem o `opencode --version` que o `run` faz antes de lançar (door 9 da
+    needs-input-reply)."""
     path = tmp_path / "calls.jsonl"
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()] if path.exists() else []
+    found = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()] if path.exists() else []
+    return [c for c in found if c["argv"] != ["--version"]]
 
 
 def outcome(event: dict[str, Any]) -> tuple[str, str, str]:

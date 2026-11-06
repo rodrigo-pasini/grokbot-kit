@@ -128,10 +128,13 @@ def needs_input_event(
     kind: str,
     tool_name: str | None,
     detail: str | None,
+    request_id: str,
     session_id: str | None = None,
     transcript_path: str | None = None,
+    reply_deadline: str | None = None,
 ) -> dict[str, Any]:
-    """`event: "needs_input"`, com `status` igual ao `kind` (`permission` ou `question`) e `exit_reason: "needs_input"`."""
+    """`event: "needs_input"`, com `status` igual ao `kind` (`permission` ou `question`) e `exit_reason: "needs_input"`;
+    `request_id` e `reply_deadline` são os da door 2 da needs-input-reply (`reply_deadline` `null` sem espera)."""
     return task_event(
         meta,
         task_dir,
@@ -141,7 +144,13 @@ def needs_input_event(
         exit_code=None,
         summary="",
         session_id=session_id,
-        needs_input={"kind": kind, "tool_name": tool_name, "detail": detail},
+        needs_input={
+            "kind": kind,
+            "tool_name": tool_name,
+            "detail": detail,
+            "request_id": request_id,
+            "reply_deadline": reply_deadline,
+        },
         transcript_path=transcript_path,
     )
 

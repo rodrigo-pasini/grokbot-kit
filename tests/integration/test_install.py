@@ -175,3 +175,33 @@ def test_update_apply_pinned_uv(tmp_path: Path, receiver: "Receiver") -> None:
     )
     assert result.returncode == 1
     assert f"uv left grokbot-kit at {version}; it may be pinned to a version" in result.stderr
+
+
+# C49 - needs-input-reply, Assumptions: o instalador oficial atualiza uma CLI já instalada
+def test_upgrade_opencode_real(tmp_path: Path) -> None:
+    import urllib.request
+
+    home = tmp_path / "home"
+    home.mkdir()
+    exe = shutil.which("grokbot-kit")
+    assert exe is not None
+    env = {"HOME": str(home), "PATH": os.pathsep.join([os.path.dirname(exe), "/usr/bin", "/bin"]), "LANG": "C.UTF-8"}
+    added = subprocess.run(
+        [exe, "setup", "cli", "add", "opencode"], env=env, capture_output=True, text=True, check=False
+    )
+    assert added.returncode == 0, added.stderr
+    upgraded = subprocess.run(
+        [exe, "setup", "cli", "upgrade", "opencode"], env=env, capture_output=True, text=True, check=False
+    )
+    assert upgraded.returncode == 0, upgraded.stderr
+    with urllib.request.urlopen("https://api.github.com/repos/sst/opencode/releases/latest", timeout=30) as r:
+        latest = json.load(r)["tag_name"].lstrip("v")
+    version = subprocess.run(
+        [str(home / ".opencode" / "bin" / "opencode"), "--version"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert latest in version.stdout, (latest, version.stdout)
+    assert f"opencode {latest}" in upgraded.stdout

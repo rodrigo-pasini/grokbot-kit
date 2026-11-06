@@ -1,3 +1,4 @@
+// grokbot-kit opencode plugin for opencode 1
 // Plugin do opencode instalado por `grokbot-kit install opencode`, que troca __GROKBOT_KIT_EXE__ pelo caminho
 // absoluto do executável (door 6). Fora de uma task (sem GROKBOT_KIT_TASK_ID no ambiente) não faz nada e não chama
 // o grokbot-kit. Dentro de uma task, repassa `permission.asked` e `question.asked` a `grokbot-kit emit --from
