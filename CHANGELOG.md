@@ -32,6 +32,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The opencode plugin loads in opencode 2.x again (opencode 2 only loads a default export, so `needs_input` from
   opencode 2.x tasks never arrived). `install opencode` picks the plugin for the installed opencode version, and every
   opencode task rewrites a plugin made for another version before it starts.
+- Every opencode 2.x task runs with `--standalone`, not only plugin tasks: the shared opencode service does not see
+  the task's environment, so the plugin stayed inert there.
 
 ## [0.6.0] - 2026-10-30
 

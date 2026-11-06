@@ -34,7 +34,7 @@ entrega com dedupe (`deliver.deliver`), o `cli_major` que o harness já usa para
 `--timeout`.
 
 1. `run.py` (exists) grava `ask_wait_seconds` no `meta.json` (door 4) e, no Claude, põe no hook do
-   `claude-settings.json` um `timeout` acima da espera
+   `claude-settings.json` um `timeout` acima da espera; no opencode 2.x, lança toda tarefa com `--standalone` (door 9)
 2. a CLI pede uma permissão -> o hook do Claude, ou o plugin v2 do opencode pelo `permission.hook("evaluate")` (door 5,
    com `GROKBOT_KIT_REPLY=1` no env do `emit`, door 8), chama `grokbot-kit emit --from <cli>` (exists) e espera a
    saída dele
@@ -64,6 +64,7 @@ Versão do opencode, fora do caminho de uma tarefa:
 | skill | o bot passa a decidir pedidos de baixo risco sozinho; quem tem a skill velha segue só avisando até o `update apply` baixar a nova (AD-036) |
 | CLIs instaladas | `setup cli upgrade` troca o binário da CLI no lugar; tarefas em curso continuam com o processo já aberto |
 | CLI do Claude | o hook do `claude-settings.json` ganha `timeout`; as tarefas já gravadas não mudam |
+| CLI do opencode | toda tarefa do opencode 2.x roda com `--standalone` (door 9): um servidor próprio por tarefa, como as de plugin já rodavam; o `run` passa a chamar `opencode --version` antes de lançar |
 | stored data | `meta.json` ganha `ask_wait_seconds`; task dirs antigos sem o campo são lidos como espera `0` (só aviso). `replies/` é novo e só existe em tarefa nova. Nada migra |
 
 ## Relations
@@ -110,6 +111,8 @@ Comandos e config (exit codes):
 | 6. resposta do `emit` à CLI | Claude: `{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}` ou `"behavior":"deny","message":...`; opencode: `{"effect":"allow"\|"deny","message":<string\|null>}`; sem decisão, `{}` como hoje | exit `2` do hook: o Claude não honra exit `2` no `PermissionRequest` (research.md) |
 
 | 8. quem pode esperar (achada no build) | o `emit` só espera com `--from claude`, ou com `--from opencode` e `GROKBOT_KIT_REPLY=1` no env, que só o plugin v2 passa; o `--from codex` e o plugin v1 do opencode 1.x seguem só avisando | esperar em todo `--from opencode`: o plugin v1 chama o `emit` com `spawnSync` e timeout de 30 s, então travaria o opencode 1.x 30 s por pedido e mataria o `emit` antes do prazo; um campo novo no stdin do plugin: mudaria o JSON da door 14 da agent-run-notify, que o plugin v1 já instalado nos boxes não manda |
+
+| 9. opencode 2.x sempre isolado (achada no build) | `opencode run --standalone ...` em toda tarefa do opencode com major `>= 2`, não só nas de plugin (`launch.plugin_harness` já fazia isso nelas) | o serviço compartilhado do opencode 2.x (`opencode serve --service`): ele roda com o env de quem o subiu, então o plugin não vê o `GROKBOT_KIT_TASK_ID` da tarefa e fica inerte; e num `HOME` sem o serviço o `run` tenta subir outro na mesma porta e falha (C38 no host de dev, 05/11) |
 
 - Nothing else in this change is hard to reverse: o `timeout` do hook do Claude, o intervalo de leitura do arquivo e o
   texto da regra de risco na skill são decididos no build.

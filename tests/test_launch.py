@@ -189,3 +189,12 @@ def test_claude_settings_hook_timeout_layer() -> None:
     assert (
         "timeout" not in launch.claude_settings("/opt/gk/grokbot-kit", 0)["hooks"]["PermissionRequest"][0]["hooks"][0]
     )
+
+
+# C59 - door 9 da needs-input-reply
+@pytest.mark.parametrize(("version", "standalone"), [("opencode v2.2.4", True), ("opencode v1.19.3", False)])
+def test_opencode_standalone_by_major(kit: Kit, version: str, standalone: bool) -> None:
+    result = kit.run("--tool", "opencode", "--target", "bot-a", "--label", "oc", "--", "oi", FAKE_VERSION=version)
+    assert result.returncode == 0, result.stderr
+    flag = ["--standalone"] if standalone else []
+    assert kit.launched()["argv"] == ["run", "--format", "json", "-m", MODELS["opencode"], *flag, "oi"]

@@ -413,7 +413,8 @@ def test_run_without_plugin_unchanged(kit: Kit) -> None:
     assert result.returncode == 0, result.stderr
     task_dir = kit.task_dir()
     launched = kit.launched()
-    assert launched["argv"] == ["run", "--format", "json", "-m", MODELS["opencode"], "oi"]
+    # o opencode falso responde `9.9.9`: toda tarefa do opencode 2.x em diante roda isolada (door 9 da needs-input-reply)
+    assert launched["argv"] == ["run", "--format", "json", "-m", MODELS["opencode"], "--standalone", "oi"]
     assert "GROKBOT_KIT_RESULT_FILE" not in launched["env"]
     assert "plugin" not in json.loads((task_dir / "meta.json").read_text(encoding="utf-8"))
     (event,) = kit.sink_events()

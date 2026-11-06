@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/needs-input-reply/plan.md`
 
-58 checks em 6 slices · 7 one-way doors · 0 open
+59 checks em 6 slices · 7 one-way doors · 0 open
 
 Convenções das provas:
 
@@ -25,13 +25,15 @@ Convenções das provas:
 - Provas antigas que fixam um valor que este plano muda passam a fixar o valor novo, sem afrouxar a asserção:
   `tests/test_launch.py::test_env_contract_and_commands` e `tests/test_docs.py::test_readme_commands_section`
   (14 subcomandos, com `reply`),
-  `tests/test_run_plugin.py::test_run_without_plugin_unchanged` (o hook do Claude com `"timeout": 660`, AC 1) e as
+  `tests/test_run_plugin.py::test_run_without_plugin_unchanged` (o hook do Claude com `"timeout": 660`, AC 1, e o
+  `--standalone` da door 9, já que o opencode falso responde `9.9.9`) e as
   chamadas de `payload.needs_input_event` em `tests/test_payload.py` (com `request_id`). As provas que rodam o `emit`
   dentro de uma tarefa para cobrar o aviso (`run_with_emits` em `tests/test_emit.py`,
   `test_transcript_path_from_hook_cli_through_emit`, `test_exactly_one_terminal_per_task`) passam `--ask-wait 0`, o
   modo só-aviso da AC 6, e o config das provas `-m integration` de `tests/integration/test_real_cli.py` ganha
   `[ask] wait = "0"` pelo mesmo motivo (C16 e C38 passam `--ask-wait` na linha de comando). O `emit` não espera numa tarefa com `finished_at` (nenhuma CLI espera a decisão), o que
-  mantém as provas da agent-run-notify que chamam o `emit` depois do `run`.
+  mantém as provas da agent-run-notify que chamam o `emit` depois do `run`. Em `tests/test_run_fallback.py`, a lista
+  de tentativas deixa de fora a chamada `opencode --version` que o `run` passa a fazer antes de lançar (door 9).
 
 ## Checks
 
@@ -155,6 +157,9 @@ Proof: `uv run pytest tests/test_run_guards.py -k run_rewrites_stale_plugin`
 **C37** - Com o diretório de plugins sem permissão de escrita e o marcador errado, o `run` grava o motivo no `kit.log` e a tarefa termina como sem o problema (o fake roda, terminal `completed`) (AC 26)
 Proof: `uv run pytest tests/test_run_guards.py -k run_plugin_rewrite_failure`
 
+**C59** - O `run` de uma tarefa opencode sem plugin com o opencode falso em `v2.2.4` lança `run --format json -m <modelo> --standalone <prompt>` (o lugar onde as tarefas de plugin já o passam); com `v1.19.3`, sem `--standalone` (door 9)
+Proof: `uv run pytest tests/test_launch.py -k opencode_standalone_by_major`
+
 **C38** - Com o `opencode` 2.x real, `HOME` temporário, plugin do `install`, `"permission": {"bash": "ask"}` e espera `120`, um `touch` fica parado até `reply ... allow`, roda, e o terminal é `completed`/`ok` (S3 inteiro)
 Proof: `uv run pytest -m integration tests/integration/test_real_hooks.py -k opencode_reply_allow`
 
@@ -239,6 +244,7 @@ Proof: `uv run pytest tests/test_docs.py -k changelog_needs_input_reply`
 | saída do `emit` por fonte, door 6 (5) | claude `allow` C7 · claude `deny` C8 · opencode `allow` C34 · opencode `deny` C34 · sem decisão `{}` C10, C15 | - |
 | `by` no arquivo de resposta, door 1 (3) | `user` C17 · `bot` C25 · `timeout` C9 | - |
 | `reply_deadline` (3) | espera C5 · teto da tarefa C6 · `null` C10 | - |
+| `--standalone` por major, door 9 (2) | `2` C59 · `1` C59 |
 | asset por major, door 5 (3) | `2` C27 · desconhecido C27 · `1` C28 | - |
 | resposta do plugin v2 ao `emit` (6) | `allow` C31 · `deny` C31 · `{}` C31 · não JSON C31 · exit `1` C31 · timeout C31 | - |
 | eventos que o plugin v2 ignora (4) | sem task C33 · `effect` `allow` C32 · `effect` `deny` C32 · sessão filha C32 | - |

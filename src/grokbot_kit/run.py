@@ -356,12 +356,13 @@ def run(args: argparse.Namespace) -> int:
 
     kit_exe = launch.kit_executable()
     bin_path = os.path.expanduser(r["cli"].get("bin", tool))
-    harness = launch.Harness([], {}, {})
     major = launch.cli_major(bin_path) if tool == "opencode" else None
+    # door 9 da needs-input-reply: o serviço compartilhado do opencode 2 não vê o env da tarefa, e o plugin dele precisa
+    harness = launch.Harness(["--standalone"] if major is not None and major >= 2 else [], {}, {})
     if task:
         caps = task["plugin"].manifest["capabilities"]
         harness = launch.plugin_harness(tool, caps, task_dir, task_dir / "plugin", major)
-        extras = [*harness.args, *extras]
+    extras = [*harness.args, *extras]
     if tool == "claude":
         claude_settings: dict[str, Any] = launch.claude_settings(kit_exe, r["ask_wait"])
         if harness.permissions:
