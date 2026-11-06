@@ -73,14 +73,11 @@ opencode 2.2.4 com `opencode-go/glm-5.3-flash`, instalador oficial)
 **Released**: `0.6.0` em `main`, no PyPI e no GitHub Release
 **Features entregues**: agent-run-notify, kit-update, plugins, model-setup-docs, sdlc-gates (verificadas,
 `verification.md` de cada)
-**Abertos sem issue ainda**: o `doctor` decide o login do opencode pelo `<n> credentials` do `opencode auth list`, que
-dá `0` no box logado; erro do opencode só no stderr chega com `summary` vazio e sem fallback; com o major do opencode
-desconhecido, o `run` grava o plugin v2 mas não passa `--standalone`; o hook git compartilhado aponta para o venv da
-worktree `31-sdlc-gates`, que não existe mais
+**Abertos sem issue ainda**: nenhum (os pontos abertos da needs-input-reply viraram #43 a #47)
 
 **Next step**: o Rodrigo revisa e faz o merge do PR; no box, o bot roda `grokbot-kit update apply` e
 `grokbot-kit setup cli upgrade opencode` (o box estava no opencode 1.19.3) e testa um pedido com `reply`;
-pendências no backlog: #32, #33
+pendências no backlog: #32, #33, #43, #44, #45, #46, #47
 **Blockers**: nenhum
 **Uncommitted**: nada
 **Branch**: `feat/41/needs-input-reply`; `main` protegida (PR + 6 checks com o `process`, só squash)
