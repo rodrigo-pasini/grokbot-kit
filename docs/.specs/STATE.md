@@ -67,17 +67,16 @@
 Só o estado atual (até 40 linhas, conferido por `tools/sdlc.py state`). O histórico de cada feature está no git, nos
 PRs e nos `verification.md` de `docs/.specs/features/`.
 
-**Feature**: needs-input-reply (issue #41), PR aberto na branch `feat/41/needs-input-reply`
-**Where**: build e Verifier feitos (rodada 2 PASS, 60/60); `-m integration` verdes no host de dev (claude 2.1.318,
-opencode 2.2.4 com `opencode-go/glm-5.3-flash`, instalador oficial)
-**Released**: `0.6.0` em `main`, no PyPI e no GitHub Release
-**Features entregues**: agent-run-notify, kit-update, plugins, model-setup-docs, sdlc-gates (verificadas,
-`verification.md` de cada)
+**Feature**: nenhuma em curso; release `0.7.0` na branch `chore/release/0.7.0`
+**Where**: needs-input-reply mergeada (PR 42, `ec0d80c`, issue #41 fechada); provas no box ainda por fazer
+**Released**: `0.6.0` em `main`, no PyPI e no GitHub Release; `0.7.0` sai com a tag `v0.7.0` depois do merge
+**Features entregues**: agent-run-notify, kit-update, plugins, model-setup-docs, sdlc-gates, needs-input-reply
+(verificadas, `verification.md` de cada)
 **Abertos sem issue ainda**: nenhum (os pontos abertos da needs-input-reply viraram #43 a #47)
 
-**Next step**: o Rodrigo revisa e faz o merge do PR; no box, o bot roda `grokbot-kit update apply` e
-`grokbot-kit setup cli upgrade opencode` (o box estava no opencode 1.19.3) e testa um pedido com `reply`;
-pendências no backlog: #32, #33, #43, #44, #45, #46, #47
+**Next step**: o Rodrigo faz o merge do PR da release e cria a tag `v0.7.0`; no box, o bot roda
+`grokbot-kit update apply` e `grokbot-kit setup cli upgrade opencode` (o box estava no opencode 1.19.3) e testa um
+pedido com `reply`; pendências no backlog: #32, #33, #43, #44, #45, #46, #47
 **Blockers**: nenhum
 **Uncommitted**: nada
-**Branch**: `feat/41/needs-input-reply`; `main` protegida (PR + 6 checks com o `process`, só squash)
+**Branch**: `main` (`0.6.0` até a tag); `main` protegida (PR + 6 checks com o `process`, só squash)

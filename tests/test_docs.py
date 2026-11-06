@@ -373,10 +373,10 @@ def test_opencode_version_note() -> None:
         assert "`grokbot-kit setup cli upgrade opencode`" in text, readme
 
 
-# C56 - AC 43 da needs-input-reply
+# C56 - AC 43 da needs-input-reply (emendado na release: a seção é a da 0.7.0)
 def test_changelog_needs_input_reply() -> None:
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    unreleased = changelog.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
+    unreleased = changelog.split("## [0.7.0]", 1)[1].split("\n## [", 1)[0]
     for term in (
         "grokbot-kit reply",
         "--by",
