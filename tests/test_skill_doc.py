@@ -510,3 +510,74 @@ def test_change_models_redo_steps() -> None:
     assert "provedores" in p and "tiers" in p
     for absent in ("setup cli add", "login", "route add"):
         assert absent not in p, absent
+
+
+# C50 - AC 35 da needs-input-reply
+def test_needs_input_reply_flow() -> None:
+    s = norm(section("Quando um evento chega"))
+    waiting = norm(paragraph_with("`needs_input.reply_deadline` preenchido"))
+    assert "regra de risco" in waiting and "`reply_deadline`" in waiting and "`grokbot-kit reply`" in waiting
+    notify = norm(paragraph_with("`needs_input.reply_deadline` `null`"))
+    assert "`resume_hint`" in notify
+    assert "Pedido de permissão" in s
+
+
+def low_list() -> str:
+    s = section("Pedido de permissão")
+    return s.split("Baixo risco é só isto:", 1)[1].split("Pergunte ao usuário", 1)[0]
+
+
+# C51 - AC 36 da needs-input-reply
+def test_risk_rule_low_list() -> None:
+    items = [line[2:] for line in low_list().splitlines() if line.startswith("- ")]
+    assert len(items) == 4
+    joined = norm(" ".join(items))
+    for needle in ("ler, listar ou buscar arquivos", "testes", "linters", "checagem de tipos", "build"):
+        assert needle in joined, needle
+    assert "dentro do `cwd`" in joined
+    for cmd in ("`git status`", "`git diff`", "`git log`", "`git show`"):
+        assert cmd in joined, cmd
+    for forbidden in ("rm", "push", "curl", "install"):
+        assert not re.search(rf"\b{forbidden}\b", joined), forbidden
+
+
+# C52 - AC 37 da needs-input-reply
+def test_risk_rule_ask_list() -> None:
+    s = section("Pedido de permissão")
+    ask = norm(s.split("Pergunte ao usuário", 1)[1].split("De baixo risco", 1)[0])
+    for needle in (
+        "fora do `cwd`",
+        "`..`",
+        "mais de um comando",
+        "`;`",
+        "`&&`",
+        "`|`",
+        "`$(...)`",
+        "redirecionamento",
+        "`git fetch`",
+        "`git pull`",
+        "`git push`",
+        "`git clone`",
+        "download",
+        "instalação de pacote",
+        "apagar arquivos",
+        "histórico",
+        "`.env`",
+        "`~/.ssh`",
+        "`sudo`",
+        "não consegue classificar",
+    ):
+        assert needle in ask, needle
+
+
+# C53 - AC 38, 39 e 40 da needs-input-reply
+def test_reply_by_and_upgrade() -> None:
+    s = norm(section("Pedido de permissão"))
+    commands = cited_commands()
+    assert "grokbot-kit reply <task_id> <request_id> allow --by bot" in commands
+    assert "conte ao usuário, em uma linha, o que aprovou" in s
+    assert any(c.startswith("grokbot-kit reply <task_id> <request_id> allow --by user") for c in commands)
+    assert "nunca nega sozinho" in s and "o kit nega no `reply_deadline`" in s
+    state = norm(section("Ver o estado"))
+    assert "`cli.opencode.reply.warning`" in state
+    assert "grokbot-kit setup cli upgrade opencode" in commands

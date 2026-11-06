@@ -192,7 +192,9 @@ def test_task_event_required_fields_and_schema_layer(tmp_path: Path) -> None:
     terminal_event = payload.task_event(
         meta, tmp_path, event="completed", status="ok", exit_reason="success", exit_code=0, summary="feito"
     )
-    asked = payload.needs_input_event(meta, tmp_path, kind="permission", tool_name="Bash", detail="touch x")
+    asked = payload.needs_input_event(
+        meta, tmp_path, kind="permission", tool_name="Bash", detail="touch x", request_id="r-1"
+    )
     for event in (terminal_event, asked):
         for field in REQUIRED_NON_NULL:
             assert event[field] is not None, field
@@ -232,7 +234,7 @@ def test_schema_matches_door_2() -> None:
     repo = next(s for s in props["repo"]["oneOf"] if s.get("type") == "object")
     assert set(repo["properties"]) == {"root", "branch", "head"}
     needs_input = next(s for s in props["needs_input"]["oneOf"] if s.get("type") == "object")
-    assert set(needs_input["properties"]) == {"kind", "tool_name", "detail"}
+    assert set(needs_input["properties"]) == {"kind", "tool_name", "detail", "request_id", "reply_deadline"}
 
 
 def test_schema_matches_door_2_nullable_only_for_test(tmp_path: Path) -> None:
@@ -340,7 +342,7 @@ def test_transcript_path_from_hook_cli_through_emit(kit: Kit) -> None:
     transcript = "/home/u/.claude/projects/p/6ae1774a.jsonl"
     hook = {"hook_event_name": "PermissionRequest", "tool_name": "Bash", "tool_input": {"command": "touch x"}}
     result = kit.run(
-        "--tool", "claude", "--target", "bot-a", "--label", "p", "--", "faça",
+        "--tool", "claude", "--target", "bot-a", "--label", "p", "--ask-wait", "0", "--", "faça",
         FAKE_STDOUT=CLAUDE_OK, FAKE_EMIT=json.dumps([{**hook, "session_id": "s1", "transcript_path": transcript}]),
     )  # fmt: skip
     terminal_events = [e for e in kit.sink_events() if e["event"] != "needs_input"]
@@ -356,7 +358,7 @@ def test_transcript_path_from_hook_cli_without_hook(kit: Kit) -> None:
 def test_transcript_path_from_hook_layer(tmp_path: Path) -> None:
     meta = task_meta(tmp_path)
     asked = payload.needs_input_event(
-        meta, tmp_path, kind="permission", tool_name="Bash", detail=None, transcript_path="/t.jsonl"
+        meta, tmp_path, kind="permission", tool_name="Bash", detail=None, transcript_path="/t.jsonl", request_id="r-1"
     )
     assert asked["transcript_path"] == "/t.jsonl"
     plain = payload.task_event(
@@ -376,7 +378,7 @@ def test_exit_reason_enum_and_needs_input_mapping_layer(tmp_path: Path) -> None:
     assert seen <= EXIT_REASONS
     meta = task_meta(tmp_path)
     for kind in ("permission", "question"):
-        asked = payload.needs_input_event(meta, tmp_path, kind=kind, tool_name=None, detail=None)
+        asked = payload.needs_input_event(meta, tmp_path, kind=kind, tool_name=None, detail=None, request_id="r-1")
         assert asked["event"] == "needs_input"
         assert asked["status"] == kind
         assert asked["exit_reason"] == "needs_input"
@@ -409,7 +411,9 @@ def test_timestamps_rfc3339_utc_layer(tmp_path: Path) -> None:
     brt = timezone(timedelta(hours=-3))
     assert payload.rfc3339(datetime(2026, 10, 19, 9, 0, 5, tzinfo=brt)) == "2026-10-19T12:00:05Z"
     assert payload.rfc3339(datetime(2026, 10, 19, 12, 0, 5, tzinfo=UTC)) == "2026-10-19T12:00:05Z"
-    asked = payload.needs_input_event(task_meta(tmp_path), tmp_path, kind="question", tool_name=None, detail=None)
+    asked = payload.needs_input_event(
+        task_meta(tmp_path), tmp_path, kind="question", tool_name=None, detail=None, request_id="r-1"
+    )
     assert RFC3339_UTC.match(asked["timestamp"])
 
 
@@ -472,3 +476,24 @@ def test_schema_accepts_plugin_fields(tmp_path: Path) -> None:
     ):
         assert not VALIDATOR.is_valid({**ok, field: value}), (field, value)
     assert not VALIDATOR.is_valid({**ok, "exit_reason": "result_missing"})
+
+
+# C54 - door 2 da needs-input-reply
+def test_needs_input_schema_new_fields(tmp_path: Path) -> None:
+    meta = task_meta(tmp_path)
+    waiting = payload.needs_input_event(
+        meta, tmp_path, kind="permission", tool_name="Bash", detail="x", request_id="r-1",
+        reply_deadline="2026-11-05T12:10:00Z",
+    )  # fmt: skip
+    assert waiting["needs_input"]["reply_deadline"] == "2026-11-05T12:10:00Z"
+    VALIDATOR.validate(waiting)
+    notify = payload.needs_input_event(meta, tmp_path, kind="question", tool_name=None, detail=None, request_id="q-1")
+    assert notify["needs_input"]["reply_deadline"] is None
+    VALIDATOR.validate(notify)
+    for key in ("request_id", "reply_deadline"):
+        broken = json.loads(json.dumps(waiting))
+        del broken["needs_input"][key]
+        assert not VALIDATOR.is_valid(broken), key
+    wrong = json.loads(json.dumps(waiting))
+    wrong["needs_input"]["request_id"] = None
+    assert not VALIDATOR.is_valid(wrong)

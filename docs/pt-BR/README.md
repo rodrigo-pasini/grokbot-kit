@@ -104,10 +104,11 @@ tarefas escolhendo CLI e modelo.
 | --- | --- |
 | `grokbot-kit run` | roda uma tarefa num agente headless e envia um evento terminal à rota de `--target`; o modelo vem de `--model` ou de `--tier` (`trivial`, `standard`, `complex`), e `--plugin` roda um [plugin](#plugins) |
 | `grokbot-kit emit` | chamado pelos hooks dos agentes dentro de uma tarefa; não é para uso direto |
+| `grokbot-kit reply <task_id> <request_id> allow` | responde a um pedido de permissão de uma tarefa em curso com `allow` ou `deny`; `--message` diz ao agente o motivo (só com `deny`), `--by bot` registra que o bot decidiu sozinho (padrão `user`); veja [Pedidos de permissão](#pedidos-de-permissão) |
 | `grokbot-kit redeliver <task_id>` | reenvia os eventos de uma tarefa que não foram entregues |
 | `grokbot-kit gc --older-than <duração>` | remove os task dirs de tarefas que terminaram há muito tempo; `--dry-run` só lista |
 | `grokbot-kit route add <bot>` | `add` liga um bot ao webhook da routine dele (URL e key de dois segredos), `rm` remove a rota, `test` envia um evento `test` |
-| `grokbot-kit setup cli add <tool>` | configura as CLIs: `cli add` instala uma com o instalador oficial, `default` escolhe a usada quando a tarefa não diz, `models refresh` descobre os ids de modelo, `providers` escolhe os provedores do opencode e `tiers` grava os ids de um tier (veja [Modelos](#modelos)) |
+| `grokbot-kit setup cli add <tool>` | configura as CLIs: `cli add` instala uma com o instalador oficial, `default` escolhe a usada quando a tarefa não diz, `models refresh` descobre os ids de modelo, `providers` escolhe os provedores do opencode e `tiers` grava os ids de um tier (veja [Modelos](#modelos)); `cli upgrade` roda de novo o instalador oficial para levar uma CLI à última versão, e reescreve o plugin do opencode para a versão nova |
 | `grokbot-kit login <tool>` | faz o login de uma CLI com o comando oficial dela, por assinatura ou API key (`--method`) |
 | `grokbot-kit doctor` | confere versões, CLIs, logins, rotas, segredos e plugins, com o comando que corrige cada problema; `--json` para o bot |
 | `grokbot-kit install opencode` | instala o plugin do opencode que avisa dos pedidos de permissão (inerte fora de uma tarefa) |
@@ -121,11 +122,26 @@ tarefas escolhendo CLI e modelo.
 - `grokbot-kit --version` mostra a versão instalada.
 - `run --tool <tool>` escolhe a CLI da tarefa (padrão: a gravada com `setup default`); `run --timeout <duração>`
   (`30m`, `2h`, `1d`) substitui o `timeouts.<tier>` do config; `run --prompt-file <arquivo>` lê o prompt de um arquivo,
-  passado ao agente depois dos argumentos que seguem o `--`.
+  passado ao agente depois dos argumentos que seguem o `--`; `run --ask-wait <duração>` diz quanto um pedido de
+  permissão espera o `grokbot-kit reply` (`0` só avisa; padrão: o `ask.wait` do config, `10m`).
 - `emit --from <tool>` diz de qual CLI é o hook que chama.
 - `route add --header 'Nome: valor'` acrescenta um header a toda requisição da rota; repetível.
 - `setup models refresh --add <id>` (`claude` e `codex`) também testa e grava um id que a descoberta não lista.
 - `login --secret <nome>` diz o segredo que guarda a API key (padrão: `<tool>-api-key`).
+
+## Pedidos de permissão
+
+Quando o agente de uma tarefa pede uma permissão, o kit envia um evento `needs_input` com `needs_input.request_id` e
+`needs_input.reply_deadline`, e o agente espera. `grokbot-kit reply <task_id> <request_id> allow` (ou `deny`) responde:
+com `allow` o agente usa a ferramenta na mesma tarefa, e a tarefa ainda pode terminar `ok`. Sem resposta até o
+`reply_deadline` (10 minutos por padrão, `ask.wait` no config ou `run --ask-wait`), o kit nega o pedido, como fazia
+antes desta mudança. A skill do Grok Bot responde sozinha os pedidos de baixo risco (ler arquivos, rodar testes,
+editar dentro do diretório da tarefa) com `--by bot`, e pergunta ao usuário todo o resto.
+
+A resposta vale no Claude Code e no opencode 2.x. O opencode 1.x só avisa o pedido (`reply_deadline` vem `null`);
+`grokbot-kit setup cli upgrade opencode` leva o opencode à última versão e reescreve o plugin, e o
+`grokbot-kit doctor` avisa enquanto o opencode for 1.x. O Codex nunca pergunta: o `codex exec` nega sozinho toda
+aprovação.
 
 ## Plugins
 
@@ -172,7 +188,8 @@ estão descritos em [event.md](event.md).
 ## Configuração
 
 O config fica em `~/.config/grokbot-kit/config.toml`: CLIs instaladas e a padrão, tiers de modelo (`trivial`,
-`standard`, `complex`) por CLI, timeout por tier e uma rota por bot. Cada task guarda saída, logs e eventos em
+`standard`, `complex`) por CLI, timeout por tier, quanto um pedido de permissão espera a resposta (`[ask] wait`, padrão
+`10m`) e uma rota por bot. Cada task guarda saída, logs e eventos em
 `~/.grokbot-kit/tasks/<task_id>/` até o `grokbot-kit gc` removê-la.
 
 ## Segurança

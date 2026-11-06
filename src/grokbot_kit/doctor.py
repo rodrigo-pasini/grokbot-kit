@@ -8,6 +8,7 @@ tem entrada `repo` (`null` senão), um aviso que, como o `kit.update`, não mexe
 import json
 import os
 import platform
+import re
 import stat
 import subprocess
 import sys
@@ -90,7 +91,23 @@ def _cli(tool: str, cli: dict[str, Any], default: str | None) -> dict[str, Any]:
     if tool == "opencode":
         entry["providers"] = cli.get("providers")
         entry["plugin"] = _plugin()
+        version_text = entry["version"]
+        entry["reply"] = _reply(version_text if isinstance(version_text, str) else None)
     return entry
+
+
+def _reply(version: str | None) -> dict[str, Any]:
+    """O major do opencode e o do plugin instalado (AC 24 da needs-input-reply), e o aviso do opencode 1.x, que só
+    avisa os pedidos e não espera a resposta do bot (AC 34)."""
+    found = re.search(r"(\d+)\.\d+(?:\.\d+)?", version or "")
+    major = int(found.group(1)) if found else None
+    warning = None
+    if found and major == 1:
+        warning = (
+            f"opencode {found.group(0)}: replies to needs_input need opencode 2; "
+            "run: grokbot-kit setup cli upgrade opencode"
+        )
+    return {"major": major, "plugin_major": opencode_plugin.installed_major(), "warning": warning}
 
 
 def _provider_problems(cfg: dict[str, Any]) -> list[str]:
@@ -133,6 +150,13 @@ def problems(out: dict[str, Any], facts: dict[str, Any]) -> list[str]:
             found.append(
                 f"opencode plugin at {plugin['path']} calls {plugin['exe']}, not {launch.kit_executable()}; "
                 "run: grokbot-kit install opencode"
+            )
+        reply = cli.get("reply")
+        known = reply and reply["major"] is not None and reply["plugin_major"] is not None
+        if known and reply["plugin_major"] != opencode_plugin.asset_major(reply["major"]):
+            found.append(
+                f"opencode plugin is for opencode {reply['plugin_major']}, installed opencode is "
+                f"{reply['major']}; run: grokbot-kit install opencode"
             )
     mode = facts.get("secrets_dir_mode")
     if mode is not None and mode != 0o700:
@@ -213,6 +237,8 @@ def _text(out: dict[str, Any]) -> str:
             plugin = cli["plugin"]
             plugin_state = "missing" if plugin["exe"] is None else "ok" if plugin["ok"] else "stale"
             lines.append(f"  plugin: {plugin_state} ({plugin['path']})")
+        if cli.get("reply", {}).get("warning"):
+            lines.append(f"  {cli['reply']['warning']}")
     for target, sinks in out["routes"].items():
         lines.append(f"route {target}: {', '.join(sinks)}")
     for name, secret in out["secrets"].items():

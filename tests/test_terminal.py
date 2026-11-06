@@ -191,7 +191,17 @@ EMIT_TERMINAL_ATTEMPTS = [
 @pytest.mark.parametrize("tool", ["claude", "opencode", "codex"])
 def test_exactly_one_terminal_per_task(kit: Kit, tool: str) -> None:
     result = kit.run(
-        "--tool", tool, "--target", "bot-a", "--label", "um", "--", "faça", FAKE_EMIT=json.dumps(EMIT_TERMINAL_ATTEMPTS)
+        "--tool",
+        tool,
+        "--target",
+        "bot-a",
+        "--label",
+        "um",
+        "--ask-wait",
+        "0",
+        "--",
+        "faça",
+        FAKE_EMIT=json.dumps(EMIT_TERMINAL_ATTEMPTS),
     )
     assert result.returncode == 0, result.stderr
     task_dir = kit.task_dir()
@@ -378,3 +388,54 @@ def test_fallback_eligible(
 ) -> None:
     (tmp_path / "out.jsonl").write_text(jsonl(*objects), encoding="utf-8")
     assert terminal.fallback_eligible(tool, tmp_path, stopped) is expected
+
+
+def _asked(request_id: str) -> dict[str, Any]:
+    return {"event": "needs_input", "status": "permission", "needs_input": {"request_id": request_id}}
+
+
+def _reply(task_dir: Path, request_id: str, decision: str, by: str = "user") -> None:
+    (task_dir / "replies").mkdir(exist_ok=True)
+    body = {"decision": decision, "message": None, "by": by, "at": "2026-11-05T12:00:00Z"}
+    (task_dir / "replies" / f"{request_id}.json").write_text(json.dumps(body), encoding="utf-8")
+
+
+# C39 - AC 27 da needs-input-reply
+def test_all_allowed_is_success(tmp_path: Path) -> None:
+    asked = [_asked("a"), _asked("b")]
+    _reply(tmp_path, "a", "allow")
+    _reply(tmp_path, "b", "allow", by="bot")
+    assert terminal.unanswered(tmp_path, asked) == []
+    pending = bool(terminal.unanswered(tmp_path, asked))
+    assert terminal.classify(0, CLEAN, needs_input=pending) == ("completed", "ok", "success")
+
+
+# C40 - AC 28 da needs-input-reply
+@pytest.mark.parametrize("case", ["sem resposta", "deny do usuário", "deny do prazo"])
+def test_any_unallowed_is_denied(tmp_path: Path, case: str) -> None:
+    asked = [_asked("a"), _asked("b")]
+    _reply(tmp_path, "a", "allow")
+    if case == "deny do usuário":
+        _reply(tmp_path, "b", "deny")
+    elif case == "deny do prazo":
+        _reply(tmp_path, "b", "deny", by="timeout")
+    assert terminal.unanswered(tmp_path, asked) == [asked[1]]
+    pending = bool(terminal.unanswered(tmp_path, asked))
+    assert terminal.classify(0, CLEAN, needs_input=pending) == ("completed", "denied", "permission_denied")
+
+
+def test_any_unallowed_is_denied_permission_denials(tmp_path: Path) -> None:
+    asked = [_asked("a"), _asked("b")]
+    _reply(tmp_path, "a", "allow")
+    _reply(tmp_path, "b", "allow")
+    out = tmp_path / "out.jsonl"
+    out.write_text(json.dumps({"type": "result", "is_error": False, "result": "x", "permission_denials": [{}]}))
+    output = terminal.read_output("claude", tmp_path)
+    pending = bool(terminal.unanswered(tmp_path, asked))
+    assert terminal.classify(0, output, needs_input=pending) == ("completed", "denied", "permission_denied")
+
+
+def test_any_unallowed_is_denied_legacy_record(tmp_path: Path) -> None:
+    # um `needs_input` sem `request_id` (registro de antes desta feature) nunca foi respondido
+    legacy = {"event": "needs_input", "status": "permission"}
+    assert terminal.unanswered(tmp_path, [legacy]) == [legacy]

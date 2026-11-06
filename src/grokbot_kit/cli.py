@@ -32,6 +32,12 @@ def build_parser() -> "argparse.ArgumentParser":
     run.add_argument("--target", required=True)
     run.add_argument("--label", required=True)
     run.add_argument("--timeout", help="duration such as 30m, 2h or 1d; defaults to timeouts.<tier> in the config")
+    run.add_argument(
+        "--ask-wait",
+        metavar="DURATION",
+        help="how long a permission request waits for grokbot-kit reply, such as 10m; 0 only notifies; "
+        "defaults to ask.wait in the config (10m)",
+    )
     run.add_argument("--cwd")
     run.add_argument("--prompt-file")
     run.add_argument("--plugin", help="run a plugin (see: grokbot-kit plugin list); the prompt comes from it")
@@ -40,6 +46,13 @@ def build_parser() -> "argparse.ArgumentParser":
 
     emit = sub.add_parser("emit", help="called by agent hooks inside a task")
     emit.add_argument("--from", dest="source", choices=TOOLS, required=True)
+
+    reply = sub.add_parser("reply", help="answer a permission request of a running task (allow or deny)")
+    reply.add_argument("task_id")
+    reply.add_argument("request_id", help="needs_input.request_id of the needs_input event")
+    reply.add_argument("decision", choices=("allow", "deny"))
+    reply.add_argument("--message", help="why the request is denied; told to the agent (only with deny)")
+    reply.add_argument("--by", choices=("user", "bot"), default="user", help="who decided (default: user)")
 
     redeliver = sub.add_parser("redeliver", help="resend the events of a task that were not delivered")
     redeliver.add_argument("task_id")
@@ -64,6 +77,10 @@ def build_parser() -> "argparse.ArgumentParser":
     setup_cli_sub = setup_cli.add_subparsers(dest="cli_command", required=True)
     cli_add = setup_cli_sub.add_parser("add", help="install a CLI with its official installer and record it")
     cli_add.add_argument("tool", choices=TOOLS)
+    cli_upgrade = setup_cli_sub.add_parser(
+        "upgrade", help="upgrade a CLI with its official installer (and the opencode plugin with it)"
+    )
+    cli_upgrade.add_argument("tool", choices=TOOLS)
     setup_sub.add_parser("default", help="set the CLI used when a task names none").add_argument("tool", choices=TOOLS)
     tiers = setup_sub.add_parser("tiers", help="set the ordered model ids of a tier (discovered ids only)")
     tiers.add_argument("tool", choices=TOOLS)
@@ -139,6 +156,10 @@ def main(argv: list[str] | None = None) -> int:
         from grokbot_kit.run import run
 
         return run(args)
+    if args.command == "reply":
+        from grokbot_kit.reply import reply
+
+        return reply(args.task_id, args.request_id, args.decision, args.message, args.by)
     if args.command == "redeliver":
         from grokbot_kit.redeliver import redeliver
 
@@ -157,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
         from grokbot_kit import setup
 
         if args.setup_command == "cli":
-            return setup.cli_add(args.tool)
+            return setup.cli_add(args.tool) if args.cli_command == "add" else setup.cli_upgrade(args.tool)
         if args.setup_command == "default":
             return setup.set_default(args.tool)
         if args.setup_command == "tiers":
