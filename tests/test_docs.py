@@ -162,7 +162,7 @@ def check_links(root: Path) -> list[str]:
 # C38 - AC 36
 def test_readme_commands_section() -> None:
     expected = commands()
-    assert len(expected) == 13
+    assert len(expected) == 14
     for readme, heading in zip(READMES, ("Commands", "Comandos"), strict=True):
         rows = [line for line in section(readme, heading).splitlines() if line.startswith("| `grokbot-kit ")]
         named = [re.match(r"\| `grokbot-kit ([a-z-]+)", row).group(1) for row in rows]  # type: ignore[union-attr]
@@ -347,3 +347,46 @@ def test_contributing_agents_md() -> None:
     for text in contributing_texts():
         for needle in ("AGENTS.md", "2.1.277", "CLAUDE.local.md"):
             assert needle in text, needle
+
+
+# C54 - AC 41 da needs-input-reply
+def test_needs_input_reply_docs() -> None:
+    for readme, heading in zip(READMES, ("Commands", "Comandos"), strict=True):
+        text = section(readme, heading)
+        reply_row = next(line for line in text.splitlines() if line.startswith("| `grokbot-kit reply "))
+        assert "--by" in reply_row, readme
+        assert "--ask-wait" in text, readme
+        assert "cli upgrade" in text, readme
+    for doc in (ROOT / "docs" / "event.md", ROOT / "docs" / "pt-BR" / "event.md"):
+        text = doc.read_text(encoding="utf-8")
+        assert "`needs_input.request_id`" in text, doc
+        assert "`needs_input.reply_deadline`" in text, doc
+
+
+# C55 - AC 42 da needs-input-reply
+def test_opencode_version_note() -> None:
+    for readme, heading in zip(READMES, ("Permission requests", "Pedidos de permissão"), strict=True):
+        text = section(readme, heading)
+        assert "Claude Code" in text, readme
+        assert "opencode 2.x" in text, readme
+        assert "opencode 1.x" in text, readme
+        assert "`grokbot-kit setup cli upgrade opencode`" in text, readme
+
+
+# C56 - AC 43 da needs-input-reply
+def test_changelog_needs_input_reply() -> None:
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    unreleased = changelog.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
+    for term in (
+        "grokbot-kit reply",
+        "--by",
+        "--ask-wait",
+        "[ask] wait",
+        "request_id",
+        "reply_deadline",
+        "denied",
+        "low-risk",
+        "setup cli upgrade",
+        "opencode 2",
+    ):
+        assert term in unreleased, term

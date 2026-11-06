@@ -80,6 +80,12 @@ grokbot-kit doctor --json
 
 A saída diz o que já está feito: `setup.installed` (CLIs instaladas), `setup.default_cli`, o login de cada CLI, as
 rotas e os segredos; `problems` lista o que corrigir, com o comando. Pule os passos que já estão feitos.
+Com `cli.opencode.reply.warning` preenchido (opencode 1.x, que só avisa os pedidos de permissão e não espera a
+resposta), ofereça ao usuário atualizar o opencode, que também reescreve o plugin:
+
+```sh
+grokbot-kit setup cli upgrade opencode
+```
 
 ### 3. CLIs e login
 
@@ -290,13 +296,60 @@ A routine acorda este bot com o webhook. Faça o parse de `body` como JSON e lei
 - `model_fallbacks` com algum item: o modelo de cada item falhou no provedor (o motivo está em `error`) e o kit rodou
   o próximo id do tier; o modelo que rodou por último está em `model`. Conte isso ao usuário e ofereça trocar os
   modelos do tier.
-- `needs_input` (`permission` ou `question`), ou `completed` com `status` `denied`: mostre ao usuário o que o agente
-  pediu (`needs_input.tool_name` e `needs_input.detail`) e ofereça retomar com o comando de `resume_hint` depois de
-  ajustar a permissão. Um `needs_input` chega enquanto a tarefa ainda roda; o evento final vem depois.
+- `needs_input` de `permission` com `needs_input.reply_deadline` preenchido: o agente está parado esperando a
+  resposta. Antes do `reply_deadline`, aplique a regra de risco de [Pedido de permissão](#pedido-de-permissão) e
+  responda com `grokbot-kit reply`.
+- `needs_input` com `needs_input.reply_deadline` `null` (`permission` ou `question`), ou `completed` com `status`
+  `denied`: mostre ao usuário o que o agente pediu (`needs_input.tool_name` e `needs_input.detail`) e ofereça retomar
+  com o comando de `resume_hint` depois de ajustar a permissão. Um `needs_input` chega enquanto a tarefa ainda roda; o
+  evento final vem depois.
 - Tarefa de plugin (campo `plugin` preenchido): com `status` `ok`, conte o resultado a partir de `result`, o objeto
   que o plugin promete (o `summary` repete o dele). `error` com `exit_reason` `result_invalid` quer dizer que o agente
   terminou sem gravar um resultado válido; o motivo está no `summary`. Uma tarefa de plugin nunca chega como `denied`.
 - `test`: é o `grokbot-kit route test`; só confirme que a rota funciona.
+
+### Pedido de permissão
+
+O agente espera a resposta até `needs_input.reply_deadline`; sem resposta até lá, o kit nega o pedido. Leia
+`needs_input.tool_name` e `needs_input.detail` (o comando, o arquivo ou o caminho pedido) e o `cwd` do evento (o
+diretório da tarefa), e classifique o risco.
+
+Baixo risco é só isto:
+
+- ler, listar ou buscar arquivos;
+- rodar os testes, os linters, a checagem de tipos ou o build do projeto;
+- criar ou editar arquivos dentro do `cwd` do evento;
+- `git status`, `git diff`, `git log` e `git show`.
+
+Pergunte ao usuário todo pedido fora dessa lista, e sempre que ele tiver:
+
+- caminho fora do `cwd` do evento, inclusive por `..` ou por link;
+- mais de um comando no mesmo pedido (`;`, `&&`, `||`, `|`), substituição (`$(...)` ou crase) ou redirecionamento
+  (`>`), mesmo que comece por teste ou build;
+- rede: download, instalação de pacote, `git fetch`, `git pull`, `git push`, `git clone`;
+- apagar arquivos;
+- reescrever o histórico do `git` (`reset`, `rebase`, `commit --amend`, push forçado);
+- segredos, credenciais, `.env` ou `~/.ssh`;
+- `sudo` ou mudança no sistema (pacotes, serviços, usuários, permissões);
+- qualquer pedido que você não consegue classificar com certeza.
+
+De baixo risco, responda sozinho e conte ao usuário, em uma linha, o que aprovou:
+
+```sh
+grokbot-kit reply <task_id> <request_id> allow --by bot
+```
+
+Nos outros casos, mostre ao usuário `needs_input.tool_name` e `needs_input.detail`, pergunte se libera e responda com
+o que ele disser, antes do `reply_deadline`; numa negação, passe o motivo dele em `--message`:
+
+```sh
+grokbot-kit reply <task_id> <request_id> allow --by user
+grokbot-kit reply <task_id> <request_id> deny --by user --message "<motivo>"
+```
+
+`<task_id>` é o `task_id` do evento e `<request_id>` é o `needs_input.request_id`. Você nunca nega sozinho: o que não
+aprova vai ao usuário, e sem resposta dele o kit nega no `reply_deadline`. Se o `reply` sair com `1` dizendo que o
+prazo venceu ou que a tarefa terminou, conte ao usuário e ofereça retomar com o `resume_hint` do evento final.
 
 ## Evento que não chegou
 

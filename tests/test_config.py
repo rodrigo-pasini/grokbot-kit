@@ -150,3 +150,15 @@ def test_load_ignores_providers(kit: Kit, monkeypatch: pytest.MonkeyPatch) -> No
     cfg["cli"]["opencode"]["tiers"] = {"standard": ["opencode/a-free"]}
     write(kit, cfg)
     assert config.load() == cfg
+
+
+# C4 - Surface da needs-input-reply
+def test_ask_wait_validation(kit: Kit, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HOME", str(kit.home))
+    base = kit.config_text()
+    kit.write_config(base + '\n[ask]\nwait = "abc"\n')
+    with pytest.raises(config.ConfigError) as raised:
+        config.load()
+    assert "ask.wait" in str(raised.value)
+    kit.write_config(base + '\n[ask]\nwait = "0"\n')
+    assert config.load()["ask"]["wait"] == "0"

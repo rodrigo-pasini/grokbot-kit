@@ -55,6 +55,13 @@ def check_constraints(cfg: dict[str, Any]) -> None:
         raise ConfigError(
             f"setup.default_cli is {setup['default_cli']!r}, which is not in setup.installed {setup.get('installed', [])}"
         )
+    if "wait" in cfg.get("ask", {}):
+        from grokbot_kit.resolve import ResolveError, ask_wait
+
+        try:
+            ask_wait(cfg, None)
+        except ResolveError as e:
+            raise ConfigError(str(e)) from None
     for tool, cli in cfg.get("cli", {}).items():
         discovered = cli.get("models", [])
         for tier, ids in cli.get("tiers", {}).items():
