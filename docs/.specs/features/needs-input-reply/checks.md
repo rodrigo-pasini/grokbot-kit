@@ -311,3 +311,10 @@ Arquivos tocados: existentes `emit.py` (5,9 KB), `run.py` (20,9 KB), `launch.py`
   acima) -> um builder
 - Mechanism: um builder
 - C16, C38 e C49 rodam no host de dev (`-m integration`); nenhuma prova precisa do box
+
+- **Boundary:** C1-C59 fechados em `677382b` (CI: 1089 passed; `-m integration` no host de dev: C16 com `claude`
+  2.1.318, C38 com `opencode` 2.2.4 e `opencode-go/glm-5.3-flash`, C49 com o instalador oficial)
+- **Settled mid-build:** door 8 (o `emit` só espera com `--from claude` ou com `GROKBOT_KIT_REPLY=1` do plugin v2) e
+  door 9 (`--standalone` em toda tarefa do opencode 2.x), as duas no `Landing` antes do código; o `emit` não espera
+  numa tarefa com `finished_at`; o `reply` recusa com `1` um pedido entregue sem espera (`reply_deadline` `null`)
+- **Abandoned:** prazo arredondado para baixo (encurtava a espera em até 1 s; agora arredonda para cima)
