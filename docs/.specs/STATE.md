@@ -58,22 +58,28 @@
 | AD-052 | O `AGENTS.md` é o único arquivo de instruções do projeto; o `CLAUDE.md` sai e o conteúdo vai para ele. A prova C48 da model-setup-docs e a lista da door 10 da agent-run-notify passam a ler `AGENTS.md` (feature `sdlc-gates`, door 8) | decisão do Rodrigo; o Claude Code lê o `AGENTS.md` nativo desde a 2.1.277 | active | 2026-10-29 |
 | AD-053 | Os gates humanos do Claude Code são regras de permissão no `.claude/settings.json` (`ask` para merge, tag, release e proteção; `allow` para `git push` e `gh pr create`), sem parser de shell próprio; o push para `main` fica com o hook `pre-push` e a proteção da `main` no GitHub (feature `sdlc-gates`, door 6) | decisão do Rodrigo depois de 8 rodadas do Verifier sobre o `gate-humano.sh` e de confirmações pedidas em texto de commit | active | 2026-10-29 |
 | AD-054 | No `ask` do `.claude/settings.json`, `Bash(git tag *)` sai (uma tag local não sai da máquina, e a regra pedia confirmação até para `git tag -l`); entram `Bash(git push *:refs/tags/*)`, `Bash(git push *:v*)`, `Bash(git push *--mirror*)`, `Bash(git push --follow-tags *)`, `Bash(git push *+v*)` e `Bash(git push *+refs/tags/*)`, que publicam tag sem casar as regras de push de tag da AD-053 (feature `sdlc-gates`, door 6) | pedidos de confirmação em comando só de leitura, e a rodada 9 do Verifier (N2) | active | 2026-10-30 |
+| AD-055 | Feature `needs-input-reply`: com espera (`[ask] wait`, `run --ask-wait`, padrão `10m`, `0` só avisa), o `emit` segura o pedido de permissão do Claude e do opencode 2.x até `<task_dir>/replies/<request_id>.json`, gravado por `grokbot-kit reply` ou, no prazo, pelo próprio `emit` com `deny`, de uma vez (`os.link`, quem chega primeiro decide); o `needs_input` ganha `request_id` e `reply_deadline`; `denied` passa a ser "algum pedido sem `allow`" (muda o AC 44 da agent-run-notify) | decisões do Rodrigo em 05/11/2026 (research e plano da needs-input-reply); spikes: o hook do Claude 2.1.318 espera 660 s com `timeout: 900`, o `permission.hook("evaluate")` do opencode 2.2.4 espera 660 s | active | 2026-11-05 |
+| AD-056 | O plugin do opencode tem um asset por major (`grokbot-kit.ts` para o 1.x, `grokbot-kit.v2.ts` com `export default { id, setup }` para o 2.x), marcado na primeira linha; `install`, `update apply`, `setup cli upgrade` e o `run` escolhem e reescrevem pelo `cli_major`; toda tarefa do opencode 2.x roda com `--standalone` | o opencode 2.2.4 não carrega o plugin de export nomeado (o `needs_input` do 2.x não chegava), e o serviço compartilhado do 2.x não vê o env da tarefa (spike e C38 de 05/11/2026) | active | 2026-11-05 |
+| AD-057 | A skill do bot responde sozinha (`reply ... --by bot`) só a lista fechada de baixo risco (ler, testes/lint/tipos/build, editar no `cwd`, `git` de leitura) e pergunta ao usuário o resto; nunca nega sozinha | pedido do Rodrigo em 05/11/2026, por autonomia do bot | active | 2026-11-05 |
 
 ## Handoff
 
 Só o estado atual (até 40 linhas, conferido por `tools/sdlc.py state`). O histórico de cada feature está no git, nos
 PRs e nos `verification.md` de `docs/.specs/features/`.
 
-**Feature**: nenhuma em curso; release `0.6.0` na branch `chore/release/0.6.0`
-**Where**: sdlc-gates mergeada (PR 34, `da62d9a`, issue #31 fechada); o `main-protection.json` com o `process` já está
-aplicado no GitHub (6 checks obrigatórios)
-**Released**: `0.5.0` em `main` (PR 30), no PyPI e no GitHub Release; `0.6.0` sai com a tag `v0.6.0` depois do merge
+**Feature**: needs-input-reply (issue #41), PR aberto na branch `feat/41/needs-input-reply`
+**Where**: build e Verifier feitos (rodada 2 PASS, 60/60); `-m integration` verdes no host de dev (claude 2.1.318,
+opencode 2.2.4 com `opencode-go/glm-5.3-flash`, instalador oficial)
+**Released**: `0.6.0` em `main`, no PyPI e no GitHub Release
 **Features entregues**: agent-run-notify, kit-update, plugins, model-setup-docs, sdlc-gates (verificadas,
 `verification.md` de cada)
 **Abertos sem issue ainda**: o `doctor` decide o login do opencode pelo `<n> credentials` do `opencode auth list`, que
-dá `0` no box logado; erro do opencode só no stderr chega com `summary` vazio e sem fallback
+dá `0` no box logado; erro do opencode só no stderr chega com `summary` vazio e sem fallback; com o major do opencode
+desconhecido, o `run` grava o plugin v2 mas não passa `--standalone`; o hook git compartilhado aponta para o venv da
+worktree `31-sdlc-gates`, que não existe mais
 
-**Next step**: o Rodrigo faz o merge do PR da release e cria a tag `v0.6.0` no `main`; pendências no backlog: #32, #33
+**Next step**: o Rodrigo revisa e faz o merge do PR; no box, o bot roda `grokbot-kit update apply` e
+`grokbot-kit setup cli upgrade opencode` (o box estava no opencode 1.19.3) e testa um pedido com `reply`
 **Blockers**: nenhum
 **Uncommitted**: nada
-**Branch**: `main` (`0.5.0` até a tag); `main` protegida (PR + 6 checks com o `process`, só squash)
+**Branch**: `feat/41/needs-input-reply`; `main` protegida (PR + 6 checks com o `process`, só squash)
