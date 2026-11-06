@@ -672,3 +672,32 @@ def test_apply_lock_unreadable(kit: Kit, receiver: Receiver) -> None:
     assert result.returncode == 0, result.stderr
     assert len(venv.upgrader_calls()) == 1
     assert not lock.exists()
+
+
+# C57 - AC 19 da needs-input-reply, Impact
+def test_apply_rewrites_plugin_for_major(kit: Kit, receiver: Receiver) -> None:
+    import shutil
+
+    from conftest import FAKES
+
+    venv = venv_for(kit, receiver)
+    write_state(kit.home, latest=__version__)
+    path = kit.home / ".config" / "opencode" / "plugins" / "grokbot-kit.ts"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("// grokbot-kit opencode plugin for opencode 1\n// plugin velho\n", encoding="utf-8")
+    result = venv.apply()
+    assert result.returncode == 0, result.stderr
+    [call] = venv.new_kit_calls()
+    assert call["argv"] == ["install", "opencode"]
+    # o kit novo roda o mesmo `install opencode` que este kit, aqui com um opencode 2.x no PATH
+    bin_dir = kit.home.parent / "oc-bin"
+    bin_dir.mkdir()
+    (bin_dir / "opencode").symlink_to(FAKES / "opencode")
+    exe = shutil.which("grokbot-kit")
+    assert exe is not None
+    kit.env = {**kit.env, "PATH": f"{bin_dir}{os.pathsep}{kit.env['PATH']}", "FAKE_VERSION": "opencode v2.2.4"}
+    import subprocess
+
+    rewritten = subprocess.run([exe, *call["argv"]], env=kit.env, capture_output=True, text=True, check=False)
+    assert rewritten.returncode == 0, rewritten.stderr
+    assert path.read_text(encoding="utf-8").startswith("// grokbot-kit opencode plugin for opencode 2\n")

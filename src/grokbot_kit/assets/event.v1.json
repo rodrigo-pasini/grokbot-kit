@@ -179,12 +179,23 @@
                 "string",
                 "null"
               ]
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "reply_deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
             "kind",
             "tool_name",
-            "detail"
+            "detail",
+            "request_id",
+            "reply_deadline"
           ],
           "additionalProperties": false
         }

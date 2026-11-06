@@ -85,6 +85,9 @@ def run_with_emits(kit: Kit, tool: str, payloads: list[dict[str, Any]]) -> tuple
         "bot-a",
         "--label",
         "e",
+        # o aviso sem espera (needs-input-reply, AC 6), o comportamento que estas provas cobram
+        "--ask-wait",
+        "0",
         "--",
         "faça",
         FAKE_STDOUT=STDOUT_OK[tool],

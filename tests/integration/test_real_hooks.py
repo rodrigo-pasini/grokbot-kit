@@ -122,3 +122,69 @@ def test_opencode_plugin_inert_without_task(tmp_path: Path) -> None:
     plugin.unlink()
     without_plugin = opencode_run()
     assert with_plugin == without_plugin == 0
+
+
+def run_and_reply(tmp_path: Path, home: Path, work: Path, tool: str, prompt: str) -> tuple[list[dict[str, Any]], int]:
+    """Roda a task com espera de 120 s e responde `allow` ao primeiro `needs_input` com `grokbot-kit reply`."""
+    import threading
+    import time
+
+    sink = tmp_path / "sink.jsonl"
+    codes: list[int] = []
+
+    def answer() -> None:
+        until = time.monotonic() + 300
+        while time.monotonic() < until:
+            lines = sink.read_text(encoding="utf-8").splitlines() if sink.exists() else []
+            asked = [json.loads(line) for line in lines if json.loads(line)["event"] == "needs_input"]
+            if asked:
+                event = asked[0]
+                reply = subprocess.run(
+                    [kit_exe(), "reply", event["task_id"], event["needs_input"]["request_id"], "allow"],
+                    capture_output=True,
+                    text=True,
+                    env={**os.environ, "HOME": str(home)},
+                    check=False,
+                )
+                codes.append(reply.returncode)
+                return
+            time.sleep(0.2)
+
+    thread = threading.Thread(target=answer)
+    thread.start()
+    argv = [kit_exe(), "run", "--tool", tool, "--target", "it", "--label", "reply", "--cwd", str(work)]
+    result = subprocess.run(
+        [*argv, "--ask-wait", "120s", "--", prompt],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "HOME": str(home)},
+        stdin=subprocess.DEVNULL,
+        check=False,
+        timeout=600,
+    )
+    thread.join()
+    events = [json.loads(line) for line in sink.read_text(encoding="utf-8").splitlines()] if sink.exists() else []
+    assert events, result.stderr
+    return events, codes[0] if codes else -1
+
+
+# C16 - S1 da needs-input-reply
+def test_claude_reply_allow(tmp_path: Path) -> None:
+    home, work, prompt = prepare_home(tmp_path, "claude", "denied")
+    events, code = run_and_reply(tmp_path, home, work, "claude", prompt)
+    assert code == 0, events
+    assert (work / "criado.txt").exists()
+    terminal = events[-1]
+    assert (terminal["event"], terminal["status"], terminal["exit_reason"]) == ("completed", "ok", "success")
+
+
+# C38 - S3 da needs-input-reply
+def test_opencode_reply_allow(tmp_path: Path) -> None:
+    home, work, prompt = prepare_home(tmp_path, "opencode", "denied")
+    events, code = run_and_reply(tmp_path, home, work, "opencode", prompt)
+    assert code == 0, events
+    assert (work / "criado.txt").exists()
+    plugin = home / ".config" / "opencode" / "plugins" / "grokbot-kit.ts"
+    assert plugin.read_text(encoding="utf-8").startswith("// grokbot-kit opencode plugin for opencode 2\n")
+    terminal = events[-1]
+    assert (terminal["event"], terminal["status"], terminal["exit_reason"]) == ("completed", "ok", "success")
