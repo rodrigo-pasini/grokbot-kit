@@ -1,6 +1,7 @@
 """Provas do `install opencode` e `uninstall opencode` (checks C116, C117; AC 95, 96)."""
 
 import hashlib
+import json
 import os
 import shutil
 from pathlib import Path
@@ -77,3 +78,44 @@ def test_uninstall_removes_only_plugin(fresh: Kit) -> None:
     again = fresh.cli("uninstall", "opencode")
     assert again.returncode == 0, again.stderr
     assert tree(config_dir) == others
+
+
+def with_opencode(kit: Kit, version: str) -> None:
+    """Um `opencode` falso no `PATH` do `fresh`, que responde `version` ao `--version`."""
+    from conftest import FAKES
+
+    bin_dir = kit.home.parent / "oc-bin"
+    bin_dir.mkdir(exist_ok=True)
+    link = bin_dir / "opencode"
+    if not link.exists():
+        link.symlink_to(FAKES / "opencode")
+    kit.env = {**kit.env, "PATH": f"{bin_dir}{os.pathsep}{kit.env['PATH']}", "FAKE_VERSION": version}
+
+
+# C27 - AC 19 da needs-input-reply, door 5
+@pytest.mark.parametrize("version", ["opencode v2.2.4", None], ids=["v2", "sem-opencode"])
+def test_install_picks_v2(fresh: Kit, version: str | None) -> None:
+    if version is not None:
+        with_opencode(fresh, version)
+    result = fresh.cli("install", "opencode")
+    assert result.returncode == 0, result.stderr
+    text = (plugins(fresh) / "grokbot-kit.ts").read_text(encoding="utf-8")
+    assert text.splitlines()[0] == "// grokbot-kit opencode plugin for opencode 2"
+    assert "export default {" in text
+    assert 'id: "grokbot-kit"' in text
+    assert '"__GROKBOT_KIT_EXE__"' not in text
+    declared = [line for line in text.splitlines() if line.startswith("const GROKBOT_KIT = ")]
+    assert Path(json.loads(declared[0].removeprefix("const GROKBOT_KIT = "))).samefile(kit_exe())
+
+
+# C28 - AC 20 da needs-input-reply
+def test_install_picks_v1(fresh: Kit) -> None:
+    with_opencode(fresh, "opencode v1.19.3")
+    result = fresh.cli("install", "opencode")
+    assert result.returncode == 0, result.stderr
+    text = (plugins(fresh) / "grokbot-kit.ts").read_text(encoding="utf-8")
+    asset = Path(__file__).resolve().parents[1] / "src" / "grokbot_kit" / "assets" / "opencode" / "grokbot-kit.ts"
+    expected = asset.read_text(encoding="utf-8").replace('"__GROKBOT_KIT_EXE__"', json.dumps(kit_exe()))
+    assert text.splitlines()[0] == "// grokbot-kit opencode plugin for opencode 1"
+    assert text == expected
+    assert "export const GrokbotKit" in text

@@ -3,7 +3,8 @@
 
 `claude` em `~/.local/bin/claude`; `opencode` em `~/.opencode/bin/opencode`; `codex` em
 `${CODEX_HOME:-~/.codex}/packages/standalone/current/bin/codex`, com o link `${CODEX_INSTALL_DIR:-~/.local/bin}/codex`,
-como o `install.sh` do Codex. `FAKE_INSTALL_FAIL=1` faz o instalador sair com `1` sem instalar nada. `FAKE_CALLS`
+como o `install.sh` do Codex. `FAKE_INSTALL_FAIL=1` faz o instalador sair com `1` sem instalar nada.
+`FAKE_INSTALLED_VERSION` grava em `~/.fake-version-<tool>` a versão que a CLI instalada passa a responder. `FAKE_CALLS`
 acumula uma linha JSON por chamada (`tool` = `installer:<tool>`, argv, `CODEX_HOME`, `CODEX_INSTALL_DIR` e `PATH`).
 """
 
@@ -48,4 +49,6 @@ else:
     binary = codex_home / "packages" / "standalone" / "current" / "bin" / "codex"
     link(binary, FAKE_AGENT)
     link(Path(os.environ.get("CODEX_INSTALL_DIR") or home / ".local" / "bin") / "codex", binary)
+if "FAKE_INSTALLED_VERSION" in os.environ:
+    (home / f".fake-version-{tool}").write_text(os.environ["FAKE_INSTALLED_VERSION"], encoding="utf-8")
 print(f"fake {tool} installed")

@@ -126,6 +126,10 @@ def prepare_home(tmp_path: Path, tool: str, case: str) -> tuple[Path, Path, str]
             f"[cli.{tool}.tiers]",
             f"standard = [{json.dumps(model)}]",
             "",
+            # as provas de antes da needs-input-reply cobram o aviso sem espera; as de resposta passam `--ask-wait`
+            "[ask]",
+            'wait = "0"',
+            "",
             "[routes.it]",
             'sinks = ["arquivo"]',
             "",
