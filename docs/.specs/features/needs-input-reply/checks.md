@@ -3,7 +3,7 @@
 Profile: standard
 Plan: `docs/.specs/features/needs-input-reply/plan.md`
 
-59 checks em 6 slices · 7 one-way doors · 0 open
+60 checks em 6 slices · 7 one-way doors · 0 open
 
 Convenções das provas:
 
@@ -89,6 +89,9 @@ Proof: `uv run pytest -m integration tests/integration/test_real_hooks.py -k cla
 
 **C58** - O `needs_input` com os campos novos passa pela entrega de hoje (`deliver.deliver`): com o sink da routine falso em `401`, 1 tentativa e uma linha em `undelivered.jsonl`; em `429`, 3 tentativas; nos dois casos o `emit` segue esperando a resposta (Surface; tabela de retry da agent-run-notify)
 Proof: `uv run pytest tests/test_emit_wait.py -k needs_input_delivery_statuses`
+
+**C60** - Com espera `10`, o `emit` não espera (imprime `{}` em menos de 1 s, `reply_deadline` `null`, sem `replies/`) com `--from codex`, com um `question.asked` do opencode mesmo com `GROKBOT_KIT_REPLY=1`, e com `--from opencode` sem `GROKBOT_KIT_REPLY` (door 8)
+Proof: `uv run pytest tests/test_emit_wait.py -k only_claude_and_plugin_v2_wait`
 
 ### S2 - o bot responde com `grokbot-kit reply` · 4 arquivos · ~35 KB · ~9k
 
@@ -244,7 +247,8 @@ Proof: `uv run pytest tests/test_docs.py -k changelog_needs_input_reply`
 | saída do `emit` por fonte, door 6 (5) | claude `allow` C7 · claude `deny` C8 · opencode `allow` C34 · opencode `deny` C34 · sem decisão `{}` C10, C15 | - |
 | `by` no arquivo de resposta, door 1 (3) | `user` C17 · `bot` C25 · `timeout` C9 | - |
 | `reply_deadline` (3) | espera C5 · teto da tarefa C6 · `null` C10 | - |
-| `--standalone` por major, door 9 (2) | `2` C59 · `1` C59 |
+| `--standalone` por major, door 9 (2) | `2` C59 · `1` C59 | - |
+| quem espera, door 8 (5) | claude C7 · opencode com `GROKBOT_KIT_REPLY` C34 · opencode sem ele C60 · codex C60 · `question` C60 | - |
 | asset por major, door 5 (3) | `2` C27 · desconhecido C27 · `1` C28 | - |
 | resposta do plugin v2 ao `emit` (6) | `allow` C31 · `deny` C31 · `{}` C31 · não JSON C31 · exit `1` C31 · timeout C31 | - |
 | eventos que o plugin v2 ignora (4) | sem task C33 · `effect` `allow` C32 · `effect` `deny` C32 · sessão filha C32 | - |

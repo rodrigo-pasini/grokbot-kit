@@ -106,8 +106,9 @@ def test_needs_input_fields(kit: Kit) -> None:
     assert event["needs_input"]["request_id"] == request_id(data)
     deadline = event["needs_input"]["reply_deadline"]
     assert deadline.endswith("Z")
-    # o pedido chega ao `emit` entre `before` e `after`; o prazo é ele + 3 s, com 1 s de tolerância
-    assert before + timedelta(seconds=2) <= parse_ts(deadline) <= after + timedelta(seconds=4)
+    # o pedido chega ao `emit` entre `before` e `after`; o prazo é ele + 3 s arredondado para cima (nunca menor que a
+    # espera pedida), com 1 s de tolerância só para cima
+    assert before + timedelta(seconds=3) <= parse_ts(deadline) <= after + timedelta(seconds=4)
 
 
 # C6 - AC 2
@@ -274,6 +275,28 @@ def test_opencode_without_reply_flag_is_notify_only(kit: Kit) -> None:
     assert elapsed < 1
     [event] = needs_inputs(kit)
     assert event["needs_input"]["reply_deadline"] is None
+
+
+# C60 - door 8
+def test_only_claude_and_plugin_v2_wait(kit: Kit) -> None:
+    from test_emit import codex_hook, opencode_question
+
+    cases = [
+        ("codex", codex_hook(), {}),
+        ("opencode", opencode_question(), {"GROKBOT_KIT_REPLY": "1"}),
+        ("opencode", opencode_permission(), {}),
+    ]
+    for source, data, extra in cases:
+        task_dir, env = running_task(kit, 10)
+        proc, elapsed = run_emit(env, source, data, kit.home, **extra)
+        assert (proc.returncode, proc.stdout) == (0, "{}"), source
+        assert elapsed < 1, source
+        [event] = needs_inputs(kit)
+        assert event["needs_input"]["reply_deadline"] is None, source
+        assert not (task_dir / "replies").exists(), source
+        for path in kit.tasks():
+            subprocess.run(["rm", "-rf", str(path)], check=True)
+        kit.sink.unlink()
 
 
 # C42 - AC 29

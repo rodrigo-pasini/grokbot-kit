@@ -476,3 +476,24 @@ def test_schema_accepts_plugin_fields(tmp_path: Path) -> None:
     ):
         assert not VALIDATOR.is_valid({**ok, field: value}), (field, value)
     assert not VALIDATOR.is_valid({**ok, "exit_reason": "result_missing"})
+
+
+# C54 - door 2 da needs-input-reply
+def test_needs_input_schema_new_fields(tmp_path: Path) -> None:
+    meta = task_meta(tmp_path)
+    waiting = payload.needs_input_event(
+        meta, tmp_path, kind="permission", tool_name="Bash", detail="x", request_id="r-1",
+        reply_deadline="2026-11-05T12:10:00Z",
+    )  # fmt: skip
+    assert waiting["needs_input"]["reply_deadline"] == "2026-11-05T12:10:00Z"
+    VALIDATOR.validate(waiting)
+    notify = payload.needs_input_event(meta, tmp_path, kind="question", tool_name=None, detail=None, request_id="q-1")
+    assert notify["needs_input"]["reply_deadline"] is None
+    VALIDATOR.validate(notify)
+    for key in ("request_id", "reply_deadline"):
+        broken = json.loads(json.dumps(waiting))
+        del broken["needs_input"][key]
+        assert not VALIDATOR.is_valid(broken), key
+    wrong = json.loads(json.dumps(waiting))
+    wrong["needs_input"]["request_id"] = None
+    assert not VALIDATOR.is_valid(wrong)

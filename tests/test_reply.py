@@ -6,8 +6,9 @@ o `reply` responde enquanto ele espera.
 
 import json
 import subprocess
+import sys
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -172,14 +173,42 @@ def test_race_single_decision(kit: Kit) -> None:
     for round_ in range(20):
         reset(kit)
         p = Pending(kit, wait=1, tool_input={"command": f"touch r{round_}"})
-        deadline = parse_ts(p.deadline)
+        # o `reply` sai um pouco antes do prazo: passa da checagem de prazo e chega ao `write_once` junto com o do
+        # `emit`; vale um só, e os dois lados contam a mesma história
+        deadline = parse_ts(p.deadline) - timedelta(milliseconds=40 + 5 * round_)
         while datetime.now(UTC) < deadline:
-            time.sleep(0.005)
-        kit.cli("reply", p.task_id, p.rid, "allow")
+            time.sleep(0.002)
+        answered = kit.cli("reply", p.task_id, p.rid, "allow").returncode
         decision = p.emitted()["hookSpecificOutput"]["decision"]["behavior"]
         files = [f for f in (p.task_dir / "replies").iterdir() if f.suffix == ".json"]
         assert len(files) == 1
-        assert recorded(files[0])["decision"] == decision
+        body = recorded(files[0])
+        assert body["decision"] == decision
+        assert (answered == 0) == (body["by"] == "user") == (decision == "allow")
+
+
+def test_race_single_decision_layer(tmp_path: Path) -> None:
+    # 12 processos gravam a mesma resposta ao mesmo tempo: só um consegue, e o arquivo é o dele
+    path = tmp_path / "replies" / "r.json"
+    start = time.time() + 1.0
+    code = (
+        "import sys, time, json\n"
+        "from grokbot_kit.emit import write_once\n"
+        "start, who, path = float(sys.argv[1]), sys.argv[2], sys.argv[3]\n"
+        "while time.time() < start: pass\n"
+        "print(json.dumps(write_once(path, {'decision': 'allow', 'message': None, 'by': who, 'at': 'x'})))\n"
+    )
+    procs = [
+        subprocess.Popen(
+            [sys.executable, "-c", code, str(start), f"p{i}", str(path)], stdout=subprocess.PIPE, text=True
+        )
+        for i in range(12)
+    ]
+    results = {f"p{i}": json.loads(p.communicate(timeout=30)[0]) for i, p in enumerate(procs)}
+    winners = [who for who, won in results.items() if won]
+    assert len(winners) == 1, results
+    assert recorded(path)["by"] == winners[0]
+    assert [f.name for f in path.parent.iterdir()] == ["r.json"]
 
 
 # C25 - AC 17
