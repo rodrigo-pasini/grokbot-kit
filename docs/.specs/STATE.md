@@ -67,16 +67,17 @@
 Só o estado atual (até 40 linhas, conferido por `tools/sdlc.py state`). O histórico de cada feature está no git, nos
 PRs e nos `verification.md` de `docs/.specs/features/`.
 
-**Feature**: nenhuma em curso; release `0.7.0` na branch `chore/release/0.7.0`
-**Where**: needs-input-reply mergeada (PR 42, `ec0d80c`, issue #41 fechada); provas no box ainda por fazer
-**Released**: `0.6.0` em `main`, no PyPI e no GitHub Release; `0.7.0` sai com a tag `v0.7.0` depois do merge
+**Feature**: nenhuma em curso
+**Where**: needs-input-reply entregue (PR 42) e provada no box com a `0.7.0` (PR 50,
+`docs/.specs/features/needs-input-reply/box/0.7.0.md`): `reply allow` no Claude Code e no opencode 2.2.5, as duas
+tarefas `completed/ok`
+**Released**: `0.7.0` em `main`, no PyPI e no GitHub Release (tag `v0.7.0`)
 **Features entregues**: agent-run-notify, kit-update, plugins, model-setup-docs, sdlc-gates, needs-input-reply
 (verificadas, `verification.md` de cada)
-**Abertos sem issue ainda**: nenhum (os pontos abertos da needs-input-reply viraram #43 a #47)
+**Abertos sem issue ainda**: na prova do box, o opencode levou ~5 min entre o `allow` e o fim da tarefa (o Claude
+Code, 2 s); falta a linha do tempo do `out.jsonl` para saber se foi o modelo, o `curl` ou o opencode
 
-**Next step**: o Rodrigo faz o merge do PR da release e cria a tag `v0.7.0`; no box, o bot roda
-`grokbot-kit update apply` e `grokbot-kit setup cli upgrade opencode` (o box estava no opencode 1.19.3) e testa um
-pedido com `reply`; pendências no backlog: #32, #33, #43, #44, #45, #46, #47
+**Next step**: escolher a próxima pendência do backlog: #32, #33, #43, #44, #45, #46, #47, #49
 **Blockers**: nenhum
 **Uncommitted**: nada
-**Branch**: `main` (`0.6.0` até a tag); `main` protegida (PR + 6 checks com o `process`, só squash)
+**Branch**: `main` (`0.7.0`); `main` protegida (PR + 6 checks com o `process`, só squash)
