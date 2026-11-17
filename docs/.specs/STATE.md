@@ -74,10 +74,9 @@ tarefas `completed/ok`
 **Released**: `0.7.0` em `main`, no PyPI e no GitHub Release (tag `v0.7.0`)
 **Features entregues**: agent-run-notify, kit-update, plugins, model-setup-docs, sdlc-gates, needs-input-reply
 (verificadas, `verification.md` de cada)
-**Abertos sem issue ainda**: na prova do box, o opencode levou ~5 min entre o `allow` e o fim da tarefa (o Claude
-Code, 2 s); falta a linha do tempo do `out.jsonl` para saber se foi o modelo, o `curl` ou o opencode
+**Abertos sem issue ainda**: nenhum (a latência do opencode depois do `allow` na prova do box virou o #54)
 
-**Next step**: escolher a próxima pendência do backlog: #32, #33, #43, #44, #45, #46, #47, #49
+**Next step**: escolher a próxima pendência do backlog: #32, #33, #43, #44, #45, #46, #47, #49, #54
 **Blockers**: nenhum
 **Uncommitted**: nada
 **Branch**: `main` (`0.7.0`); `main` protegida (PR + 6 checks com o `process`, só squash)
